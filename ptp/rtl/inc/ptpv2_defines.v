@@ -1,26 +1,41 @@
+/*-
+ * Copyright (c) 2022-2023 Zhengde
+ * 
+ * All rights reserved.
+ * 
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ * 
+ * 1 Redistributions of source code must retain the above copyright notice, this
+ *   list of conditions and the following disclaimer.
+ * 
+ * 2 Redistributions in binary form must reproduce the above copyright notice,
+ *   this list of conditions and the following disclaimer in the documentation
+ *   and/or other materials provided with the distribution.
+ * 
+ * 3 Neither the name of the copyright holder nor the names of its
+ *   contributors may be used to endorse or promote products derived from
+ *   this software without specific prior written permission.
+ * 
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+ * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+ * CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+ * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
 `ifndef PTPV2_DEFINES
 `define PTPV2_DEFINES
 
-//Ethernet codes (for XGE)
-`define IDLE       8'h07
+`define GFE_DESIGN
+
 `define PREAMBLE   8'h55
-`define SEQUENCE   8'h9c
 `define SFD        8'hd5
-`define START      8'hfb
-`define TERMINATE  8'hfd
-`define ERROR      8'hfe
-
-//XGMII LANES
-`define LANE0        7:0
-`define LANE1       15:8
-`define LANE2      23:16
-`define LANE3      31:24
-`define LANE4      39:32
-`define LANE5      47:40
-`define LANE6      55:48
-`define LANE7      63:56
-
-`define OR_LANE(x) (x[0] | x[1] | x[2] | x[3] | x[4] | x[5] | x[6] | x[7])
 
 //rtc related macros
 `define FNS_W  (26)                //width of fractional nanosecond(16 < FNS_W < 28)
