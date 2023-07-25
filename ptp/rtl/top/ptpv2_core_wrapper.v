@@ -1,4 +1,4 @@
-/*-
+/*+
  * Copyright (c) 2022-2023 Zhengde
  * 
  * All rights reserved.
@@ -27,11 +27,11 @@
  * CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- */
+-*/
 
-/**
+/*+
  * ptpv2 core ip wrapper, includes apb-like on-chip-bus  slave interface and core ip.
- */
+-*/
 
 `include "ptpv2_defines.v"
 
@@ -76,7 +76,7 @@ module ptpv2_core_wrapper (
     output              pbus_slverr_o,
 
     //control i/o
-    input               mii_mode_hw_i,          //0:ge, 1: 100m/10m ethernet
+    input               mii_mode_i,          //0:ge, 1: 100m/10m ethernet
     input               dis_ptpv2_i,
     
     //interrupt signals 
@@ -84,8 +84,8 @@ module ptpv2_core_wrapper (
     output              int_rx_ptp_o,
     output              int_tx_ptp_o,
 
-    output              pps_o,                  //pps output
-    input               pps_i                   //pps input
+    output              pps_o,               //pps output
+    input               pps_i                //pps input
 );
     //interconnect signals.
     wire                bus2ip_clk   ;
@@ -145,7 +145,7 @@ module ptpv2_core_wrapper (
         .clk         (rx_clk),
         .rst_n       (rx_rst_n),
 
-        .mii_mode_i  (mii_mode_hw_i),
+        .mii_mode_i  (mii_mode_i),
         .clk_en_o    (rx_clk_en),
 
         .mii_en_i    (rx_dv_i), 
@@ -187,7 +187,7 @@ module ptpv2_core_wrapper (
         .clk         (tx_clk),
         .rst_n       (tx_rst_n),
 
-        .mii_mode_i  (mii_mode_hw_i),
+        .mii_mode_i  (mii_mode_i),
         .clk_en_o    (tx_clk_en),
 
         .mii_en_i    (tx_en_i), 
