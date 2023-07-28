@@ -78,7 +78,7 @@ module tx_tse(
     wire [7:0]          txd_to_emb  ;
 
     wire                par_get_sfd_done;
-    wire  [10:0]        par_eth_count_base;      
+    wire  [10:0]        par_eth_count;      
     wire  [10:0]        ptp_addr_base;
     wire  [3:0]         ptp_messageType;          
     wire  [63:0]        ptp_correctionField;
@@ -107,7 +107,7 @@ module tx_tse(
         .txd_o                     (txd_to_emb  ),
     
         .get_sfd_done_o            (par_get_sfd_done       ),
-        .eth_count_base_o          (par_eth_count_base     ),      
+        .eth_count_o               (par_eth_count     ),      
         .ptp_addr_base_o           (ptp_addr_base          ),
         .ptp_messageType_o         (ptp_messageType        ),          
         .ptp_correctionField_o     (ptp_correctionField    ),
@@ -159,7 +159,7 @@ module tx_tse(
     wire [10:0]         emb_ipv4_addr_base;
 
     wire                emb_get_sfd_done;
-    wire [10:0]         emb_eth_count_base;
+    wire [10:0]         emb_eth_count;
 
     tx_emb_ts tx_emb_ts(
         .tx_clk                    (tx_clk     ),
@@ -179,7 +179,7 @@ module tx_tse(
         .egress_asymmetry_i        (egress_asymmetry_i),
     
         //ptpv2 message related information
-        .eth_count_base_i          (par_eth_count_base     ),      
+        .eth_count_i               (par_eth_count     ),      
         .ptp_addr_base_i           (ptp_addr_base      ),
         .ptp_messageType_i         (ptp_messageType        ),          
         .ptp_correctionField_i     (ptp_correctionField    ),
@@ -211,7 +211,7 @@ module tx_tse(
         .get_sfd_done_i            (par_get_sfd_done  ),
         .get_sfd_done_o            (emb_get_sfd_done  ),
                                                     
-        .eth_count_base_o          (emb_eth_count_base)
+        .eth_count_o               (emb_eth_count)
     );
 
     tx_rcst tx_rcst (
@@ -248,7 +248,7 @@ module tx_tse(
         .ipv4_flag_i               (emb_ipv4_flag        ),  
         .ipv4_addr_base_i          (emb_ipv4_addr_base   ),
     
-        .eth_count_base_i          (emb_eth_count_base),
+        .eth_count_i               (emb_eth_count     ),
         .get_sfd_done_i            (emb_get_sfd_done  )
     );
 
