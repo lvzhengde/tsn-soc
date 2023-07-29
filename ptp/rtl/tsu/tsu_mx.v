@@ -372,7 +372,9 @@ module tsu_mx(
     assign txd_o   = (bypass_dp == 1'b1) ? txd_i   : txd_out  ;
 
     tx_tse tx_tse(
-        //xgmii interface
+        .bypass_dp_i             (bypass_dp),
+
+        //gmii interface
         .tx_clk                  (tx_clk     ),
         .tx_rst_n                (tx_rst_n   ),
         .tx_clk_en_i             (tx_clk_en_i),      

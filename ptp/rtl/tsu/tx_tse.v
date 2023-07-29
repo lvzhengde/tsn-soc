@@ -37,7 +37,9 @@
 `include "ptpv2_defines.v"
 
 module tx_tse(
-    //xgmii interface
+    input               bypass_dp_i,
+
+    //gmii interface
     input               tx_clk,
     input               tx_rst_n,
     input               tx_clk_en_i,            //for adapting to mii
@@ -73,6 +75,15 @@ module tx_tse(
     //ptpv2 tx interrupt signal 
     output              int_tx_ptp_o
 );
+    //decide the signal to capture timestamp
+    wire                par_txts_trig;
+    wire                emb_txts_trig;
+
+    assign txts_trig_o = (bypass_dp_i == 1'b1) ? par_txts_trig : emb_txts_trig;
+
+    //++
+    //instantiate tx_parse module
+    //--
     wire                tx_en_to_emb;
     wire                tx_er_to_emb;
     wire [7:0]          txd_to_emb  ;
@@ -125,7 +136,7 @@ module tx_tse(
         .tsu_cfg_i                 (tsu_cfg_i),
         
         //timestamp i/f, sync to rtc_clk
-        .txts_trig_o               (txts_trig_o ),
+        .txts_trig_o               (par_txts_trig ),
         .txts_valid_o              (txts_valid_o),
         
         .tx_sourcePortIdentity_o   (tx_sourcePortIdentity_o),  
@@ -140,6 +151,9 @@ module tx_tse(
         .int_tx_ptp_o              (int_tx_ptp_o)
     );
 
+    //++
+    //instantiate tx_emb_ts module
+    //--
     wire                tx_en_to_rcst;
     wire                tx_er_to_rcst;
     wire [7:0]          txd_to_rcst  ;
@@ -179,7 +193,6 @@ module tx_tse(
         .egress_asymmetry_i        (egress_asymmetry_i),
     
         //ptpv2 message related information
-        .eth_count_i               (par_eth_count     ),      
         .ptp_addr_base_i           (ptp_addr_base      ),
         .ptp_messageType_i         (ptp_messageType        ),          
         .ptp_correctionField_i     (ptp_correctionField    ),
@@ -208,12 +221,15 @@ module tx_tse(
         .ipv4_flag_o               (emb_ipv4_flag        ),
         .ipv4_addr_base_o          (emb_ipv4_addr_base   ),
     
-        .get_sfd_done_i            (par_get_sfd_done  ),
         .get_sfd_done_o            (emb_get_sfd_done  ),
+        .txts_trig_o               (emb_txts_trig),
                                                     
         .eth_count_o               (emb_eth_count)
     );
 
+    //++
+    //instantiate tx_rcst module
+    //--
     tx_rcst tx_rcst (
         .tx_clk                    (tx_clk     ),
         .tx_rst_n                  (tx_rst_n   ),

@@ -764,7 +764,6 @@ module tx_parse(
                 int_tx_ptp_o <= 0;
         end  
     end
-
   
   //signals to tx_emb_ts
   assign tx_en_o = tx_en_i;
