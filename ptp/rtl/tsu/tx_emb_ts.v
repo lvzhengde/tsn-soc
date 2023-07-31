@@ -72,7 +72,7 @@ module tx_emb_ts(
 
     //output information of currently sending packet
     output reg [63:0]   correctionField_o,       //ns * 2^16                               
-    output reg [31:0]   ingress_time_o,          //32 bits ns  
+    output     [31:0]   ingress_time_o,          //32 bits ns  
 
     output reg [10:0]   ptp_addr_base_o,
     output reg [3:0]    ptp_messageType_o,          
@@ -194,12 +194,7 @@ module tx_emb_ts(
         end
     end
 
-    always @(posedge tx_clk or negedge tx_rst_n) begin
-        if(!tx_rst_n)
-            ingress_time_o <= 32'h0;
-        else if(tx_clk_en_i) 
-            ingress_time_o <= ptp_messageTypeSpecific_i;
-    end
+    assign ingress_time_o = ptp_messageTypeSpecific_i;
 
     //related control signals for one-step clock processing
     wire next_frame_start = (eth_count == 0) && (tx_en_z12 == 1'b1);

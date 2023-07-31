@@ -142,27 +142,29 @@ module ptpv2_core_wrapper (
     assign rxd_o   = (dis_ptpv2_i == 1'b1) ? rxd_i   : rxd_out  ;   
 
     mii_cvt rx_mii_cvt (
-        .clk         (rx_clk),
-        .rst_n       (rx_rst_n),
+        .clk            (rx_clk),
+        .rst_n          (rx_rst_n),
 
-        .mii_mode_i  (mii_mode_i),
-        .clk_en_o    (rx_clk_en),
+        .mii_mode_i     (mii_mode_i),
+        .clk_en_o       (rx_clk_en),
 
-        .mii_en_i    (rx_dv_i), 
-        .mii_er_i    (rx_er_i),
-        .mii_d_i     (rxd_i),
+        .mii_en_i       (rx_dv_i), 
+        .mii_er_i       (rx_er_i),
+        .mii_d_i        (rxd_i),
     
-        .mii_en_o    (rx_dv_out),
-        .mii_er_o    (rx_er_out),
-        .mii_d_o     (rxd_out),   
+        .mii_en_o       (rx_dv_out),
+        .mii_er_o       (rx_er_out),
+        .mii_d_o        (rxd_out),   
 
-        .gmii_en_i   (grx_dv_out), 
-        .gmii_er_i   (grx_er_out),
-        .gmii_d_i    (grx_d_out ),
+        .gmii_en_i      (grx_dv_out), 
+        .gmii_er_i      (grx_er_out),
+        .gmii_d_i       (grx_d_out ),
 
-        .gmii_en_o   (grx_dv_in),
-        .gmii_er_o   (grx_er_in),
-        .gmii_d_o    (grx_d_in )   
+        .gmii_en_o      (grx_dv_in),
+        .gmii_er_o      (grx_er_in),
+        .gmii_d_o       (grx_d_in ),   
+
+        .nibble_slide_o ()
     );
 
     wire  tx_clk_en;
@@ -184,27 +186,29 @@ module ptpv2_core_wrapper (
     assign txd_o   = (dis_ptpv2_i == 1'b1) ? txd_i   : txd_out  ;   
 
     mii_cvt tx_mii_cvt (
-        .clk         (tx_clk),
-        .rst_n       (tx_rst_n),
+        .clk            (tx_clk),
+        .rst_n          (tx_rst_n),
 
-        .mii_mode_i  (mii_mode_i),
-        .clk_en_o    (tx_clk_en),
+        .mii_mode_i     (mii_mode_i),
+        .clk_en_o       (tx_clk_en),
 
-        .mii_en_i    (tx_en_i), 
-        .mii_er_i    (tx_er_i),
-        .mii_d_i     (txd_i),
+        .mii_en_i       (tx_en_i), 
+        .mii_er_i       (tx_er_i),
+        .mii_d_i        (txd_i),
     
-        .mii_en_o    (tx_en_out),
-        .mii_er_o    (tx_er_out),
-        .mii_d_o     (txd_out),   
+        .mii_en_o       (tx_en_out),
+        .mii_er_o       (tx_er_out),
+        .mii_d_o        (txd_out),   
 
-        .gmii_en_i   (gtx_en_out), 
-        .gmii_er_i   (gtx_er_out),
-        .gmii_d_i    (gtx_d_out ),
+        .gmii_en_i      (gtx_en_out), 
+        .gmii_er_i      (gtx_er_out),
+        .gmii_d_i       (gtx_d_out ),
 
-        .gmii_en_o   (gtx_en_in),
-        .gmii_er_o   (gtx_er_in),
-        .gmii_d_o    (gtx_d_in )   
+        .gmii_en_o      (gtx_en_in),
+        .gmii_er_o      (gtx_er_in),
+        .gmii_d_o       (gtx_d_in )   
+
+        .nibble_slide_o ()
     );
 
     ptpv2_core ptpv2_core_inst (

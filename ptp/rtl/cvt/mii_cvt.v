@@ -60,7 +60,9 @@ module mii_cvt (
     //gmii-like output converted from mii input
     output               gmii_en_o,
     output               gmii_er_o,
-    output [7:0]         gmii_d_o    
+    output [7:0]         gmii_d_o ,
+
+    output               nibble_slide_o      //for latency correction in mii mode conversion   
 );
     //generate clock enable signal
     reg  clk_en;
@@ -165,6 +167,8 @@ module mii_cvt (
       else if((frm_start == 1 && clk_en == 0) || frm_end_d1 == 1) 
           use_d1 <= 0;
     end
+    
+    assign nibble_slide_o = use_d1;
 
     always @(posedge clk or negedge rst_n) begin
         if(!rst_n) begin
