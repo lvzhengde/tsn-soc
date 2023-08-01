@@ -368,13 +368,13 @@ module tx_rcst (
         .rst_n            (tx_rst_n),              
         .clk_en_i         (tx_clk_en_i),
         
-        .tx_en_i          (tx_en_z4), 
-        .tx_er_i          (tx_er_z4),
-        .txd_i            (txd_z4  ),  
+        .data_en_i        (tx_en_z4), 
+        .data_er_i        (tx_er_z4),
+        .data_i           (txd_z4  ),  
         
-        .tx_en_o          (tx_en_o),
-        .tx_er_o          (tx_er_o),
-        .txd_o            (txd_o  ),
+        .data_en_o        (tx_en_o),
+        .data_er_o        (tx_er_o),
+        .data_o           (txd_o  ),
         
         .efd_p4_i         (efd_p4 ),
         .rpl_flag_i       (rpl_crc_z1)
