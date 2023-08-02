@@ -377,6 +377,7 @@ module tx_rcst (
         .data_o           (txd_o  ),
         
         .efd_p4_i         (efd_p4 ),
+        .eth_count_i      (eth_count_z4),
         .rpl_flag_i       (rpl_crc_z1)
     );
 
