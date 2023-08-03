@@ -765,25 +765,25 @@ module tx_parse(
         end  
     end
   
-  //signals to tx_emb_ts
-  assign tx_en_o = tx_en_i;
-  assign tx_er_o = tx_er_i;
-  assign txd_o   = txd_i  ;
+    //signals to tx_emb_ts
+    assign tx_en_o = tx_en_i;
+    assign tx_er_o = tx_er_i;
+    assign txd_o   = txd_i  ;
 
-  assign get_sfd_done_o            = get_sfd_done;
-  assign eth_count_o               = eth_count;      
-  assign ptp_addr_base_o           = ptp_addr_base_z1;
-  assign ptp_messageType_o         = ptp_messageType;           
-  assign ptp_correctionField_o     = ptp_correctionField;
-  assign ptp_messageTypeSpecific_o = ptp_messageTypeSpecific;
-  assign is_ptp_message_o          = is_ptp_message_z1;  
-  assign ptp_messageLength_o       = ptp_messageLength;
-  assign ptp_flagField_o           = ptp_flagField; 
+    assign get_sfd_done_o            = get_sfd_done;
+    assign eth_count_o               = eth_count;      
+    assign ptp_addr_base_o           = ptp_addr_base_z1;
+    assign ptp_messageType_o         = ptp_messageType;           
+    assign ptp_correctionField_o     = ptp_correctionField;
+    assign ptp_messageTypeSpecific_o = ptp_messageTypeSpecific;
+    assign is_ptp_message_o          = is_ptp_message_z1;  
+    assign ptp_messageLength_o       = ptp_messageLength;
+    assign ptp_flagField_o           = ptp_flagField; 
 
-  assign ipv6_flag_o      = ipv6_flag_z1;     
-  assign ipv6_addr_base_o = ipv6_addr_base_z1;
-  assign ipv4_flag_o      = ipv4_flag_z1;      
-  assign ipv4_addr_base_o = ipv4_addr_base_z1; 
+    assign ipv6_flag_o      = ipv6_flag_z1;     
+    assign ipv6_addr_base_o = ipv6_addr_base_z1;
+    assign ipv4_flag_o      = ipv4_flag_z1;      
+    assign ipv4_addr_base_o = ipv4_addr_base_z1; 
 
 endmodule
 

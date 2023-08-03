@@ -24,16 +24,15 @@ module rx_emb_ts(
   input  [31:0]       ingress_asymmetry_i,
 
   //ptpv2 message related information
-  input  [10:0]       eth_count_base_i,      //aligned with rxd_i now
+  input               get_sfd_done_i,
+  input  [10:0]       eth_count_i,           //aligned with rxd_i 
   input  [10:0]       ptp_addr_base_i,
   input  [3:0]        ptp_messageType_i,          
   input  [63:0]       ptp_correctionField_i,
   input               is_ptp_message_i,  
 
-  input               get_sfd_done_i,
   output reg          get_sfd_done_o,
-
-  output reg [10:0]   eth_count_base_o
+  output reg [10:0]   eth_count_o
 );
   genvar i;
 
