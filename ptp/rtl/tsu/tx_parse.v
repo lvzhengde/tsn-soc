@@ -50,8 +50,6 @@ module tx_parse(
     output              tx_er_o,
     output [7:0]        txd_o  ,
 
-    output              get_sfd_done_o,
-    output  [10:0]      eth_count_o,      
     output  [10:0]      ptp_addr_base_o,
     output  [3:0]       ptp_messageType_o,          
     output  [63:0]      ptp_correctionField_o,
@@ -91,10 +89,6 @@ module tx_parse(
     wire                get_sfd_done_p1;
     reg                 get_sfd_done;
 
-    reg                 tx_en_z1;
-    reg                 tx_er_z1;
-    reg [7:0]           txd_z1  ;
-
     assign  get_sfd_done_p1 = (txd_i[7:0] == `SFD);
 
     always @(posedge tx_clk or negedge tx_rst_n) begin
@@ -103,21 +97,8 @@ module tx_parse(
         else if(tx_clk_en_i) begin
             if(tx_en_i == 1'b1 && get_sfd_done_p1 == 1'b1)
                 get_sfd_done <= 1;
-            else if(tx_en_i == 1'b0 && tx_en_z1 == 1'b0)
+            else if(tx_en_i == 1'b0)
                 get_sfd_done <= 0;
-        end
-    end
-    
-    always @(posedge tx_clk or negedge tx_rst_n) begin
-        if(!tx_rst_n) begin
-            tx_en_z1 <= 0;
-            tx_er_z1 <= 0;
-            txd_z1   <= 8'h0;
-        end
-        else if(tx_clk_en_i) begin 
-            tx_en_z1 <= tx_en_i;
-            tx_er_z1 <= tx_er_i;
-            txd_z1   <= txd_i  ;
         end
     end
 
@@ -129,7 +110,7 @@ module tx_parse(
                 eth_count  <=  11'd8;
             else if(tx_en_i == 1'b1 && get_sfd_done == 1'b1)
                 eth_count  <=  eth_count + 1;
-            else if(tx_en_i == 1'b0 && tx_en_z1 == 1'b0)
+            else if(tx_en_i == 1'b0)
                 eth_count  <=  11'd0;
         end
     end
@@ -183,7 +164,7 @@ module tx_parse(
                 if(eth_count == 11'd28)  vlan2_length_type[15:8] <= txd_i;
                 if(eth_count == 11'd29)  vlan2_length_type[7:0]  <= txd_i;                    
             end 
-            else if(tx_en_i == 1'b0 && tx_en_z1 == 1'b0) begin
+            else if(tx_en_i == 1'b0) begin
                 mac_da            <= 48'h0;
                 mac_sa            <= 48'h0;
                 length_type       <= 16'h0;   
@@ -216,7 +197,7 @@ module tx_parse(
                     if(eth_count == 11'd37) ppp_pid[7:0]   <= txd_i;     
                 end 
             end 
-            else if(tx_en_i == 1'b0 && tx_en_z1 == 1'b0)
+            else if(tx_en_i == 1'b0)
                 ppp_pid  <= 16'h0; 
         end    
     end  
@@ -255,7 +236,7 @@ module tx_parse(
                     if(eth_count == 11'd37)  snap_length_type[7:0]  <= txd_i;            
                 end 
             end 
-            else if(tx_en_i == 1'b0 && tx_en_z1 == 1'b0) begin
+            else if(tx_en_i == 1'b0) begin
                 snap_dsap        <= 8'h0;       
                 snap_ssap        <= 8'h0;       
                 snap_length_type <= 16'h0;
@@ -770,8 +751,6 @@ module tx_parse(
     assign tx_er_o = tx_er_i;
     assign txd_o   = txd_i  ;
 
-    assign get_sfd_done_o            = get_sfd_done;
-    assign eth_count_o               = eth_count;      
     assign ptp_addr_base_o           = ptp_addr_base_z1;
     assign ptp_messageType_o         = ptp_messageType;           
     assign ptp_correctionField_o     = ptp_correctionField;

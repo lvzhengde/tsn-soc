@@ -85,9 +85,7 @@ module tx_emb_ts(
     output reg          ipv4_flag_o,
     output reg [10:0]   ipv4_addr_base_o,
 
-    output reg          get_sfd_done_o,
     output reg          txts_trig_o,
-
     output reg [10:0]   eth_count_o
 );
     //extract register settings
@@ -155,7 +153,7 @@ module tx_emb_ts(
         else if(tx_clk_en_i) begin
             if(tx_en_z12 == 1'b1 && get_sfd_done_p1 == 1'b1)
                 get_sfd_done <= 1;
-            else if(tx_en_z12 == 1'b0 && tx_en_z13 == 1'b0)
+            else if(tx_en_z12 == 1'b0)
                 get_sfd_done <= 0;
         end
     end
@@ -168,7 +166,7 @@ module tx_emb_ts(
                 eth_count  <=  11'd8;
             else if(tx_en_z12 == 1'b1 && get_sfd_done == 1'b1)
                 eth_count  <=  eth_count + 1;
-            else if(tx_en_z12 == 1'b0 && tx_en_z13 == 1'b0)
+            else if(tx_en_z12 == 1'b0)
                 eth_count  <=  11'd0;
         end
     end
@@ -285,11 +283,9 @@ module tx_emb_ts(
     always @(posedge tx_clk or negedge tx_rst_n) begin  
         if(!tx_rst_n) begin
             eth_count_o    <= 0;
-            get_sfd_done_o <= 0;
         end
         else if(tx_clk_en_i) begin  
             eth_count_o    <= eth_count;
-            get_sfd_done_o <= get_sfd_done;
         end
     end
 

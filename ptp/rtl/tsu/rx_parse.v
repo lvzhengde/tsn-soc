@@ -50,15 +50,10 @@ module rx_parse(
     output              rx_er_o, 
     output [7:0]        rxd_o  , 
 
-    output              get_sfd_done_o,
-    output  [10:0]      eth_count_o,      
     output  [10:0]      ptp_addr_base_o,
     output  [3:0]       ptp_messageType_o,          
     output  [63:0]      ptp_correctionField_o,
     output              is_ptp_message_o,  
-
-    //signals to rx_rcst
-    output              efd_p4_o,
 
     //configuration register i/f
     input  [31:0]       tsu_cfg_i,
@@ -93,10 +88,6 @@ module rx_parse(
     wire                get_sfd_done_p1;
     reg                 get_sfd_done;
 
-    reg                 rx_dv_z1;
-    reg                 rx_er_z1;
-    reg [7:0]           rxd_z1  ;
-
     assign  get_sfd_done_p1 = (rxd_i[7:0] == `SFD);
 
     always @(posedge rx_clk or negedge rx_rst_n) begin
@@ -105,7 +96,7 @@ module rx_parse(
         else if(rx_clk_en_i) begin
             if(rx_dv_i == 1'b1 && get_sfd_done_p1 == 1'b1)
                 get_sfd_done <= 1;
-            else if(rx_dv_i == 1'b0 && rx_dv_z1 == 1'b0)
+            else if(rx_dv_i == 1'b0)
                 get_sfd_done <= 0;
         end
     end
@@ -118,7 +109,7 @@ module rx_parse(
                 eth_count  <=  11'd8;
             else if(rx_dv_i == 1'b1 && get_sfd_done == 1'b1)
                 eth_count  <=  eth_count + 1;
-            else if(rx_dv_i == 1'b0 && rx_dv_z1 == 1'b0)
+            else if(rx_dv_i == 1'b0)
                 eth_count  <=  11'd0;
         end
     end
@@ -172,7 +163,7 @@ module rx_parse(
                 if(eth_count == 11'd28)  vlan2_length_type[15:8] <= rxd_i;
                 if(eth_count == 11'd29)  vlan2_length_type[7:0]  <= rxd_i;                    
             end 
-            else if(rx_dv_i == 1'b0 && rx_dv_z1 == 1'b0) begin
+            else if(rx_dv_i == 1'b0) begin
                 mac_da            <= 48'h0;
                 mac_sa            <= 48'h0;
                 length_type       <= 16'h0;   
@@ -207,7 +198,7 @@ module rx_parse(
                     if(eth_count == 11'd37) ppp_pid[7:0]   <= rxd_i;     
                 end 
             end 
-            else if(rx_dv_i == 1'b0 && rx_dv_z1 == 1'b0)
+            else if(rx_dv_i == 1'b0)
                 ppp_pid  <= 16'h0; 
         end    
     end  
@@ -246,7 +237,7 @@ module rx_parse(
                     if(eth_count == 11'd37)  snap_length_type[7:0]  <= rxd_i;            
                 end 
             end 
-            else if(rx_dv_i == 1'b0 && rx_dv_z1 == 1'b0) begin
+            else if(rx_dv_i == 1'b0) begin
                 snap_dsap        <= 8'h0;       
                 snap_ssap        <= 8'h0;       
                 snap_length_type <= 16'h0;
@@ -777,33 +768,15 @@ module rx_parse(
         end  
     end
 
-    //delay 1 sample time
-    always @(posedge rx_clk or negedge rx_rst_n) begin
-        if(!rx_rst_n) begin
-            rx_dv_z1 <= 0;
-            rx_er_z1 <= 0;
-            rxd_z1   <= 8'h0;
-        end
-        else if(rx_clk_en_i) begin 
-            rx_dv_z1 <= rx_dv_i;
-            rx_er_z1 <= rx_er_i;
-            rxd_z1   <= rxd_i  ;
-        end
-    end
-
     //output ports
     assign rx_dv_o = rx_dv_i;
     assign rx_er_o = rx_er_i;
     assign rxd_o   = rxd_i  ;
 
-    assign get_sfd_done_o            = get_sfd_done;
-    assign eth_count_o               = eth_count;      
     assign ptp_addr_base_o           = ptp_addr_base_z1;
     assign ptp_messageType_o         = ptp_messageType;           
     assign ptp_correctionField_o     = ptp_correctionField;
     assign ptp_messageTypeSpecific_o = ptp_messageTypeSpecific;
     assign is_ptp_message_o          = is_ptp_message_z1;  
-
-    assign efd_p4_o = rx_clk_en_i & (~rx_dv_i) & rx_dv_z1;
 
 endmodule

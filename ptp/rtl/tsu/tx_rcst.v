@@ -69,8 +69,7 @@ module tx_rcst (
     input               ipv4_flag_i,  
     input  [10:0]       ipv4_addr_base_i,
 
-    input  [10:0]       eth_count_i,
-    input               get_sfd_done_i
+    input  [10:0]       eth_count_i
 );
     //register settings
     wire one_step    = tsu_cfg_i[0];
@@ -130,7 +129,6 @@ module tx_rcst (
     reg               tx_er_z1;
     reg  [7:0]        txd_z1  ;  
 
-    reg               get_sfd_done_z1;
     reg [10:0]        eth_count_z1;
 
     always @(posedge tx_clk or negedge tx_rst_n) begin
@@ -139,7 +137,6 @@ module tx_rcst (
             tx_er_z1 <= 0;
             txd_z1   <= 8'h0;
 
-            get_sfd_done_z1 <= 0;
             eth_count_z1    <= 11'h0;
         end
         else if(tx_clk_en_i) begin
@@ -147,7 +144,6 @@ module tx_rcst (
             tx_er_z1 <= tx_er_i;
             txd_z1   <= txd_i;
 
-            get_sfd_done_z1 <= get_sfd_done_i;
             eth_count_z1    <= eth_count_i; 
         end
     end
@@ -201,7 +197,6 @@ module tx_rcst (
     reg               tx_er_z2;
     reg  [7:0]        txd_z2  ;  
 
-    reg               get_sfd_done_z2;
     reg [10:0]        eth_count_z2;
 
     always @(posedge tx_clk or negedge tx_rst_n) begin
@@ -210,7 +205,6 @@ module tx_rcst (
             tx_er_z2 <= 0;
             txd_z2   <= 8'h0;
 
-            get_sfd_done_z2 <= 0;
             eth_count_z2    <= 11'h0;
         end
         else if(tx_clk_en_i) begin
@@ -218,7 +212,6 @@ module tx_rcst (
             tx_er_z2 <= tx_er_tmp;
             txd_z2   <= txd_tmp;
 
-            get_sfd_done_z2 <= get_sfd_done_z1;
             eth_count_z2    <= eth_count_z1; 
         end
     end
@@ -232,7 +225,6 @@ module tx_rcst (
     reg               tx_er_z3;
     reg  [7:0]        txd_z3  ;  
 
-    reg               get_sfd_done_z3;
     reg [10:0]        eth_count_z3   ;
 
     always @(posedge tx_clk or negedge tx_rst_n) begin
@@ -241,7 +233,6 @@ module tx_rcst (
             tx_er_z3 <= 1'b0;
             txd_z3   <= 8'h0;  
 
-            get_sfd_done_z3 <= 1'b0 ;
             eth_count_z3    <= 11'h0;
         end
         else if(tx_clk_en_i) begin
@@ -249,7 +240,6 @@ module tx_rcst (
             tx_er_z3 <= tx_er_z2;
             txd_z3   <= txd_z2  ;  
 
-            get_sfd_done_z3 <= get_sfd_done_z2;
             eth_count_z3    <= eth_count_z2   ;
         end
     end
@@ -313,7 +303,6 @@ module tx_rcst (
     reg               tx_er_z4;
     reg  [7:0]        txd_z4  ;  
 
-    reg               get_sfd_done_z4;
     reg [10:0]        eth_count_z4   ;
 
     always @(posedge tx_clk or negedge tx_rst_n) begin
@@ -322,7 +311,6 @@ module tx_rcst (
             tx_er_z4 <= 1'b0;
             txd_z4   <= 8'h0;  
 
-            get_sfd_done_z4 <= 1'b0 ;
             eth_count_z4    <= 11'h0;
         end
         else if(tx_clk_en_i) begin
@@ -330,7 +318,6 @@ module tx_rcst (
             tx_er_z4 <= tx_er_tmp1;
             txd_z4   <= txd_tmp1  ;  
 
-            get_sfd_done_z4 <= get_sfd_done_z3;
             eth_count_z4    <= eth_count_z3   ;
         end
     end
@@ -346,7 +333,7 @@ module tx_rcst (
     always @(*) begin
         rpl_crc = rpl_crc_z1;
 
-        if(get_sfd_done_z3 == 1 && get_sfd_done_z4 == 0) //start of frame (delayed 3 samples)
+        if(eth_count_z4 == 11'd0 && tx_en_z4 == 1'b1) //start of frame 
             rpl_crc = 0;
         else if(ptp_pkt_chg == 1'b1)   
             rpl_crc = 1;

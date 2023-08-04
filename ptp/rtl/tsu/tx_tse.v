@@ -88,8 +88,6 @@ module tx_tse(
     wire                tx_er_to_emb;
     wire [7:0]          txd_to_emb  ;
 
-    wire                par_get_sfd_done;
-    wire  [10:0]        par_eth_count;      
     wire  [10:0]        ptp_addr_base;
     wire  [3:0]         ptp_messageType;          
     wire  [63:0]        ptp_correctionField;
@@ -117,8 +115,6 @@ module tx_tse(
         .tx_er_o                   (tx_er_to_emb),
         .txd_o                     (txd_to_emb  ),
     
-        .get_sfd_done_o            (par_get_sfd_done       ),
-        .eth_count_o               (par_eth_count     ),      
         .ptp_addr_base_o           (ptp_addr_base          ),
         .ptp_messageType_o         (ptp_messageType        ),          
         .ptp_correctionField_o     (ptp_correctionField    ),
@@ -172,7 +168,6 @@ module tx_tse(
     wire                emb_ipv4_flag;
     wire [10:0]         emb_ipv4_addr_base;
 
-    wire                emb_get_sfd_done;
     wire [10:0]         emb_eth_count;
 
     tx_emb_ts tx_emb_ts(
@@ -221,9 +216,7 @@ module tx_tse(
         .ipv4_flag_o               (emb_ipv4_flag        ),
         .ipv4_addr_base_o          (emb_ipv4_addr_base   ),
     
-        .get_sfd_done_o            (emb_get_sfd_done  ),
         .txts_trig_o               (emb_txts_trig),
-                                                    
         .eth_count_o               (emb_eth_count)
     );
 
@@ -264,8 +257,7 @@ module tx_tse(
         .ipv4_flag_i               (emb_ipv4_flag        ),  
         .ipv4_addr_base_i          (emb_ipv4_addr_base   ),
     
-        .eth_count_i               (emb_eth_count     ),
-        .get_sfd_done_i            (emb_get_sfd_done  )
+        .eth_count_i               (emb_eth_count     )
     );
 
 endmodule

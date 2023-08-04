@@ -78,14 +78,10 @@ module rx_tse(
     wire                rx_er_to_emb; 
     wire [7:0]          rxd_to_emb  ; 
 
-    wire  [10:0]        par_eth_count;      
     wire  [10:0]        ptp_addr_base;
     wire  [3:0]         ptp_messageType;          
     wire  [63:0]        ptp_correctionField;
     wire                is_ptp_message;  
-    wire                par_get_sfd_done;
-
-    wire                efd_p4;
 
     rx_parse rx_parse(
         .rx_clk                  (rx_clk     ),
@@ -101,15 +97,10 @@ module rx_tse(
         .rx_er_o                 (rx_er_to_emb), 
         .rxd_o                   (rxd_to_emb  ), 
                                                        
-        .get_sfd_done_o          (par_get_sfd_done   ),
-        .eth_count_o             (par_eth_count      ),       
         .ptp_addr_base_o         (ptp_addr_base      ), 
         .ptp_messageType_o       (ptp_messageType    ),           
         .ptp_correctionField_o   (ptp_correctionField), 
         .is_ptp_message_o        (is_ptp_message     ),  
-    
-        //signals to rx_rcst
-        .efd_p4_o                (efd_p4    ),
     
         //configuration register i/f
         .tsu_cfg_i               (tsu_cfg_i),
@@ -134,7 +125,9 @@ module rx_tse(
     wire              rx_er_to_rcst; 
     wire [7:0]        rxd_to_rcst  ; 
 
-    wire              emb_get_sfd_done;
+    wire              efd_p4;
+    wire              embed_enable;
+    wire [10:0]       eth_count;
 
     rx_emb_ts rx_emb_ts(
         .rx_clk                  (rx_clk     ),
@@ -158,35 +151,22 @@ module rx_tse(
         .ingress_asymmetry_i     (ingress_asymmetry_i),
     
         //ptpv2 message related information
-        .get_sfd_done_i          (par_get_sfd_done),
-        .eth_count_i             (par_eth_count      ),      
         .ptp_addr_base_i         (ptp_addr_base      ),
         .ptp_messageType_i       (ptp_messageType    ),          
         .ptp_correctionField_i   (ptp_correctionField),
         .is_ptp_message_i        (is_ptp_message     ),  
     
-        .get_sfd_done_o          (emb_get_sfd_done),
-        .eth_count_o             ()
+        .efd_p4_o                (efd_p4      ),
+        .embed_enable_o          (embed_enable),
+        .eth_count_o             (eth_count)
     );
-
-    wire   get_sfd_pulse = par_get_sfd_done & (~emb_get_sfd_done);
 
     rx_rcst rx_rcst(
         .rx_clk                  (rx_clk     ),
         .rx_rst_n                (rx_rst_n   ),
         .rx_clk_en_i             (rx_clk_en_i),            
     
-        //configuration register i/f
-        .tsu_cfg_i               (tsu_cfg_i),
-    
-        //ptpv2 message related information
-        .ptp_messageType_i       (ptp_messageType),          
-        .is_ptp_message_i        (is_ptp_message ),  
-        .get_sfd_pulse_i         (get_sfd_pulse  ),
-    
-        //xgmii interface
-        .efd_p4_i                (efd_p4    ),
-    
+        //gmii interface
         .rx_dv_i                 (rx_dv_to_rcst), 
         .rx_er_i                 (rx_er_to_rcst), 
         .rxd_i                   (rxd_to_rcst  ), 
@@ -194,6 +174,11 @@ module rx_tse(
         .rx_dv_o                 (rx_dv_o), 
         .rx_er_o                 (rx_er_o), 
         .rxd_o                   (rxd_o  ) 
+
+        //control signals for FCS re-calculation
+        .efd_p4_i                (efd_p4    ),
+        .embed_enable_i          (embed_enable),
+        .eth_count_i             (eth_count)
     );
 
 endmodule
