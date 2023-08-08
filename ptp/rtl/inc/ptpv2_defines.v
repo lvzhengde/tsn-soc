@@ -32,8 +32,6 @@
 `ifndef PTPV2_DEFINES
 `define PTPV2_DEFINES
 
-`define GFE_DESIGN
-
 `define PREAMBLE   8'h55
 `define SFD        8'hd5
 
