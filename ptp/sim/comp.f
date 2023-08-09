@@ -12,14 +12,13 @@
 ../rtl/tsu/rx_parse.v
 ../rtl/tsu/rx_emb_ts.v
 ../rtl/tsu/rx_rcst.v
-../rtl/tsu/xge_crc.v
+../rtl/tsu/gmii_crc.v
 ../rtl/tsu/tx_parse.v
 ../rtl/tsu/tx_emb_ts.v
 ../rtl/tsu/tx_rcst.v
 ../rtl/tsu/ipv6_udp_chksum.v
 
-../rtl/cvt/gfe_cvt.v
-../rtl/cvt/xgmii_dr2sr.v
+../rtl/cvt/mii_cvt.v
 
 ../rtl/top/pbus_bridge.v
 ../rtl/top/ptpv2_core_wrapper.v

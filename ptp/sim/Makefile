@@ -1,5 +1,5 @@
-elfFile = xge-ptpv2
-waveFile = xge-ptpv2
+elfFile = ptpv2
+waveFile = ptpv2
 
 tc_rtc:
 	iverilog -o $(elfFile).out -s tc_rtc -f comp.f  

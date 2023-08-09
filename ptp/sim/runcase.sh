@@ -16,8 +16,8 @@ fi
 
 #define variables
 #note: remove space around '='
-elfFile=xge-ptpv2 
-waveFile=xge-ptpv2
+elfFile=ptpv2 
+waveFile=ptpv2
 
 #compile and run
 iverilog -o ${elfFile}.out -s $1 -f comp.f 
