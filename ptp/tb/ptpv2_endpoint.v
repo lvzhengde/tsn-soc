@@ -48,7 +48,7 @@ module ptpv2_endpoint (
     output          tx_er_o   ,
     output [7:0]    txd_o    , 
 
-    output          mii_mode_o,
+    input           mii_mode_i,
     output          pps_o
 );
     parameter    CLOCK_MS = 0;     //0: slave, none-0: master;
@@ -61,7 +61,6 @@ module ptpv2_endpoint (
     wire        rtc_clk;
     wire        rst_sys_n;
     
-    wire        mii_mode_hw;
     wire        dis_ptpv2 = 1'b0;
 
     wire        rx_dv_out;
@@ -92,7 +91,6 @@ module ptpv2_endpoint (
     wire   int_rx_ptp; 
     wire   int_tx_ptp;
     
-    assign mii_mode_o = mii_mode_hw;
     assign pps_o = pps_out;
 
     wire              bus2ip_clk   ;
@@ -119,7 +117,7 @@ module ptpv2_endpoint (
 
     //instantiate clock/reset model
     clkgen clkgen (
-        .mii_mode_i       (mii_mode_hw),
+        .mii_mode_i       (mii_mode_i),
 
         .pbus_clk         (pbus_clk),
         .rtc_clk          (rtc_clk),
@@ -208,7 +206,7 @@ module ptpv2_endpoint (
         .pbus_slverr_o           (pbus_slverr),
 
         //control i/o
-        .mii_mode_i              (mii_mode_hw),  
+        .mii_mode_i              (mii_mode_i),  
         .dis_ptpv2_i             (dis_ptpv2   ),   
 
 

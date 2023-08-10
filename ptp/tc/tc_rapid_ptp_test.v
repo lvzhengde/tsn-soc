@@ -58,12 +58,14 @@ module tc_rapid_ptp_test;
     integer     bcst;
     reg         dmp_fin;
 
+    wire        mii_mode = 1'b0;     //0: GMII; 1: MII
     wire [5:0]  clk_ctl = 6'b100101; //{emb_ingressTime, bypass, tc_offload, peer_delay/delay_req-response, tc/bc, one_step/two-step}       
     wire        bypass  = 0;            
     wire [2:0]  ecsl_mode = 0;       //0: ether2; 1: ipv4/udp; 2: ipv6/udp; 3: pppoe/ipv4/udp; 4: pppoe/ipv6/udp; 
                                      //5: snap/ipv4/udp; 6: snap/ipv6/udp; 7: snap/802.3 
     wire [15:0] vlan_tag  = 0;       //0: no vlan tag; 1: single vlan tag; 2: double vlan tag
   
+    reg         r_mii_mode;
     reg [5:0]   r_clk_ctl;         
     reg         r_bypass;            
     reg [2:0]   r_ecsl_mode; 
@@ -80,6 +82,7 @@ module tc_rapid_ptp_test;
         bcst = 1 | flog;
       
         $fdisplay(bcst, "ptpv2 simulation start!");
+        r_mii_mode  = mii_mode;
         r_clk_ctl   = clk_ctl ;
         r_bypass    = bypass ;
         r_ecsl_mode = ecsl_mode;
@@ -87,6 +90,11 @@ module tc_rapid_ptp_test;
         
         $fdisplay(bcst, "----------------------------------------------------------------------------------");
         //characteristic of clock
+        if(r_mii_mode == 1'b0)
+            $fdisplay(bcst, "Gigabit Ethernet GMII mode"); 
+        else 
+            $fdisplay(bcst, "10M/100M Ethernet MII mode");             
+
         if(r_clk_ctl[2] == 1'b0)
             $fdisplay(bcst, "delay_request-response mechanism"); 
         else 
@@ -164,6 +172,9 @@ module tc_rapid_ptp_test;
         join       
         
         #1000;
+
+        //set ethernet xMII mode
+        force harness.mii_mode = r_mii_mode;
 
         //slave settings
         force harness.ptpv2_endpoint.ptp_agent.clk_ctl[1:0] = r_clk_ctl[1:0];

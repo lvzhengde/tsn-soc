@@ -49,7 +49,7 @@ module harness;
     wire [7:0]    txd_o ;             
 
     wire          pps_o ; 
-    wire          mii_mode_o ;
+    wire          mii_mode_i ;
     
     //signal for link partner device
     wire          lp_rx_clk; 
@@ -64,10 +64,15 @@ module harness;
     wire [7:0]    lp_txd_o ;             
 
     wire          lp_pps_o ; 
-    wire          lp_mii_mode_o ;
+    wire          lp_mii_mode_i ;
 
     wire          channel_clk;
     wire          lp_channel_clk;
+
+    wire          mii_mode;
+
+    assign mii_mode_i = mii_mode;
+    assign lp_mii_mode_i = mii_mode;
 
     //instantiate ptp master (link partner) 
     ptpv2_endpoint lp_ptpv2_endpoint (
@@ -82,7 +87,7 @@ module harness;
         .tx_er_o        (lp_tx_er_o),
         .txd_o          (lp_txd_o ),
 
-        .mii_mode_o     (lp_mii_mode_o),
+        .mii_mode_i     (lp_mii_mode_i),
         .pps_o          (lp_pps_o)
     );
     //link parter is master
@@ -116,7 +121,7 @@ module harness;
         .tx_er_o        (tx_er_o),
         .txd_o          (txd_o ),
         
-        .mii_mode_o     (mii_mode_o),
+        .mii_mode_i     (mii_mode_i),
         .pps_o          (pps_o)
     );
     //local device is slave

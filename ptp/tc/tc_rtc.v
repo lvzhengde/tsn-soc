@@ -79,7 +79,7 @@ module tc_rtc;
         //set tick_inc value
         //ge clock T = 8ns, 8 * 2^26 = 536870912, convert to
         //hexdecimal, 32'h2000_0000
-        $display("set tick_inc value to 32'h1999_999a ! \n");
+        $display("set tick_inc value to 32'h2000_0000 ! \n");
         harness.ptpv2_endpoint.ptp_agent.write_reg({`RTC_BLK_ADDR, `TICK_INC_ADDR}, 32'h2000_0000);
         #10_0000;
 
