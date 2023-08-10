@@ -550,7 +550,7 @@ module rx_parse(
 
     always @(*) begin
         is_ptp_message  = 0;
-        ptp_addr_base   = 8'h80;   //initialize to a large value intentionally
+        ptp_addr_base   = 11'h80;   //initialize to a large value intentionally
         
         if(ptp_eth_flag == 1'b1) begin
             is_ptp_message = 1;
@@ -570,7 +570,7 @@ module rx_parse(
     always @(posedge rx_clk or negedge rx_rst_n) begin
         if(!rx_rst_n) begin
             is_ptp_message_z1  <= 0 ;
-            ptp_addr_base_z1   <= 8'h0  ;
+            ptp_addr_base_z1   <= 11'h0  ;
         end
         else if(rx_clk_en_i) begin
             is_ptp_message_z1  <= is_ptp_message ;
@@ -776,7 +776,6 @@ module rx_parse(
     assign ptp_addr_base_o           = ptp_addr_base_z1;
     assign ptp_messageType_o         = ptp_messageType;           
     assign ptp_correctionField_o     = ptp_correctionField;
-    assign ptp_messageTypeSpecific_o = ptp_messageTypeSpecific;
     assign is_ptp_message_o          = is_ptp_message_z1;  
 
 endmodule

@@ -144,7 +144,7 @@ module ptpv2_core (
         .tx_en_i                  (tx_en_i), 
         .tx_er_i                  (tx_er_i),
         .txd_i                    (txd_i  ),  
-        .                          
+                                  
         .tx_en_o                  (tx_en_o),
         .tx_er_o                  (tx_er_o),
         .txd_o                    (txd_o  ),

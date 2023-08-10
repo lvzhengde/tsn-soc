@@ -173,7 +173,7 @@ module rx_tse(
 
         .rx_dv_o                 (rx_dv_o), 
         .rx_er_o                 (rx_er_o), 
-        .rxd_o                   (rxd_o  ) 
+        .rxd_o                   (rxd_o  ),
 
         //control signals for FCS re-calculation
         .efd_p4_i                (efd_p4    ),

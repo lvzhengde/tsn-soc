@@ -47,20 +47,20 @@ module mii_cvt (
     input                mii_er_i,
     input  [7:0]         mii_d_i ,
     
-    //mii output converted from gmii-like input (muxed with gmii output)
-    output reg           mii_en_o,
-    output reg           mii_er_o,
-    output reg [7:0]     mii_d_o ,   
+    //gmii-like output converted from mii input
+    output               gmii_en_o,
+    output               gmii_er_o,
+    output [7:0]         gmii_d_o ,
 
     //gmii-like input
     input                gmii_en_i, 
     input                gmii_er_i,
     input  [7:0]         gmii_d_i ,
 
-    //gmii-like output converted from mii input
-    output               gmii_en_o,
-    output               gmii_er_o,
-    output [7:0]         gmii_d_o ,
+    //mii output converted from gmii-like input (muxed with gmii output)
+    output               mii_en_o,
+    output               mii_er_o,
+    output [7:0]         mii_d_o ,   
 
     output               nibble_slide_o      //for latency correction in mii mode conversion   
 );
@@ -118,11 +118,6 @@ module mii_cvt (
             fe_en_d1  <= 0;
             fe_er_d1  <= 0;
         end
-        else if(frm_end_d1 == 1) begin
-            fe_oct_d1 <= 8'h0;
-            fe_en_d1  <= 0;
-            fe_er_d1  <= 0;
-        end
         else begin
             fe_oct_d1 <= fe_oct;
             fe_en_d1  <= fe_en;
@@ -132,8 +127,8 @@ module mii_cvt (
 
     always @(*) begin 
       if((mii_er_i == 1 || mii_er_d1 == 1) && nibble_align == 1) begin
-          fe_oct = 8'h0;
-          fe_en  = 1;
+          fe_oct = {mii_d_i[3:0], mii_d_d1[3:0]};
+          fe_en  = mii_en_i;
           fe_er  = 1;
       end
       else if(mii_en_i == 1 && nibble_align == 1) begin
@@ -141,15 +136,15 @@ module mii_cvt (
           fe_en  = 1;
           fe_er  = 0;
       end
-      else if(mii_en_i == 0 && mii_en_d1 == 0) begin
-          fe_oct = 8'h0;
-          fe_en  = 0;
-          fe_er  = 0;
-      end
-      else begin
+      else if (mii_en_i == 1)begin
           fe_oct = fe_oct_d1; 
           fe_en  = fe_en_d1 ;
           fe_er  = fe_er_d1 ;
+      end
+      else begin
+          fe_oct = mii_d_i; 
+          fe_en  = mii_en_i;
+          fe_er  = mii_er_i;
       end
     end
 
@@ -162,9 +157,9 @@ module mii_cvt (
     always @(posedge clk or negedge rst_n) begin
       if(!rst_n) 
           use_d1 <= 0;
-      else if(frm_start == 1 && clk_en == 1) 
+      else if(frm_start == 1 && clk_en == 0) 
           use_d1 <= 1;
-      else if((frm_start == 1 && clk_en == 0) || frm_end_d1 == 1) 
+      else if((frm_start == 1 && clk_en == 1) || frm_end_d1 == 1) 
           use_d1 <= 0;
     end
     
@@ -172,11 +167,6 @@ module mii_cvt (
 
     always @(posedge clk or negedge rst_n) begin
         if(!rst_n) begin
-            gmii_en_out <= 0;
-            gmii_er_out <= 0;
-            gmii_d_out  <= 8'h0;
-        end
-        else if(frm_start == 1) begin
             gmii_en_out <= 0;
             gmii_er_out <= 0;
             gmii_d_out  <= 8'h0;
@@ -200,16 +190,14 @@ module mii_cvt (
     //++
     //convert gmii-like signals to mii
     //--
-    reg          gmii_en_z1; 
-    reg          gmii_er_z1;
-    reg [7:0]    gmii_d_z1 ;
+    reg          gmii_en_d1; 
+    reg          gmii_er_d1;
+    reg [7:0]    gmii_d_d1 ;
 
     always @(posedge clk) begin
-      if(clk_en == 1) begin
-          gmii_en_z1 <= gmii_en_i;
-          gmii_er_z1 <= gmii_er_i;
-          gmii_d_z1  <= gmii_d_i ;
-      end
+        gmii_en_d1 <= gmii_en_i;
+        gmii_er_d1 <= gmii_er_i;
+        gmii_d_d1  <= gmii_d_i ;
     end
 
     reg          mii_en_out;
@@ -223,15 +211,20 @@ module mii_cvt (
             mii_er_out <= 0;
             mii_d_out  <= 8'h0;   
         end
-        else if(clk_en == 1) begin
+        else if(clk_en == 1 && gmii_en_i == 1) begin
             mii_en_out <= gmii_en_i;
             mii_er_out <= gmii_er_i;
-            mii_d_out  <= {4'h0, gmii_d[3:0]};   
+            mii_d_out  <= {4'h0, gmii_d_i[3:0]};   
         end
-        else begin
+        else if(clk_en == 0 && gmii_en_d1 == 1)begin
             mii_en_out <= gmii_en_d1;
             mii_er_out <= gmii_er_d1;
-            mii_d_out  <= {4'h0, gmii_d1[7:4]};   
+            mii_d_out  <= {4'h0, gmii_d_d1[7:4]};   
+        end
+        else begin
+            mii_en_out <= gmii_en_i;
+            mii_er_out <= gmii_er_i;
+            mii_d_out  <= gmii_d_i ;   
         end
     end
 

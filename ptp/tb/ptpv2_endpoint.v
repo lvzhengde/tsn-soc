@@ -140,7 +140,7 @@ module ptpv2_endpoint (
         .int_rx_ptp_i            (int_rx_ptp ),
         .int_tx_ptp_i            (int_tx_ptp ),
         
-        //xgmii/gmii/mii interface
+        //gmii/mii interface
         .rx_clk                  (rx_clk    ), 
         .tx_clk                  (tx_clk  ),
 
@@ -208,7 +208,7 @@ module ptpv2_endpoint (
         .pbus_slverr_o           (pbus_slverr),
 
         //control i/o
-        .mii_mode_hw_i           (mii_mode_hw),  
+        .mii_mode_i              (mii_mode_hw),  
         .dis_ptpv2_i             (dis_ptpv2   ),   
 
 

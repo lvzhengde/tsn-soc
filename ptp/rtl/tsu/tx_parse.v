@@ -544,7 +544,7 @@ module tx_parse(
 
     always @(*) begin
         is_ptp_message  = 0;
-        ptp_addr_base   = 8'h80;   //initialize to a large value intentionally
+        ptp_addr_base   = 11'h80;   //initialize to a large value intentionally
         
         if(ptp_eth_flag == 1'b1) begin
             is_ptp_message = 1;
@@ -564,7 +564,7 @@ module tx_parse(
     always @(posedge tx_clk or negedge tx_rst_n) begin
         if(!tx_rst_n) begin
             is_ptp_message_z1  <= 0 ;
-            ptp_addr_base_z1   <= 8'h0  ;
+            ptp_addr_base_z1   <= 11'h0  ;
         end
         else if(tx_clk_en_i) begin
             is_ptp_message_z1  <= is_ptp_message ;

@@ -111,7 +111,7 @@ module ptp_agent (
         t3 = 80'h0;
         t4 = 80'h0;
 
-        clk_ctl    = 5'b0;
+        clk_ctl    = 6'b0;
         mii_mode   = 1'b0;
         peer_delay = 0;
 
@@ -484,7 +484,7 @@ module ptp_agent (
     //task for sending ptpv2 messages
     //--
     task ptpv2_send_message(input [15:0] length_type, input [15:0] ether2_type, input [15:0] vlan_tag, input [15:0] udp_dport,
-                      input [3:0] messageType, input [79:0] timestamp, input [15:0] sequenceId, input [4:0] vclk_ctl);
+                      input [3:0] messageType, input [79:0] timestamp, input [15:0] sequenceId, input [5:0] vclk_ctl);
         integer j;
         integer h_l;
         integer tx_octets;
@@ -518,11 +518,11 @@ module ptp_agent (
                     temp = frame_mem[j];
                     @(posedge tx_clk) 
                     tx_en_o = 1;
-                    txd_o = temp[3:0];
+                    txd_o   = {4'b0, temp[3:0]};
 
                     @(posedge tx_clk) 
                     tx_en_o = 1;
-                    txd_o = temp[7:4];
+                    txd_o   = {4'b0, temp[7:4]};
                 end
 
                 @(posedge tx_clk) 
@@ -773,7 +773,7 @@ module ptp_agent (
     // assemble all kinds of frames
     //--
     function integer assemble_frame(input [15:0] length_type, input [15:0] ether2_type, input [15:0] vlan_tag, input [15:0] udp_dport,
-                      input [3:0] messageType, input [79:0] timestamp, input [15:0] sequenceId, input [4:0] vclk_ctl);
+                      input [3:0] messageType, input [79:0] timestamp, input [15:0] sequenceId, input [5:0] vclk_ctl);
         integer len;
         integer m;
         integer pad_len;

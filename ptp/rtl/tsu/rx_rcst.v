@@ -60,7 +60,7 @@ module rx_rcst(
     always @(*) begin
         rpl_crc = rpl_crc_z1;
 
-        if((eth_count_i == 11'd0 && rx_dv_i == 1'b1) //start of frame detected
+        if(eth_count_i == 11'd0 && rx_dv_i == 1'b1) //start of frame detected
             rpl_crc = 0;
         else if(embed_enable_i == 1'b1)   
             rpl_crc = 1;

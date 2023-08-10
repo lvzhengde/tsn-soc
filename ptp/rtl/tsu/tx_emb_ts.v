@@ -272,10 +272,10 @@ module tx_emb_ts(
             //ptp event message, one-step clock or tc-offload, embedded ingress time
             if(is_ptp_message_i == 1'b1 && ptp_messageType_i[3] == 1'b0 && emb_ingressTime_en == 1'b1 && 
               (one_step_flag | tc_offload)) begin 
-                if(eth_count == (ptp_addr_base_i+16)) txd_o = 8'h0;             //messageTypeSpecific
-                if(eth_count == (ptp_addr_base_i+17)) txd_o = 8'h0;
-                if(eth_count == (ptp_addr_base_i+18)) txd_o = 8'h0;
-                if(eth_count == (ptp_addr_base_i+19)) txd_o = 8'h0;
+                if(eth_count == (ptp_addr_base_i+16)) txd_o <= 8'h0;             //messageTypeSpecific
+                if(eth_count == (ptp_addr_base_i+17)) txd_o <= 8'h0;
+                if(eth_count == (ptp_addr_base_i+18)) txd_o <= 8'h0;
+                if(eth_count == (ptp_addr_base_i+19)) txd_o <= 8'h0;
             end
         end
     end

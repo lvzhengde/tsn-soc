@@ -70,7 +70,7 @@ module gmii_crc (
         calc_valid = data_en_i;
         init       = 0;
         
-        if(eth_count < 11'd8) begin
+        if(eth_count_i < 11'd8) begin
             calc_valid = 0;
             init       = 1;
         end
