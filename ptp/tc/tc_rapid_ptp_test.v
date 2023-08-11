@@ -266,18 +266,24 @@ module tc_rapid_ptp_test;
     wire  [7:0]  txd    = harness.lp_ptpv2_endpoint.ptpv2_core_wrapper.txd_o  ;
     wire         tx_clk = harness.lp_ptpv2_endpoint.ptpv2_core_wrapper.tx_clk;
 
+    wire         rx_dv  = harness.ptpv2_endpoint.ptpv2_core_wrapper.rx_dv_o;
+    wire         rx_er  = harness.ptpv2_endpoint.ptpv2_core_wrapper.rx_er_o;
+    wire  [7:0]  rxd    = harness.ptpv2_endpoint.ptpv2_core_wrapper.rxd_o  ;
+    wire         rx_clk = harness.ptpv2_endpoint.ptpv2_core_wrapper.rx_clk;
+
     frame_monitor frame_monitor (
         .clk             (tx_clk),
+        //.clk             (rx_clk),
 
         .dump_finish_i   (dmp_fin),
-        .mii_mode_i      (1'b0),
+        .mii_mode_i      (mii_mode),
     
         .data_en_i       (tx_en),
         .data_er_i       (tx_er),
         .data_i          (txd)
+
+        //.data_en_i       (rx_dv),
+        //.data_er_i       (rx_er),
+        //.data_i          (rxd)
     );
-
 endmodule
-
-
-

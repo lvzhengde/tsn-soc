@@ -53,7 +53,7 @@ module rx_parse(
     output  [10:0]      ptp_addr_base_o,
     output  [3:0]       ptp_messageType_o,          
     output  [63:0]      ptp_correctionField_o,
-    output              is_ptp_message_o,  
+    output reg          is_ptp_message_o,  
 
     //configuration register i/f
     input  [31:0]       tsu_cfg_i,
@@ -768,6 +768,18 @@ module rx_parse(
         end  
     end
 
+    //extend is_ptp_message_o effective time
+    always @(posedge rx_clk or negedge rx_rst_n) begin
+        if(!rx_rst_n)
+            is_ptp_message_o <= 0;
+        else if(rx_clk_en_i) begin
+            if(is_ptp_message == 1'b1)  
+                is_ptp_message_o <= 1;
+            else if(eth_count == 11'd0 && rx_dv_i == 1'b1)
+                is_ptp_message_o <= 0;
+        end  
+    end
+
     //output ports
     assign rx_dv_o = rx_dv_i;
     assign rx_er_o = rx_er_i;
@@ -776,6 +788,4 @@ module rx_parse(
     assign ptp_addr_base_o           = ptp_addr_base_z1;
     assign ptp_messageType_o         = ptp_messageType;           
     assign ptp_correctionField_o     = ptp_correctionField;
-    assign is_ptp_message_o          = is_ptp_message_z1;  
-
 endmodule

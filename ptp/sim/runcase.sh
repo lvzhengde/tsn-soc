@@ -20,6 +20,7 @@ elfFile=ptpv2
 waveFile=ptpv2
 
 #compile and run
+make clean
 iverilog -o ${elfFile}.out -s $1 -f comp.f 
 vvp -n ${elfFile}.out -fst
 #gtkwave ${waveFile}.fst

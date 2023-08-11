@@ -64,8 +64,8 @@ module rx_emb_ts(
     input  [63:0]       ptp_correctionField_i,
     input               is_ptp_message_i,  
 
-    output              efd_p4_o,
-    output              embed_enable_o,
+    output reg          efd_p4_o,
+    output reg          embed_enable_o,
     output reg [10:0]   eth_count_o
 );
     //correctionField calculation
@@ -197,17 +197,19 @@ module rx_emb_ts(
             rx_dv_o     <= 1'b0; 
             rx_er_o     <= 1'b0; 
             rxd_o       <= 8'b0; 
-            eth_count_o <= 11'b0;
+
+            eth_count_o    <= 11'b0;
+            efd_p4_o       <= 1'b0;
+            embed_enable_o <= 1'b0;
         end
         else if(rx_clk_en_i) begin
             rx_dv_o     <= rx_dv_tmp; 
             rx_er_o     <= rx_er_tmp; 
             rxd_o       <= rxd_tmp  ; 
-            eth_count_o <= eth_count;
+
+            eth_count_o    <= eth_count;
+            efd_p4_o       <= (~rx_dv_z4) & rx_dv_z5;
+            embed_enable_o <= embed_enable;
         end
     end
-
-    assign efd_p4_o = rx_clk_en_i & (~rx_dv_z4) & rx_dv_z5;
-    assign embed_enable_o = embed_enable;
-
 endmodule
