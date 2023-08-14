@@ -1,7 +1,38 @@
-/*
+/*+
+ * Copyright (c) 2022-2023 Zhengde
+ * 
+ * All rights reserved.
+ * 
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ * 
+ * 1 Redistributions of source code must retain the above copyright notice, this
+ *   list of conditions and the following disclaimer.
+ * 
+ * 2 Redistributions in binary form must reproduce the above copyright notice,
+ *   this list of conditions and the following disclaimer in the documentation
+ *   and/or other materials provided with the distribution.
+ * 
+ * 3 Neither the name of the copyright holder nor the names of its
+ *   contributors may be used to endorse or promote products derived from
+ *   this software without specific prior written permission.
+ * 
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+ * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+ * CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+ * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+-*/
+
+/*+
  * This class instantiates components that compose the PTP instance 
  * See the constructor for companents instatntiated.
-*/
+-*/
 
 #include "ptp_instance.h"    
 
@@ -33,33 +64,35 @@ ptp_instance::ptp_instance
     , clock_id                              /// clockIdentity
     )
 {
-  /// bind TLM2 initiators to TLM2 target sockets on MyBus
-  m_initiator_top.top_initiator_socket(m_bus.target_socket[0]);
+    /// bind TLM2 initiators to TLM2 target sockets on MyBus
+    m_initiator_top.top_initiator_socket(m_bus.target_socket[0]);
 
-  /// bind TLM2 targets to TLM2 initiator sockets on MyBus
-  m_bus.initiator_socket[0](m_target_top.top_target_socket);
+    /// bind TLM2 targets to TLM2 initiator sockets on MyBus
+    m_bus.initiator_socket[0](m_target_top.top_target_socket);
 
-  /// hierarchical port connections
-  m_target_top.bus2ip_clk   (bus2ip_clk  );
-  m_target_top.bus2ip_rst_n (bus2ip_rst_n);
-  m_target_top.tx_clk       (tx_clk   );
-  m_target_top.tx_rst_n     (tx_rst_n );
-  m_target_top.xge_txc_o    (xge_txc_o);
-  m_target_top.xge_txd_o    (xge_txd_o);
-  m_target_top.rx_clk       (rx_clk   );
-  m_target_top.rx_rst_n     (rx_rst_n );
-  m_target_top.xge_rxc_i    (xge_rxc_i);
-  m_target_top.xge_rxd_i    (xge_rxd_i);
-  m_target_top.rtc_clk      (rtc_clk  );
-  m_target_top.rtc_rst_n    (rtc_rst_n);
-  m_target_top.pps_i        (pps_i    );
-  m_target_top.pps_o        (pps_o    );
+    /// hierarchical port connections
+    m_target_top.bus2ip_clk   (bus2ip_clk  );
+    m_target_top.bus2ip_rst_n (bus2ip_rst_n);
+    m_target_top.tx_clk       (tx_clk   );
+    m_target_top.tx_rst_n     (tx_rst_n );
+    m_target_top.tx_en_o      (tx_en_o);
+    m_target_top.tx_er_o      (tx_er_o);
+    m_target_top.txd_o        (txd_o);
+    m_target_top.rx_clk       (rx_clk   );
+    m_target_top.rx_rst_n     (rx_rst_n );
+    m_target_top.rx_dv_i      (rx_dv_i);
+    m_target_top.rx_er_i      (rx_er_i);
+    m_target_top.rxd_i        (rxd_i);
+    m_target_top.rtc_clk      (rtc_clk  );
+    m_target_top.rtc_rst_n    (rtc_rst_n);
+    m_target_top.pps_i        (pps_i    );
+    m_target_top.pps_o        (pps_o    );
 
-  ///connect interrupt signal
-  m_target_top.int_ptp_o    (int_ptp);
-  m_initiator_top.int_ptp_i (int_ptp);
+    ///connect interrupt signal
+    m_target_top.int_ptp_o    (int_ptp);
+    m_initiator_top.int_ptp_i (int_ptp);
 
-  /// Bind proc_rst_n to proc_rst_n hierarchical connection
-  m_initiator_top.proc_rst_n(proc_rst_n);
+    /// Bind proc_rst_n to proc_rst_n hierarchical connection
+    m_initiator_top.proc_rst_n(proc_rst_n);
 }
 

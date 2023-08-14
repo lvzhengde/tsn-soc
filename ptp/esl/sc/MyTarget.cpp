@@ -1,6 +1,37 @@
-/*****************************************************************************
+/*+
+ * Copyright (c) 2022-2023 Zhengde
+ * 
+ * All rights reserved.
+ * 
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ * 
+ * 1 Redistributions of source code must retain the above copyright notice, this
+ *   list of conditions and the following disclaimer.
+ * 
+ * 2 Redistributions in binary form must reproduce the above copyright notice,
+ *   this list of conditions and the following disclaimer in the documentation
+ *   and/or other materials provided with the distribution.
+ * 
+ * 3 Neither the name of the copyright holder nor the names of its
+ *   contributors may be used to endorse or promote products derived from
+ *   this software without specific prior written permission.
+ * 
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+ * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+ * CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+ * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+-*/
+
+/*+
  * Implements LT target
- */
+-*/
 
 #include "MyTarget.h"                      // our header
 #include "reporting.h"                     // reporting macros
@@ -24,8 +55,8 @@ MyTarget::MyTarget
 , m_clock_id              (clock_id)
 , m_accept_delay          (accept_delay)            /// init accept delay
 {
-  /// Bind the socket's export to the interface
-  m_target_socket.bind(*this);
+    /// Bind the socket's export to the interface
+    m_target_socket.bind(*this);
 }
 
 //++
@@ -35,57 +66,57 @@ MyTarget::MyTarget
 // reset peripheral bus
 void MyTarget::reset_pbus(void)
 {
-  bus2ip_rd_ce_o.write(0);
-  bus2ip_wr_ce_o.write(0);
-  bus2ip_addr_o.write(0);
-  bus2ip_data_o.write(0);
+    bus2ip_rd_ce_o.write(0);
+    bus2ip_wr_ce_o.write(0);
+    bus2ip_addr_o.write(0);
+    bus2ip_data_o.write(0);
 
-  std::ostringstream  msg;                      ///< log message
-  msg.str ("");
-  msg << "Clock ID: " << m_clock_id
-      << " Target: " << m_ID << " Reset Peripheral Bus!";
-  REPORT_INFO(filename, __FUNCTION__, msg.str());
+    std::ostringstream  msg;                      ///< log message
+    msg.str ("");
+    msg << "Clock ID: " << m_clock_id
+        << " Target: " << m_ID << " Reset Peripheral Bus!";
+    REPORT_INFO(filename, __FUNCTION__, msg.str());
 }
 
 // task to write register
 void MyTarget::write_reg(const uint32_t addr, const uint32_t data)
 {
-  bus2ip_wr_ce_o.write(0);
-  bus2ip_addr_o.write(0);
-  bus2ip_data_o.write(0);
-  
-  wait(bus2ip_clk.posedge_event());
-  bus2ip_wr_ce_o.write(1);
-  bus2ip_addr_o.write(addr);
-  bus2ip_data_o.write(data);
-  
-  wait(bus2ip_clk.posedge_event());
-  wait(bus2ip_clk.posedge_event());
-  
-  bus2ip_wr_ce_o.write(0);
-  bus2ip_addr_o.write(0);
-  bus2ip_data_o.write(0);
+    bus2ip_wr_ce_o.write(0);
+    bus2ip_addr_o.write(0);
+    bus2ip_data_o.write(0);
+    
+    wait(bus2ip_clk.posedge_event());
+    bus2ip_wr_ce_o.write(1);
+    bus2ip_addr_o.write(addr);
+    bus2ip_data_o.write(data);
+    
+    wait(bus2ip_clk.posedge_event());
+    wait(bus2ip_clk.posedge_event());
+    
+    bus2ip_wr_ce_o.write(0);
+    bus2ip_addr_o.write(0);
+    bus2ip_data_o.write(0);
 }
 
 // task to read register
 void MyTarget::read_reg(const uint32_t addr, uint32_t &data)
 {
-  bus2ip_rd_ce_o.write(0);
-  bus2ip_addr_o.write(0);
-  
-  wait(bus2ip_clk.posedge_event());
-  bus2ip_rd_ce_o.write(1);
-  bus2ip_addr_o.write(addr);
-  
-  wait(bus2ip_clk.posedge_event());
-  wait(bus2ip_clk.posedge_event());
-  wait(bus2ip_clk.posedge_event());
+    bus2ip_rd_ce_o.write(0);
+    bus2ip_addr_o.write(0);
+    
+    wait(bus2ip_clk.posedge_event());
+    bus2ip_rd_ce_o.write(1);
+    bus2ip_addr_o.write(addr);
+    
+    wait(bus2ip_clk.posedge_event());
+    wait(bus2ip_clk.posedge_event());
+    wait(bus2ip_clk.posedge_event());
 
-  data = ip2bus_data_i.read();
-  
-  wait(bus2ip_clk.posedge_event());
-  bus2ip_rd_ce_o.write(0);
-  bus2ip_addr_o.write(0);
+    data = ip2bus_data_i.read();
+    
+    wait(bus2ip_clk.posedge_event());
+    bus2ip_rd_ce_o.write(0);
+    bus2ip_addr_o.write(0);
 } 
 
 //==============================================================================
@@ -98,117 +129,117 @@ MyTarget::b_transport
 , sc_core::sc_time          &delay_time             // delay time
 )
 {
-  /// Access the required attributes from the payload
-  sc_dt::uint64    address   = payload.get_address();     // memory address
-  tlm::tlm_command command   = payload.get_command();     // memory command
-  unsigned char    *data     = payload.get_data_ptr();    // data pointer
-  unsigned  int     length   = payload.get_data_length(); // data length
+    /// Access the required attributes from the payload
+    sc_dt::uint64    address   = payload.get_address();     // memory address
+    tlm::tlm_command command   = payload.get_command();     // memory command
+    unsigned char    *data     = payload.get_data_ptr();    // data pointer
+    unsigned  int     length   = payload.get_data_length(); // data length
 
-  std::ostringstream  msg;
-  msg.str("");
-  tlm::tlm_response_status response_status = tlm::TLM_OK_RESPONSE;
+    std::ostringstream  msg;
+    msg.str("");
+    tlm::tlm_response_status response_status = tlm::TLM_OK_RESPONSE;
 
-  if (payload.get_byte_enable_ptr())
-    response_status = tlm::TLM_BYTE_ENABLE_ERROR_RESPONSE;
-  else if (payload.get_streaming_width() != payload.get_data_length())
-    response_status = tlm::TLM_BURST_ERROR_RESPONSE;
+    if (payload.get_byte_enable_ptr())
+        response_status = tlm::TLM_BYTE_ENABLE_ERROR_RESPONSE;
+    else if (payload.get_streaming_width() != payload.get_data_length())
+        response_status = tlm::TLM_BURST_ERROR_RESPONSE;
 
-  switch (command)
-  {
-    /// Setup a TLM_WRITE_COMMAND Informational Message and Write the Data from
-    /// the Generic Payload Data pointer to peripheral registers
-    case tlm::TLM_WRITE_COMMAND:
+    switch (command)
     {
-      if (response_status == tlm::TLM_OK_RESPONSE)
-      {
-        if(address == RESET_ADDR)
+        /// Setup a TLM_WRITE_COMMAND Informational Message and Write the Data from
+        /// the Generic Payload Data pointer to peripheral registers
+        case tlm::TLM_WRITE_COMMAND:
         {
-          reset_pbus();
+            if (response_status == tlm::TLM_OK_RESPONSE)
+            {
+                if(address == RESET_ADDR)
+                {
+                    reset_pbus();
+                }
+                else
+                {
+                    for (unsigned int i = 0; i < length; i += 4)
+                    {
+                        uint32_t wr_addr = address + i; 
+                        uint32_t wr_data = 0; 
+
+                        if((i+4) <= length)
+                            wr_data = (data[i+3]<<24) | (data[i+2]<<16) | (data[i+1]<<8) | data[i];
+                        else if((i+3) == length)
+                            wr_data = (data[i+2]<<16) | (data[i+1]<<8) | data[i];
+                        else if((i+2) == length)
+                            wr_data = (data[i+1]<<8) | data[i];
+                        else if((i+1) == length)
+                            wr_data = data[i];
+
+                        write_reg(wr_addr, wr_data);   //write to register
+                    }
+                }
+                delay_time = delay_time + m_accept_delay;
+                report::print(m_ID, payload, filename);
+            }
+            break;
         }
-        else
+
+        /// Setup a TLM_READ_COMMAND Informational Message and read the Data from
+        /// the peripheral registers to Generic Payload Data pointer
+        case tlm::TLM_READ_COMMAND:
         {
-          for (unsigned int i = 0; i < length; i += 4)
-          {
-            uint32_t wr_addr = address + i; 
-            uint32_t wr_data = 0; 
+            if (response_status == tlm::TLM_OK_RESPONSE)
+            {
+                for (unsigned int i = 0; i < length; i += 4)
+                {
+                    uint32_t rd_addr = address + i; 
+                    uint32_t rd_data = 0; 
 
-            if((i+4) <= length)
-              wr_data = (data[i+3]<<24) | (data[i+2]<<16) | (data[i+1]<<8) | data[i];
-            else if((i+3) == length)
-              wr_data = (data[i+2]<<16) | (data[i+1]<<8) | data[i];
-            else if((i+2) == length)
-              wr_data = (data[i+1]<<8) | data[i];
-            else if((i+1) == length)
-              wr_data = data[i];
+                    read_reg(rd_addr, rd_data);  //read from register
 
-            write_reg(wr_addr, wr_data);   //write to register
-          }
+                    if((i+4) <= length)
+                    {
+                        data[i] = rd_data & 0xff;
+                        data[i+1] = (rd_data >> 8) & 0xff;
+                        data[i+2] = (rd_data >> 16) & 0xff;
+                        data[i+3] = (rd_data >> 24) & 0xff;
+                    }
+                    else if((i+3) == length)
+                    {
+                        data[i] = rd_data & 0xff;
+                        data[i+1] = (rd_data >> 8) & 0xff;
+                        data[i+2] = (rd_data >> 16) & 0xff;
+                    }
+                    else if((i+2) == length)
+                    {
+                        data[i] = rd_data & 0xff;
+                        data[i+1] = (rd_data >> 8) & 0xff;
+                    }
+                    else if((i+1) == length)
+                    {
+                        data[i] = rd_data & 0xff;
+                    }
+                }
+                delay_time = delay_time + m_accept_delay;
+                report::print(m_ID, payload, filename);
+            }
+            break;
         }
-        delay_time = delay_time + m_accept_delay;
-        report::print(m_ID, payload, filename);
-      }
-      break;
-    }
-
-    /// Setup a TLM_READ_COMMAND Informational Message and read the Data from
-    /// the peripheral registers to Generic Payload Data pointer
-    case tlm::TLM_READ_COMMAND:
-    {
-      if (response_status == tlm::TLM_OK_RESPONSE)
-      {
-        for (unsigned int i = 0; i < length; i += 4)
+        default:
         {
-            uint32_t rd_addr = address + i; 
-            uint32_t rd_data = 0; 
-
-            read_reg(rd_addr, rd_data);  //read from register
-
-            if((i+4) <= length)
-            {
-              data[i] = rd_data & 0xff;
-              data[i+1] = (rd_data >> 8) & 0xff;
-              data[i+2] = (rd_data >> 16) & 0xff;
-              data[i+3] = (rd_data >> 24) & 0xff;
-            }
-            else if((i+3) == length)
-            {
-              data[i] = rd_data & 0xff;
-              data[i+1] = (rd_data >> 8) & 0xff;
-              data[i+2] = (rd_data >> 16) & 0xff;
-            }
-            else if((i+2) == length)
-            {
-              data[i] = rd_data & 0xff;
-              data[i+1] = (rd_data >> 8) & 0xff;
-            }
-            else if((i+1) == length)
-            {
-              data[i] = rd_data & 0xff;
-            }
+            msg << "Clock ID: " << m_clock_id
+                << " Target: " << m_ID
+                << " Unsupported Command Extension";
+            REPORT_INFO(filename, __FUNCTION__, msg.str());
+            response_status = tlm::TLM_COMMAND_ERROR_RESPONSE;
+            delay_time = sc_core::SC_ZERO_TIME;
         }
-        delay_time = delay_time + m_accept_delay;
-        report::print(m_ID, payload, filename);
-      }
-      break;
-    }
-    default:
-    {
-      msg << "Clock ID: " << m_clock_id
-          << " Target: " << m_ID
-          << " Unsupported Command Extension";
-      REPORT_INFO(filename, __FUNCTION__, msg.str());
-      response_status = tlm::TLM_COMMAND_ERROR_RESPONSE;
-      delay_time = sc_core::SC_ZERO_TIME;
-    }
-  } // end switch
+    } // end switch
 
-  payload.set_response_status(response_status);
+    payload.set_response_status(response_status);
 
-  msg << "Clock ID: " << m_clock_id
-      << " Target: " << m_ID
-      << " Access peripheral registers through Mybus, access delay =  "
-      << delay_time;
-  REPORT_INFO(filename,  __FUNCTION__, msg.str());
+    msg << "Clock ID: " << m_clock_id
+        << " Target: " << m_ID
+        << " Access peripheral registers through Mybus, access delay =  "
+        << delay_time;
+    REPORT_INFO(filename,  __FUNCTION__, msg.str());
 
-  return;
+    return;
 }

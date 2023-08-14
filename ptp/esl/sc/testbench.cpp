@@ -1,3 +1,34 @@
+/*+
+ * Copyright (c) 2022-2023 Zhengde
+ * 
+ * All rights reserved.
+ * 
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ * 
+ * 1 Redistributions of source code must retain the above copyright notice, this
+ *   list of conditions and the following disclaimer.
+ * 
+ * 2 Redistributions in binary form must reproduce the above copyright notice,
+ *   this list of conditions and the following disclaimer in the documentation
+ *   and/or other materials provided with the distribution.
+ * 
+ * 3 Neither the name of the copyright holder nor the names of its
+ *   contributors may be used to endorse or promote products derived from
+ *   this software without specific prior written permission.
+ * 
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+ * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+ * CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+ * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+-*/
+
 #include "testbench.h"
 #include "reporting.h"                     // reporting macros
 #include "common.h"
@@ -32,12 +63,14 @@ testbench::testbench
         pInstance->bus2ip_rst_n  (rst_n);
         pInstance->tx_clk        (clk  );
         pInstance->tx_rst_n      (rst_n);
-        pInstance->xge_txc_o     (xge_txc);
-        pInstance->xge_txd_o     (xge_txd);
+        pInstance->tx_en_o       (tx_en);
+        pInstance->tx_er_o       (tx_er);
+        pInstance->txd_o         (txd);
         pInstance->rx_clk        (clk  );
         pInstance->rx_rst_n      (rst_n);
-        pInstance->xge_rxc_i     (xge_rxc);
-        pInstance->xge_rxd_i     (xge_rxd);
+        pInstance->rx_dv_i       (rx_dv);
+        pInstance->rx_er_i       (rx_er);
+        pInstance->rxd_i         (rxd);
         pInstance->rtc_clk       (clk  );
         pInstance->rtc_rst_n     (rst_n);
         pInstance->pps_i         (pps_in);
@@ -46,10 +79,12 @@ testbench::testbench
 
         //bind delay channel ports
         pChannel->clk(clk);
-        pChannel->xge_rxc_i(xge_txc);
-        pChannel->xge_rxd_i(xge_txd);
-        pChannel->xge_txc_o(xge_rxc);
-        pChannel->xge_txd_o(xge_rxd);
+        pChannel->rx_dv_i        (tx_en);
+        pChannel->rx_er_i        (tx_er);
+        pChannel->rxd_i          (txd);
+        pChannel->tx_en_o        (rx_dv);
+        pChannel->tx_er_o        (rx_er);
+        pChannel->txd_o          (rxd);
 
         //declare sc thread
         SC_THREAD(reset_gen); 
@@ -64,29 +99,35 @@ testbench::testbench
     
         //bind delay channel ports for local device
         pChannel->clk(clk);
-        pChannel->xge_rxc_i(xge_txc);
-        pChannel->xge_rxd_i(xge_txd);
-        pChannel->xge_txc_o(lp_xge_rxc);
-        pChannel->xge_txd_o(lp_xge_rxd);
+        pChannel->rx_dv_i        (tx_en);
+        pChannel->rx_er_i        (tx_er);
+        pChannel->rxd_i          (txd);
+        pChannel->tx_en_o        (lp_rx_dv);
+        pChannel->tx_er_o        (lp_rx_er);
+        pChannel->txd_o          (lp_rxd);
 
         //bind delay channel ports for link partner 
         pChannel_lp->clk(lp_clk);
-        pChannel_lp->xge_rxc_i(lp_xge_txc);
-        pChannel_lp->xge_rxd_i(lp_xge_txd);
-        pChannel_lp->xge_txc_o(xge_rxc);
-        pChannel_lp->xge_txd_o(xge_rxd);
+        pChannel->rx_dv_i        (lp_tx_en);
+        pChannel->rx_er_i        (lp_tx_er);
+        pChannel->rxd_i          (lp_txd);
+        pChannel->tx_en_o        (rx_dv);
+        pChannel->tx_er_o        (rx_er);
+        pChannel->txd_o          (rxd);
 
         //bind ptp_instance ports for local device
         pInstance->bus2ip_clk    (clk  );
         pInstance->bus2ip_rst_n  (rst_n);
         pInstance->tx_clk        (clk  );
         pInstance->tx_rst_n      (rst_n);
-        pInstance->xge_txc_o     (xge_txc);
-        pInstance->xge_txd_o     (xge_txd);
+        pInstance->tx_en_o       (tx_en);
+        pInstance->tx_er_o       (tx_er);
+        pInstance->txd_o         (txd);
         pInstance->rx_clk        (lp_clk  );
         pInstance->rx_rst_n      (lp_rst_n);
-        pInstance->xge_rxc_i     (xge_rxc);
-        pInstance->xge_rxd_i     (xge_rxd);
+        pInstance->rx_dv_i       (rx_dv);
+        pInstance->rx_er_i       (rx_er);
+        pInstance->rxd_i         (rxd);
         pInstance->rtc_clk       (clk  );
         pInstance->rtc_rst_n     (rst_n);
         pInstance->pps_i         (pps_in);
@@ -98,12 +139,14 @@ testbench::testbench
         pInstance_lp->bus2ip_rst_n  (lp_rst_n);
         pInstance_lp->tx_clk        (lp_clk  );
         pInstance_lp->tx_rst_n      (lp_rst_n);
-        pInstance_lp->xge_txc_o     (lp_xge_txc);
-        pInstance_lp->xge_txd_o     (lp_xge_txd);
+        pInstance_lp->tx_en_o       (lp_tx_en);
+        pInstance_lp->tx_er_o       (lp_tx_er);
+        pInstance_lp->txd_o         (lp_txd);
         pInstance_lp->rx_clk        (clk  );
         pInstance_lp->rx_rst_n      (rst_n);
-        pInstance_lp->xge_rxc_i     (lp_xge_rxc);
-        pInstance_lp->xge_rxd_i     (lp_xge_rxd);
+        pInstance_lp->rx_dv_i       (lp_rx_dv);
+        pInstance_lp->rx_er_i       (lp_rx_er);
+        pInstance_lp->rxd_i         (lp_rxd);
         pInstance_lp->rtc_clk       (lp_clk  );
         pInstance_lp->rtc_rst_n     (lp_rst_n);
         pInstance_lp->pps_i         (lp_pps_in);

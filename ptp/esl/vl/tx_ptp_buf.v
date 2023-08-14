@@ -100,9 +100,9 @@ module tx_ptp_buf (
     end
 
     //++
-    //transmit data to xgmii, use state machine
+    //transmit data to gmii, use state machine
     //--
-    parameter TX_IDLE = 2'd0, TX_FIRST = 2'd1, TX_DATA = 2'd2, TX_LAST = 2'd3;
+    parameter TX_IDLE = 2'd0, TX_PREAMBLE = 2'd1, TX_SFD = 2'd2, TX_DATA = 2'd3;
     reg  [1:0] cstate, nstate;
 
     //start signal delay in tx_clk domain
@@ -120,7 +120,7 @@ module tx_ptp_buf (
 
     reg  [8:0]  eth_count;
     wire [8:0]  tx_octets = (eth_count >= 8) ? eth_count - 8 : 0;
-    wire last_p = ((tx_octets+16) > frm_len) ? 1 : 0;
+    wire last_data = (tx_octets == (frm_len-1)) ? 1 : 0;
 
     //state transition
     always @(posedge tx_clk or negedge tx_rst_n) begin
@@ -136,86 +136,68 @@ module tx_ptp_buf (
       case(cstate)
           TX_IDLE:
               if(start_pul == 1'b1)
-                  nstate = TX_FIRST;
-          TX_FIRST:               //transmit START code
+                  nstate = TX_PREAMBLE;
+          TX_PREAMBLE:               //transmit preamble
+              if(eth_count == 6)
+                  nstate = TX_SFD;
+          TX_SFD:                    //transmit sfd
               nstate = TX_DATA;
-          TX_DATA:                //transmit normal data
-              if(last_p == 1'b1)
-                  nstate = TX_LAST;
-          TX_LAST:                //transmit TERMINATE code
-              nstate = TX_IDLE;
+          TX_DATA:                   //transmit data
+              if(last_data == 1'b1)
+                  nstate = TX_IDLE;
       endcase
     end
 
     //output logic of state machine
-    wire [6:0]  addr0 = tx_octets[8:2];
-    wire [6:0]  addr1 = addr0 + 1;
-    wire [63:0] data_tuple = {wr_buf[addr1], wr_buf[addr0]};
-    wire [8:0]  res_len = frm_len - tx_octets;
+    wire [6:0]  addr = tx_octets[8:2];
+    wire [31:0] data_tuple = wr_buf[addr];
+    reg  [7:0]  data;
 
-    always @(posedge tx_clk or negedge tx_rst_n) begin : TX_XGMII
+    always @(*) begin
+        case(tx_octets[1:0])
+            2'b00: 
+                data = data_tuple[7:0];
+            2'b01:
+                data = data_tuple[15:8];
+            2'b10:
+                data = data_tuple[23:16];
+            2'b11:
+                data = data_tuple[31:24];
+            default:
+                data = 8'h0;
+        endcase
+    end
+
+    always @(posedge tx_clk or negedge tx_rst_n) begin : TX_GMII
         if(!tx_rst_n) begin
-            xge_txd_o <= {8{`IDLE}};
-            xge_txc_o <= 8'hff;
+            tx_en_o   <= 0;
+            tx_er_o   <= 0;
+            txd_o     <= 8'h0;
             eth_count <= 0;
         end
         else if(cstate == TX_IDLE) begin
-            xge_txd_o <= {8{`IDLE}};
-            xge_txc_o <= 8'hff;
+            tx_en_o   <= 0;
+            tx_er_o   <= 0;
+            txd_o     <= 8'h0;
             eth_count <= 0;
         end
-        else if(cstate == TX_FIRST) begin
-            xge_txd_o <= {`SFD, {6{`PREAMBLE}}, `START};
-            xge_txc_o <= 8'h01;
-            eth_count <= eth_count + 8;
+        else if(cstate == TX_PREAMBLE) begin
+            tx_en_o   <= 1;
+            tx_er_o   <= 0;
+            txd_o     <= `PREAMBLE ;
+            eth_count <= eth_count + 1;
+        end
+        else if(cstate == TX_SFD) begin
+            tx_en_o   <= 1;
+            tx_er_o   <= 0;
+            txd_o     <= `SFD ;
+            eth_count <= eth_count + 1;
         end
         else if(cstate == TX_DATA) begin
-            xge_txd_o <= data_tuple;
-            xge_txc_o <= 8'h0;
-            eth_count <= eth_count + 8;
-        end
-        else if(cstate == TX_LAST) begin
-            case (res_len[2:0])
-                3'd0: begin
-                    xge_txd_o <= {{7{`IDLE}}, `TERMINATE};
-                    xge_txc_o <= 8'b1111_1111;
-                end
-                3'd1: begin
-                    xge_txd_o <= {{6{`IDLE}}, `TERMINATE, data_tuple[7:0]};
-                    xge_txc_o <= 8'b1111_1110;
-                    eth_count <= eth_count + 1;
-                end
-                3'd2: begin
-                    xge_txd_o <= {{5{`IDLE}}, `TERMINATE, data_tuple[15:0]};
-                    xge_txc_o <= 8'b1111_1100;
-                    eth_count <= eth_count + 2;
-                end
-                3'd3: begin
-                    xge_txd_o <= {{4{`IDLE}}, `TERMINATE, data_tuple[23:0]};
-                    xge_txc_o <= 8'b1111_1000;
-                    eth_count <= eth_count + 3;
-                end
-                3'd4: begin
-                    xge_txd_o <= {{3{`IDLE}}, `TERMINATE, data_tuple[31:0]};
-                    xge_txc_o <= 8'b1111_0000;
-                    eth_count <= eth_count + 4;
-                end
-                3'd5: begin
-                    xge_txd_o <= {{2{`IDLE}}, `TERMINATE, data_tuple[39:0]};
-                    xge_txc_o <= 8'b1110_0000;
-                    eth_count <= eth_count + 5;
-                end
-                3'd6: begin
-                    xge_txd_o <= {`IDLE, `TERMINATE, data_tuple[47:0]};
-                    xge_txc_o <= 8'b1100_0000;
-                    eth_count <= eth_count + 6;
-                end
-                3'd7: begin
-                    xge_txd_o <= {`TERMINATE, data_tuple[55:0]};
-                    xge_txc_o <= 8'b1000_0000;
-                    eth_count <= eth_count + 7;
-                end
-            endcase
+            tx_en_o   <= 1;
+            tx_er_o   <= 0;
+            txd_o     <= data ;
+            eth_count <= eth_count + 1;
         end
     end
 

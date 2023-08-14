@@ -1,9 +1,40 @@
-/*
+/*+
+ * Copyright (c) 2022-2023 Zhengde
+ * 
+ * All rights reserved.
+ * 
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ * 
+ * 1 Redistributions of source code must retain the above copyright notice, this
+ *   list of conditions and the following disclaimer.
+ * 
+ * 2 Redistributions in binary form must reproduce the above copyright notice,
+ *   this list of conditions and the following disclaimer in the documentation
+ *   and/or other materials provided with the distribution.
+ * 
+ * 3 Neither the name of the copyright holder nor the names of its
+ *   contributors may be used to endorse or promote products derived from
+ *   this software without specific prior written permission.
+ * 
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+ * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+ * CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+ * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+-*/
+
+/*+
  * Loosley Timed Initiator
  * This module only implements the blocking interface.
  * The  nb_transport_bw and invalidate_direct_memory_ptr are implemented
  * within the covenience socket
- */
+-*/
 
 #ifndef __MY_INITIATOR_H__
 #define __MY_INITIATOR_H__
@@ -16,45 +47,45 @@ class MyInitiator                                 // MyInitiator
   :  public sc_core::sc_module                    // module base class 
 {
 public:
-// Constructor ================================================================= 
+    // Constructor ================================================================= 
     MyInitiator                                   // constructor
     ( sc_core::sc_module_name name                // module name
     , const unsigned int  ID                      // initiator ID
     , const unsigned int  clock_id                // corresponding to clockIdentity
     );
      
-// Method Declarations =========================================================
-    
-//==============================================================================
-//     @brief SC_THREAD that performs blocking call (lt call)
-//
-//     @details
-//        This SC_THREAD takes transactions from controller via the 
-//        sc_fifo attached to the request_in_port. Performs the blocking call.
-//        After completing the blocking call the transactions are returned to
-//        the controller for checking via the response_out_port
-//
-//============================================================================== 
-  void initiator_thread (void);                    
+    // Method Declarations =========================================================
+        
+    //==============================================================================
+    //     @brief SC_THREAD that performs blocking call (lt call)
+    //
+    //     @details
+    //        This SC_THREAD takes transactions from controller via the 
+    //        sc_fifo attached to the request_in_port. Performs the blocking call.
+    //        After completing the blocking call the transactions are returned to
+    //        the controller for checking via the response_out_port
+    //
+    //============================================================================== 
+    void initiator_thread (void);                    
   
   
-// Variable and Object Declarations ============================================
+    // Variable and Object Declarations ============================================
 public:
   
-   typedef tlm::tlm_generic_payload  *gp_ptr;        // generic payload
-   tlm_utils::simple_initiator_socket<MyInitiator> initiator_socket;
+     typedef tlm::tlm_generic_payload  *gp_ptr;        // generic payload
+     tlm_utils::simple_initiator_socket<MyInitiator> initiator_socket;
  
-   sc_core::sc_port<sc_core::sc_fifo_in_if  <gp_ptr> > request_in_port;  
-   sc_core::sc_port<sc_core::sc_fifo_out_if <gp_ptr> > response_out_port;
-   
-   sc_core::sc_time      m_delay;
+     sc_core::sc_port<sc_core::sc_fifo_in_if  <gp_ptr> > request_in_port;  
+     sc_core::sc_port<sc_core::sc_fifo_out_if <gp_ptr> > response_out_port;
+     
+     sc_core::sc_time      m_delay;
 
 private:
-  tlm::tlm_response_status gp_status;
-  unsigned int            m_ID;                     // initiator ID
-  const unsigned int      m_clock_id;               // corresponding to clockIdentity
-  sc_core::sc_time        m_end_rsp_delay;          // end response delay
-  tlm_utils::tlm_quantumkeeper m_quantum_keeper;
+    tlm::tlm_response_status gp_status;
+    unsigned int            m_ID;                     // initiator ID
+    const unsigned int      m_clock_id;               // corresponding to clockIdentity
+    sc_core::sc_time        m_end_rsp_delay;          // end response delay
+    tlm_utils::tlm_quantumkeeper m_quantum_keeper;
   
 }; 
  #endif /* __MY_INITIATOR_H__ */

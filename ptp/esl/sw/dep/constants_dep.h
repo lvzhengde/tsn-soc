@@ -48,7 +48,7 @@
 
 #define SECONDS_MAX     ((1<<48)-1)
 
-#define CLOCK_PERIOD   (6.4)     //unit in nanoseconds
+#define CLOCK_PERIOD    (8.0)     //unit in nanoseconds
 
 #define PPM_DIV            ((1e-6) * CLOCK_PERIOD * (1 << DOT_POS))
 

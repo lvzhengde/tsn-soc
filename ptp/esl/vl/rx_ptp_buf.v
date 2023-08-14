@@ -62,36 +62,40 @@ module rx_ptp_buf (
     reg  [9:0]  eth_count;
     reg  [8:0]  frm_len;
     reg         wr_fin, wr_fin_z1, wr_fin_z2;
+    reg  [8:0]  sof_pos;
+    reg         get_sof_done;
+    reg         rx_dv_z1;
+
+    always @(posedge rx_clk) rx_dv_z1 <= rx_dv_i;
 
     //receiving process, behavioral, using block assignment
-    always @(posedge rx_clk or negedge rx_rst_n) begin : XGE_RCV_PROC
-        integer i;
-
+    always @(posedge rx_clk or negedge rx_rst_n) begin : GE_RCV_PROC
         if(!rx_rst_n) begin
-            eth_count = 0;
-            frm_len   = 0;
-            wr_fin    = 0;
+            eth_count    = 0;
+            frm_len      = 0;
+            sof_pos      = 0;
+            get_sof_done = 0;
+            wr_fin       = 0;
         end
         else begin
-            for(i = 0; i < 8; i = i+1) begin
-                if(xge_rxc_i[i] == 1 && xge_rxd_i[i*8+7-:8] == `START) begin 
-                    eth_count = 0;
-                    frm_len   = 0;
-                    wr_fin    = 0;
-                    rcvd_frame[eth_count[8:0]] = 8'h55;
-                    eth_count = eth_count + 1;
+            if(rx_dv_i == 1'b1) begin
+                wr_fin = 0;
+
+                rcvd_frame[eth_count[8:0]] = rxd_i[7:0];
+                eth_count = eth_count + 1;
+
+                if(rxd_i[7:0] == `SFD && get_sof_done == 1'b0) begin
+                    sof_pos = eth_count[8:0];
+                    get_sof_done = 1'b1;
                 end
-                else if(xge_rxc_i[i] == 0  && eth_count <= 511) begin
-                    rcvd_frame[eth_count[8:0]] = xge_rxd_i[i*8+7-:8];      
-                    eth_count = eth_count + 1;
-                end
-                else if(xge_rxc_i[i] == 1 && xge_rxd_i[i*8+7-:8] == `TERMINATE) begin
-                    frm_len   = eth_count[8:0] - 8;
-                    wr_fin    = 1;
-                    eth_count = 0;
-                end
-            end //for i
-        end //else
+            end
+            else if(rx_dv_i == 1'b0 && rx_dv_z1 == 1'b1) begin //end of frame
+                frm_len   = eth_count[8:0] - sof_pos;
+                wr_fin    = 1;
+                eth_count = 0;
+                get_sof_done = 0;
+            end
+        end  //else
     end
 
     always @(posedge rx_clk) {wr_fin_z1, wr_fin_z2} <= {wr_fin, wr_fin_z1};
@@ -103,7 +107,7 @@ module rx_ptp_buf (
     
         if(wr_fin_z1 & (~wr_fin_z2)) begin
             j = 0;
-            for(i = 8; i < frm_len+8; i = i+4) begin
+            for(i = sof_pos; i < frm_len+sof_pos; i = i+4) begin
                 rd_buf[j] = {rcvd_frame[i+3], rcvd_frame[i+2], rcvd_frame[i+1], rcvd_frame[i]};
                 j = j + 1;
             end //i
