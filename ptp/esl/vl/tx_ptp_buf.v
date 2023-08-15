@@ -41,9 +41,9 @@ module tx_ptp_buf (
     input               tx_clk,
     input               tx_rst_n,
     
-    output              tx_en_o,
-    output              tx_er_o,
-    output [7:0]        txd_o  ,
+    output reg          tx_en_o,
+    output reg          tx_er_o,
+    output reg [7:0]    txd_o  ,
 
     //32 bits on chip bus access interface
     input               bus2ip_clk   ,

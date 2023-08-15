@@ -98,7 +98,7 @@ testbench::testbench
         pChannel_lp  = new Vchannel_model("lp_delay_channel");
     
         //bind delay channel ports for local device
-        pChannel->clk(clk);
+        pChannel->clk            (clk);
         pChannel->rx_dv_i        (tx_en);
         pChannel->rx_er_i        (tx_er);
         pChannel->rxd_i          (txd);
@@ -107,13 +107,13 @@ testbench::testbench
         pChannel->txd_o          (lp_rxd);
 
         //bind delay channel ports for link partner 
-        pChannel_lp->clk(lp_clk);
-        pChannel->rx_dv_i        (lp_tx_en);
-        pChannel->rx_er_i        (lp_tx_er);
-        pChannel->rxd_i          (lp_txd);
-        pChannel->tx_en_o        (rx_dv);
-        pChannel->tx_er_o        (rx_er);
-        pChannel->txd_o          (rxd);
+        pChannel_lp->clk         (lp_clk);
+        pChannel_lp->rx_dv_i     (lp_tx_en);
+        pChannel_lp->rx_er_i     (lp_tx_er);
+        pChannel_lp->rxd_i       (lp_txd);
+        pChannel_lp->tx_en_o     (rx_dv);
+        pChannel_lp->tx_er_o     (rx_er);
+        pChannel_lp->txd_o       (rxd);
 
         //bind ptp_instance ports for local device
         pInstance->bus2ip_clk    (clk  );
