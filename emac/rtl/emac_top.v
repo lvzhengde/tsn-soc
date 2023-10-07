@@ -37,10 +37,10 @@
 
 module emac_top (
     //System signals
-    input               sys_rst_n,              //async. reset, active low
+    input               sys_rst_n,               //async. reset, active low
     input               clk_125m ,
     input               clk_user ,
-    output              speed_o  ,
+    output [2:0]        speed_o  ,
 
     //32 bits on chip host bus access interface
     input               bus2ip_clk     ,         //clock used for register access and mdio
@@ -54,8 +54,8 @@ module emac_top (
     //RX FIFO user interface
     output              rx_mac_ra_o     ,
     input               rx_mac_rd_i     ,
-    output  [31:0]      rx_mac_data_o   ,
-    output  [1:0]       rx_mac_be_o     ,
+    output [31:0]       rx_mac_data_o   ,
+    output [1:0]        rx_mac_be_o     ,
     output              rx_mac_pa_o     ,
     output              rx_mac_sop_o    ,
     output              rx_mac_eop_o    ,
@@ -63,8 +63,8 @@ module emac_top (
     //TX FIFO user interface 
     output              tx_mac_wa_o     ,
     input               tx_mac_wr_i     ,
-    input   [31:0]      tx_mac_data_i   ,
-    input   [1:0]       tx_mac_be_i     ,
+    input  [31:0]       tx_mac_data_i   ,
+    input  [1:0]        tx_mac_be_i     ,
     input               tx_mac_sop_i    ,
     input               tx_mac_eop_i    ,
 
@@ -90,6 +90,77 @@ module emac_top (
     input               mdi_i                    //mdio serial data input
 );
 
+    wire  [7:0]     r_ClkDiv;
+    wire            r_MiiNoPre;
+    wire  [15:0]    r_CtrlData;
+    wire  [4:0]     r_FIAD;
+    wire  [4:0]     r_RGAD;
+    wire            r_WCtrlData;
+    wire            r_RStat;
+    wire            r_ScanStat;
+    wire            NValid_stat;
+    wire            Busy_stat;
+    wire            LinkFail;
+    wire  [15:0]    Prsd;             // Read Status Data (data read from the PHY)
+    wire            WCtrlDataStart;
+    wire            RStatStart;
+    wire            UpdateMIIRX_DATAReg;
 
+    // Connecting miim module
+    eth_miim u_eth_miim
+    (
+        .Clk                 (bus2ip_clk),
+        .Reset               (~bus2ip_rst_n),
+
+        .Mdi                 (mdi_i),
+        .Mdo                 (mdo_o),
+        .MdoEn               (mdo_en_o),
+        .Mdc                 (mdc_o),
+
+        .Divider             (r_ClkDiv),
+        .NoPre               (r_MiiNoPre),
+        .CtrlData            (r_CtrlData),
+        .Rgad                (r_RGAD),
+        .Fiad                (r_FIAD),
+        .WCtrlData           (r_WCtrlData),
+        .RStat               (r_RStat),
+        .ScanStat            (r_ScanStat),
+        .Busy                (Busy_stat),
+        .Prsd                (Prsd),
+        .LinkFail            (LinkFail),
+        .Nvalid              (NValid_stat),
+        .WCtrlDataStart      (WCtrlDataStart),
+        .RStatStart          (RStatStart),
+        .UpdateMIIRX_DATAReg (UpdateMIIRX_DATAReg)
+    );
+
+    // Connecting Ethernet registers
+    emac_registers u_emac_registers
+    (
+        .bus2ip_clk            (bus2ip_clk    ),         
+        .bus2ip_rst_n          (bus2ip_rst_n  ),
+        .bus2ip_addr_i         (bus2ip_addr_i ),
+        .bus2ip_data_i         (bus2ip_data_i ),
+        .bus2ip_rd_ce_i        (bus2ip_rd_ce_i),         
+        .bus2ip_wr_ce_i        (bus2ip_wr_ce_i),        
+        .ip2bus_data_o         (ip2bus_data_o ), 
+
+        // miim registers
+        .r_ClkDiv_o            (r_ClkDiv),
+        .r_MiiNoPre_o          (r_MiiNoPre),
+        .r_CtrlData_o          (r_CtrlData),
+        .r_RGAD_o              (r_RGAD),
+        .r_FIAD_o              (r_FIAD),
+        .r_WCtrlData_o         (r_WCtrlData),
+        .r_RStat_o             (r_RStat),
+        .r_ScanStat_o          (r_ScanStat),
+        .Busy_stat_i           (Busy_stat),
+        .Prsd_i                (Prsd),
+        .LinkFail_i            (LinkFail),
+        .NValid_stat_i         (NValid_stat),
+        .WCtrlDataStart_i      (WCtrlDataStart),
+        .RStatStart_i          (RStatStart),
+        .UpdateMIIRX_DATAReg_i (UpdateMIIRX_DATAReg)
+    );
 
 endmodule
