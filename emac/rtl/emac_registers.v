@@ -46,14 +46,14 @@ module emac_registers (
     output reg [31:0]   ip2bus_data_o  , 
 
     // miim registers
-    output reg [7:0]    r_ClkDiv_o           , 
-    output reg          r_MiiNoPre_o         , 
-    output reg [15:0]   r_CtrlData_o         , 
-    output reg [4:0]    r_RGAD_o             , 
-    output reg [4:0]    r_FIAD_o             , 
-    output reg          r_WCtrlData_o        , 
-    output reg          r_RStat_o            , 
-    output reg          r_ScanStat_o         , 
+    output [7:0]        r_ClkDiv_o           , 
+    output              r_MiiNoPre_o         , 
+    output [15:0]       r_CtrlData_o         , 
+    output [4:0]        r_RGAD_o             , 
+    output [4:0]        r_FIAD_o             , 
+    output              r_WCtrlData_o        , 
+    output              r_RStat_o            , 
+    output              r_ScanStat_o         , 
     input               Busy_stat_i          , 
     input  [15:0]       Prsd_i               , 
     input               LinkFail_i           , 
@@ -62,6 +62,173 @@ module emac_registers (
     input               RStatStart_i         , 
     input               UpdateMIIRX_DATAReg_i 
 );
+    parameter BLK_ADDR = `EMAC_BLK_ADR;
+
+    wire  emac_blk_sel = (bus2ip_addr_i[31:8] == BLK_ADDR);
+
+    //++
+    //instantiate emac registers
+    //--
+
+    //MDIO MODE register
+    wire mdio_mode_wr = emac_blk_sel & bus2ip_wr_ce_i & (bus2ip_addr_i[7:0] == `EMAC_MDIOMODE_ADR);
+    wire [31:0] mdio_mode;
+
+    eth_register #(8, 8'h64) u_mdio_mode_0
+    (
+        .clk            (bus2ip_clk),
+        .rst_n          (bus2ip_rst_n),  
+    
+        .sync_reset_i   (1'b0), 
+        .write_en_i     (mdio_mode_wr), 
+        .data_i         (bus2ip_data_i[7:0]),
+        .data_o         (mdio_mode[7:0]) 
+    );
+    assign r_ClkDiv_o   = mdio_mode[7:0];
+
+    eth_register #(1, 0) u_mdio_mode_1
+    (
+        .clk            (bus2ip_clk),
+        .rst_n          (bus2ip_rst_n),  
+    
+        .sync_reset_i   (1'b0), 
+        .write_en_i     (mdio_mode_wr), 
+        .data_i         (bus2ip_data_i[8]),
+        .data_o         (mdio_mode[8]) 
+    );
+    assign r_MiiNoPre_o = mdio_mode[8];
+
+    assign mdio_mode[31:9] = 0;
+    
+    //MDIO Command register
+    wire mdio_command_wr = emac_blk_sel & bus2ip_wr_ce_i & (bus2ip_addr_i[7:0] == `EMAC_MDIOCOMMAND_ADR);
+    wire [31:0] mdio_command;
+
+    eth_register #(1, 0) u_mdio_command_0
+    (
+        .clk            (bus2ip_clk),
+        .rst_n          (bus2ip_rst_n),  
+    
+        .sync_reset_i   (1'b0), 
+        .write_en_i     (mdio_command_wr), 
+        .data_i         (bus2ip_data_i[0]),
+        .data_o         (mdio_command[0]) 
+    );
+    assign r_ScanStat_o = mdio_command[0];
+
+    eth_register #(1, 0) u_mdio_command_1
+    (
+        .clk            (bus2ip_clk),
+        .rst_n          (bus2ip_rst_n),  
+    
+        .sync_reset_i   (RStatStart_i), 
+        .write_en_i     (mdio_command_wr), 
+        .data_i         (bus2ip_data_i[1]),
+        .data_o         (mdio_command[1]) 
+    );
+    assign r_RStat_o = mdio_command[1];
+
+    eth_register #(1, 0) u_mdio_command_2
+    (
+        .clk            (bus2ip_clk),
+        .rst_n          (bus2ip_rst_n),  
+    
+        .sync_reset_i   (WCtrlDataStart_i), 
+        .write_en_i     (mdio_command_wr), 
+        .data_i         (bus2ip_data_i[2]),
+        .data_o         (mdio_command[2]) 
+    );
+    assign r_WCtrlData_o = mdio_command[2];
+
+    assign mdio_command[31:3] = 0;
+
+    //MDIO Address register
+    wire mdio_address_wr = emac_blk_sel & bus2ip_wr_ce_i & (bus2ip_addr_i[7:0] == `EMAC_MDIOADDRESS_ADR);
+    wire [31:0] mdio_address;
+
+    eth_register #(5, 0) u_mdio_address_0
+    (
+        .clk            (bus2ip_clk),
+        .rst_n          (bus2ip_rst_n),  
+    
+        .sync_reset_i   (1'b0), 
+        .write_en_i     (mdio_address_wr), 
+        .data_i         (bus2ip_data_i[4:0]),
+        .data_o         (mdio_address[4:0]) 
+    );
+    assign r_FIAD_o   = mdio_address[4:0];
+
+    eth_register #(5, 0) u_mdio_address_1
+    (
+        .clk            (bus2ip_clk),
+        .rst_n          (bus2ip_rst_n),  
+    
+        .sync_reset_i   (1'b0), 
+        .write_en_i     (mdio_address_wr), 
+        .data_i         (bus2ip_data_i[12:8]),
+        .data_o         (mdio_address[12:8]) 
+    );
+    assign r_RGAD_o   = mdio_address[12:8];
+
+    assign mdio_address[31:13] = 0;
+    assign mdio_address[7:5]   = 0;
+
+    //MDIO transmit data register
+    wire mdio_tx_data_wr = emac_blk_sel & bus2ip_wr_ce_i & (bus2ip_addr_i[7:0] == `EMAC_MDIOTX_DATA_ADR);
+    wire [31:0] mdio_tx_data;
+
+    eth_register #(16, 0) u_mdio_tx_data_0
+    (
+        .clk            (bus2ip_clk),
+        .rst_n          (bus2ip_rst_n),  
+    
+        .sync_reset_i   (1'b0), 
+        .write_en_i     (mdio_tx_data_wr), 
+        .data_i         (bus2ip_data_i[15:0]),
+        .data_o         (mdio_tx_data[15:0]) 
+    );
+    assign r_CtrlData_o   = mdio_tx_data[15:0];
+
+    assign mdio_tx_data[31:16] = 0;
+
+    //MDIO receive data register
+    wire [31:0] mdio_rx_data;
+
+    eth_register #(16, 0) u_mdio_rx_data_0
+    (
+        .clk            (bus2ip_clk),
+        .rst_n          (bus2ip_rst_n),  
+    
+        .sync_reset_i   (1'b0), 
+        .write_en_i     (UpdateMIIRX_DATAReg_i), //not written from bus
+        .data_i         (Prsd_i[15:0]),
+        .data_o         (mdio_rx_data[15:0]) 
+    );
+    assign mdio_rx_data[31:16] = 0;
+
+    //++
+    //bus read operation
+    //--
+    reg [31:0] ip2bus_data;
+
+    always @(*) begin
+        ip2bus_data = 32'h0;
+
+        if(bus2ip_rd_ce_i == 1'b1 && emac_blk_sel) begin   
+            case(bus2ip_addr_i[7:0])    //deal with offset address
+                `EMAC_MDIOMODE_ADR:     ip2bus_data = mdio_mode;  
+                `EMAC_MDIOCOMMAND_ADR:  ip2bus_data = mdio_command;
+                `EMAC_MDIOADDRESS_ADR:  ip2bus_data = mdio_address;
+                `EMAC_MDIOTX_DATA_ADR:  ip2bus_data = mdio_tx_data;
+                `EMAC_MDIORX_DATA_ADR:  ip2bus_data = mdio_rx_data;
+                `EMAC_MDIOSTATUS_ADR:   ip2bus_data = {29'b0, NValid_stat_i, Busy_stat_i, LinkFail_i};
+                default:            ip2bus_data = 32'h0;
+            endcase                        
+        end   
+    end
+
+    //registered output 
+    always @(posedge bus2ip_clk) ip2bus_data_o <= ip2bus_data;
 
 endmodule
 
