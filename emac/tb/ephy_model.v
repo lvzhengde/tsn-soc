@@ -36,7 +36,7 @@
 -*/
 
 `include "ephy_defines.v"
-`include "tb_eth_defines.v"
+`include "tb_emac_defines.v"
 
 module ephy_model  // Simplified PHY model
 (

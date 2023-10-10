@@ -1,77 +1,38 @@
-//////////////////////////////////////////////////////////////////////
-////                                                              ////
-////  tb_eth_defines.v                                            ////
-////                                                              ////
-////  This file is part of the Ethernet IP core project           ////
-////  http://www.opencores.org/project,ethmac                     ////
-////                                                              ////
-////  Author(s):                                                  ////
-////      - Igor Mohor (igorM@opencores.org)                      ////
-////                                                              ////
-////  All additional information is available in the Readme.txt   ////
-////  file.                                                       ////
-////                                                              ////
-//////////////////////////////////////////////////////////////////////
-////                                                              ////
-//// Copyright (C) 2001, 2002 Authors                             ////
-////                                                              ////
-//// This source file may be used and distributed without         ////
-//// restriction provided that this copyright statement is not    ////
-//// removed from the file and that any derivative work contains  ////
-//// the original copyright notice and the associated disclaimer. ////
-////                                                              ////
-//// This source file is free software; you can redistribute it   ////
-//// and/or modify it under the terms of the GNU Lesser General   ////
-//// Public License as published by the Free Software Foundation; ////
-//// either version 2.1 of the License, or (at your option) any   ////
-//// later version.                                               ////
-////                                                              ////
-//// This source is distributed in the hope that it will be       ////
-//// useful, but WITHOUT ANY WARRANTY; without even the implied   ////
-//// warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR      ////
-//// PURPOSE.  See the GNU Lesser General Public License for more ////
-//// details.                                                     ////
-////                                                              ////
-//// You should have received a copy of the GNU Lesser General    ////
-//// Public License along with this source; if not, download it   ////
-//// from http://www.opencores.org/lgpl.shtml                     ////
-////                                                              ////
-//////////////////////////////////////////////////////////////////////
-//
-// CVS Revision History
-//
-// $Log: not supported by cvs2svn $
-// Revision 1.10  2002/11/19 20:27:46  mohor
-// Temp version.
-//
-// Revision 1.9  2002/10/09 13:16:51  tadejm
-// Just back-up; not completed testbench and some testcases are not
-// wotking properly yet.
-//
-// Revision 1.8  2002/09/13 18:41:45  mohor
-// Rearanged testcases
-//
-// Revision 1.7  2002/09/13 12:29:14  mohor
-// Headers changed.
-//
-// Revision 1.6  2002/09/13 11:57:20  mohor
-// New testbench. Thanks to Tadej M - "The Spammer".
-//
-// Revision 1.3  2002/07/19 13:57:53  mohor
-// Testing environment also includes traffic cop, memory interface and host
-// interface.
-//
-// Revision 1.2  2002/05/03 10:22:17  mohor
-// TX_BUF_BASE changed.
-//
-// Revision 1.1  2002/03/19 12:53:54  mohor
-// Some defines that are used in testbench only were moved to tb_eth_defines.v
-// file.
-//
-//
-//
-//
+/*+
+ * Copyright (c) 2022-2023 Zhengde
+ *
+ * Copyright (c) 2002 Tadej Markovic, tadej@opencores.org 
+ * 
+ * All rights reserved.
+ * 
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ * 
+ * 1 Redistributions of source code must retain the above copyright notice, this
+ *   list of conditions and the following disclaimer.
+ * 
+ * 2 Redistributions in binary form must reproduce the above copyright notice,
+ *   this list of conditions and the following disclaimer in the documentation
+ *   and/or other materials provided with the distribution.
+ * 
+ * 3 Neither the name of the copyright holder nor the names of its
+ *   contributors may be used to endorse or promote products derived from
+ *   this software without specific prior written permission.
+ * 
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+ * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+ * CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+ * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+-*/
 
+`ifndef TB_EMAC_DEFINES
+`define TB_EMAC_DEFINES
 
 
 //`define VERBOSE                       // if log files of device modules are written
@@ -89,36 +50,6 @@
 `define RX_BUF_BASE           `MEMORY_BASE + 32'h8000
 `define TX_BD_BASE            `ETH_BASE + 32'h00000400
 `define RX_BD_BASE            `ETH_BASE + 32'h00000600
-
-/* Tx BD */
-`define ETH_TX_BD_READY    32'h8000 /* Tx BD Ready */
-`define ETH_TX_BD_IRQ      32'h4000 /* Tx BD IRQ Enable */
-`define ETH_TX_BD_WRAP     32'h2000 /* Tx BD Wrap (last BD) */
-`define ETH_TX_BD_PAD      32'h1000 /* Tx BD Pad Enable */
-`define ETH_TX_BD_CRC      32'h0800 /* Tx BD CRC Enable */
-
-`define ETH_TX_BD_UNDERRUN 32'h0100 /* Tx BD Underrun Status */
-`define ETH_TX_BD_RETRY    32'h00F0 /* Tx BD Retry Status */
-`define ETH_TX_BD_RETLIM   32'h0008 /* Tx BD Retransmission Limit Status */
-`define ETH_TX_BD_LATECOL  32'h0004 /* Tx BD Late Collision Status */
-`define ETH_TX_BD_DEFER    32'h0002 /* Tx BD Defer Status */
-`define ETH_TX_BD_CARRIER  32'h0001 /* Tx BD Carrier Sense Lost Status */
-
-/* Rx BD */
-`define ETH_RX_BD_EMPTY    32'h8000 /* Rx BD Empty */
-`define ETH_RX_BD_IRQ      32'h4000 /* Rx BD IRQ Enable */
-`define ETH_RX_BD_WRAP     32'h2000 /* Rx BD Wrap (last BD) */
-
-`define ETH_RX_BD_MISS     32'h0080 /* Rx BD Miss Status */
-`define ETH_RX_BD_OVERRUN  32'h0040 /* Rx BD Overrun Status */
-`define ETH_RX_BD_INVSIMB  32'h0020 /* Rx BD Invalid Symbol Status */
-`define ETH_RX_BD_DRIBBLE  32'h0010 /* Rx BD Dribble Nibble Status */
-`define ETH_RX_BD_TOOLONG  32'h0008 /* Rx BD Too Long Status */
-`define ETH_RX_BD_SHORT    32'h0004 /* Rx BD Too Short Frame Status */
-`define ETH_RX_BD_CRCERR   32'h0002 /* Rx BD CRC Error Status */
-`define ETH_RX_BD_LATECOL  32'h0001 /* Rx BD Late Collision Status */
-
-
 
 /* Register space */
 `define ETH_MODER      `ETH_BASE + 32'h00	/* Mode Register */
@@ -142,7 +73,6 @@
 `define ETH_HASH_ADDR0 `ETH_BASE + 32'h48 /* Hash Register 0 */
 `define ETH_HASH_ADDR1 `ETH_BASE + 32'h4C /* Hash Register 1 */
 `define ETH_TX_CTRL    `ETH_BASE + 32'h50 /* Tx Control Register */
-
 
 /* MODER Register */
 `define ETH_MODER_RXEN     32'h00000001 /* Receive Enable  */
@@ -210,3 +140,5 @@
 
 
 `define TIME $display("  Time: %0t", $time)
+
+`endif //TB_EMAC_DEFINES
