@@ -42,6 +42,7 @@ module ephy_model  // Simplified PHY model
 (
     // MAC miscellaneous signals
     input              m_rst_n,
+    input  [2:0]       speed_i,    //from MAC
     // MAC TX signals
     input              mgtx_clk,    //from MAC to PHY
     output reg         mtx_clk ,    //from PHY to MAC
@@ -63,724 +64,616 @@ module ephy_model  // Simplified PHY model
     input  [31:0]      phy_log
 );
 
-//////////////////////////////////////////////////////////////////////
-//
-// PHY management (MIIM) REGISTER definitions
-//
-//////////////////////////////////////////////////////////////////////
-//
-//   Supported registers:
-//
-// Addr | Register Name
-//--------------------------------------------------------------------
-//   0  | Control reg.     |
-//   1  | Status reg. #1   |--> normal operation
-//   2  | PHY ID reg. 1    |
-//   3  | PHY ID reg. 2    |
-//----------------------
-// Addr | Data MEMORY      |-->  for testing
-//
-//--------------------------------------------------------------------
-//
-// Control register
-reg            control_bit15; // self clearing bit
-reg    [14:10] control_bit14_10;
-reg            control_bit9; // self clearing bit
-reg    [8:0]   control_bit8_0;
-// Status register
-wire   [15:9]  status_bit15_9 = `SUPPORTED_SPEED_AND_PORT;
-wire           status_bit8    = `EXTENDED_STATUS;
-wire           status_bit7    = 1'b0; // reserved
-reg    [6:0]   status_bit6_0;
-// PHY ID register 1
-wire   [15:0]  phy_id1        = `PHY_ID1;
-// PHY ID register 2
-wire   [15:0]  phy_id2        = {`PHY_ID2, `MAN_MODEL_NUM, `MAN_REVISION_NUM};
-//--------------------------------------------------------------------
-//
-// Data MEMORY
-reg    [15:0]  data_mem [0:31]; // 32 locations of 16-bit data width
-//
-//////////////////////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////////////////////
+    //
+    // PHY management (MIIM) REGISTER definitions
+    //
+    //////////////////////////////////////////////////////////////////////
+    //
+    //   Supported registers:
+    //
+    // Addr | Register Name
+    //--------------------------------------------------------------------
+    //   0  | Control reg.         |
+    //   1  | Status reg. #1       |--> normal operation
+    //   2  | PHY ID reg. 1        |
+    //   3  | PHY ID reg. 2        |
+    //   11 | PSE Control reg.     |
+    //   12 | PSE Status reg.      |
+    //   15 | Extended Status reg. |
+    //----------------------
+    // Addr | Data MEMORY      |-->  for testing
+    //
+    //--------------------------------------------------------------------
+
+    // Control register
+    reg            control_bit15;     //Reset, self clearing bit
+    reg    [14:10] control_bit14_10;
+    reg            control_bit9;      //Restart Auto-Negotiation, self clearing bit
+    reg    [8:0]   control_bit8_0;
+
+    // Status register
+    wire   [15:9]  status_bit15_9 = `SUPPORTED_SPEED_AND_PORT;
+    wire           status_bit8    = `EXTENDED_STATUS;
+    wire           status_bit7    = 1'b0; // reserved
+    reg    [6:0]   status_bit6_0;
+
+    // PHY ID register 1
+    wire   [15:0]  phy_id1        = `PHY_ID1;
+    // PHY ID register 2
+    wire   [15:0]  phy_id2        = {`PHY_ID2, `MAN_MODEL_NUM, `MAN_REVISION_NUM};
+
+    //--------------------------------------------------------------------
+    //
+    // Data MEMORY
+    reg    [15:0]  data_mem [0:31]; // 32 locations of 16-bit data width
+    //
+    //////////////////////////////////////////////////////////////////////
 
 
-//////////////////////////////////////////////////////////////////////
-//
-// PHY clocks - RX & TX
-//
-//////////////////////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////////////////////
+    //
+    // PHY clocks - RX & TX
+    //
+    //////////////////////////////////////////////////////////////////////
+`ifdef VERBOSE
+    always @(*) begin
+        if (!status_bit6_0[2]) // Link is down
+            #1 $fdisplay(phy_log, "   (%0t)(%m)Ethernet link is down!", $time);
+        else
+            #1 $fdisplay(phy_log, "   (%0t)(%m)Ethernet link is up!", $time);
+    end
+`endif
 
-// random generator for a RX period when link is down
-real      rx_link_down_halfperiod;
+    // speed selection signal eth_speed 
+    // control reg. {0.6, 0.13}: 
+    // 2'b11: Reserved
+    // 2'b10: 1000 Mbps
+    // 2'b01: 100 Mbps
+    // 2'b00: 10 Mbps
+    reg [1:0]     eth_speed;
 
-always@(status_bit6_0[2])
-begin
-  if (!status_bit6_0[2]) // Link is down
-  begin
-    #1 rx_link_down_halfperiod = ({$random} % 243) + 13;
+    always @(*) begin
+        eth_speed = 2'b00;
+        if (!AUTO_NEG_EN) begin
+            if (speed_i[2])
+                eth_speed = 2'b10;
+            else if (speed_i[1])
+                eth_speed = 2'b01;
+            else if (speed_i[0])
+                eth_speed = 2'b00;
+        end
+    end
+
     `ifdef VERBOSE
-    #1 $fdisplay(phy_log, "   (%0t)(%m)MAC RX clock is %f MHz while ethernet link is down!", 
-                 $time, (1000/(rx_link_down_halfperiod*2)) );
+    always @(*) begin
+      if (eth_speed == 2'b10)
+        #1 $fdisplay(phy_log, "   (%0t)(%m)PHY configured to 1000 Mbps!", $time);
+      if (eth_speed == 2'b01)
+        #1 $fdisplay(phy_log, "   (%0t)(%m)PHY configured to 100 Mbps!", $time);
+      else
+        #1 $fdisplay(phy_log, "   (%0t)(%m)PHY configured tp 10 Mbps!", $time);
+    end
     `endif
-  end
-end
 
-`ifdef VERBOSE
-always@(status_bit6_0[2])
-begin
-  if (!status_bit6_0[2]) // Link is down
-    #1 $fdisplay(phy_log, "   (%0t)(%m)Ethernet link is down!", $time);
-  else
-    #1 $fdisplay(phy_log, "   (%0t)(%m)Ethernet link is up!", $time);
-end
-`endif
-
-// speed selection signal eth_speed: 1'b1 - 100 Mbps, 1'b0 - 10 Mbps
-wire      eth_speed;
-
-assign eth_speed = ( (control_bit14_10[13]) && !((`LED_CFG1) && (`LED_CFG2)) );
-
-`ifdef VERBOSE
-always@(eth_speed)
-begin
-  if (eth_speed)
-    #1 $fdisplay(phy_log, "   (%0t)(%m)PHY configured to 100 Mbps!", $time);
-  else
-    #1 $fdisplay(phy_log, "   (%0t)(%m)PHY configured tp 10 Mbps!", $time);
-end
-`endif
-
-// different clock calculation between RX and TX, so that there is alsways a litle difference
-/*initial
-begin
-  set_mrx_equal_mtx = 1; // default
-end*/
-
-always
-begin
-  mtx_clk = 0;
-  #7;
-  forever
-  begin
-    if (eth_speed) // 100 Mbps - 25 MHz, 40 ns
-    begin
-      #20 mtx_clk = ~mtx_clk;
-    end
-    else // 10 Mbps - 2.5 MHz, 400 ns
-    begin
-      #200 mtx_clk = ~mtx_clk;
-    end
-  end
-end
-
-always
-begin
-  // EQUAL mrx_clk to mtx_clk
-  mrx_clk = 0;
-  #7;
-  forever
-  begin
-    if (eth_speed) // 100 Mbps - 25 MHz, 40 ns
-    begin
-      #20 mrx_clk = ~mrx_clk;
-    end
-    else // 10 Mbps - 2.5 MHz, 400 ns
-    begin
-      #200 mrx_clk = ~mrx_clk;
-    end
-  end
-  // DIFFERENT mrx_clk than mtx_clk
-/*  mrx_clk_diff_than_mtx = 1;
-  #3;
-  forever
-  begin
-    if (status_bit6_0[2]) // Link is UP
-    begin
-      if (eth_speed) // 100 Mbps - 25 MHz, 40 ns
-      begin
-        //#(((1/0.025001)/2)) 
-        #19.99 mrx_clk_diff_than_mtx = ~mrx_clk_diff_than_mtx; // period is calculated from frequency in GHz
-      end
-      else // 10 Mbps - 2.5 MHz, 400 ns
-      begin
-        //#(((1/0.0024999)/2)) 
-        #200.01 mrx_clk_diff_than_mtx = ~mrx_clk_diff_than_mtx; // period is calculated from frequency in GHz
-      end
-    end
-    else // Link is down
-    begin
-      #(rx_link_down_halfperiod) mrx_clk_diff_than_mtx = ~mrx_clk_diff_than_mtx; // random frequency between 2 MHz and 40 MHz
-    end
-  end*/
-//  // set output mrx_clk
-//  if (set_mrx_equal_mtx)
-//    mrx_clk = mrx_clk_equal_to_mtx;
-//  else
-//    mrx_clk = mrx_clk_diff_than_mtx;
-end
-
-// set output mrx_clk
-//assign mrx_clk = set_mrx_equal_mtx ? mrx_clk_equal_to_mtx : mrx_clk_diff_than_mtx ;
-
-//////////////////////////////////////////////////////////////////////
-//
-// PHY management (MIIM) interface
-//
-//////////////////////////////////////////////////////////////////////
-reg             respond_to_all_phy_addr; // PHY will respond to all phy addresses
-reg             no_preamble; // PHY responds to frames without preamble
-
-integer         md_transfer_cnt; // counter countes the value of whole data transfer
-reg             md_transfer_cnt_reset; // for reseting the counter
-reg             md_io_reg; // registered input
-reg             md_io_output; // registered output
-reg             md_io_rd_wr;  // op-code latched (read or write)
-reg             md_io_enable; // output enable
-reg     [4:0]   phy_address; // address of PHY device
-reg     [4:0]   reg_address; // address of a register
-reg             md_get_phy_address; // for shifting PHY address in
-reg             md_get_reg_address; // for shifting register address in
-reg     [15:0]  reg_data_in; // data to be written in a register
-reg             md_get_reg_data_in; // for shifting data in
-reg             md_put_reg_data_in; // for storing data into a selected register
-reg     [15:0]  reg_data_out; // data to be read from a register
-reg             md_put_reg_data_out; // for registering data from a selected register
-
-wire    [15:0]  register_bus_in; // data bus to a selected register
-reg     [15:0]  register_bus_out; // data bus from a selected register
-
-initial
-begin
-  md_io_enable = 1'b0;
-  respond_to_all_phy_addr = 1'b0;
-  no_preamble = 1'b0;
-end
-
-// tristate output
-assign #1 md_io = (m_rst_n && md_io_enable) ? md_io_output : 1'bz ;
-
-// registering input
-always@(posedge mdc_i or negedge m_rst_n)
-begin
-  if (!m_rst_n)
-    md_io_reg <= #1 0;
-  else
-    md_io_reg <= #1 md_io;
-end
-
-// getting (shifting) PHY address, Register address and Data in
-// putting Data out and shifting
-always@(posedge mdc_i or negedge m_rst_n)
-begin
-  if (!m_rst_n)
-  begin
-    phy_address <= 0;
-    reg_address <= 0;
-    reg_data_in <= 0;
-    reg_data_out <= 0;
-    md_io_output <= 0;
-  end
-  else
-  begin
-    if (md_get_phy_address)
-    begin
-      phy_address[4:1] <= phy_address[3:0]; // correct address is `ETH_PHY_ADDR
-      phy_address[0]   <= md_io;
-    end
-    if (md_get_reg_address)
-    begin
-      reg_address[4:1] <= reg_address[3:0];
-      reg_address[0]   <= md_io;
-    end
-    if (md_get_reg_data_in)
-    begin
-      reg_data_in[15:1] <= reg_data_in[14:0];
-      reg_data_in[0]    <= md_io;
-    end
-    if (md_put_reg_data_out)
-    begin
-      reg_data_out <= register_bus_out;
-    end
-    if (md_io_enable)
-    begin
-      md_io_output       <= reg_data_out[15];
-      reg_data_out[15:1] <= reg_data_out[14:0];
-      reg_data_out[0]    <= 1'b0;
-    end
-  end
-end
-
-assign #1 register_bus_in = reg_data_in; // md_put_reg_data_in - allows writing to a selected register
-
-// counter for transfer to and from MIIM
-always@(posedge mdc_i or negedge m_rst_n)
-begin
-  if (!m_rst_n)
-  begin
-    if (no_preamble)
-      md_transfer_cnt <= 33;
-    else
-      md_transfer_cnt <= 1;
-  end
-  else
-  begin
-    if (md_transfer_cnt_reset)
-    begin
-      if (no_preamble)
-        md_transfer_cnt <= 33;
-      else
-        md_transfer_cnt <= 1;
-    end
-    else if (md_transfer_cnt < 64)
-    begin
-      md_transfer_cnt <= md_transfer_cnt + 1'b1;
-    end
-    else
-    begin
-      if (no_preamble)
-        md_transfer_cnt <= 33;
-      else
-        md_transfer_cnt <= 1;
-    end
-  end
-end
-
-// MIIM transfer control
-always@(m_rst_n or md_transfer_cnt or md_io_reg or md_io_rd_wr or 
-        phy_address or respond_to_all_phy_addr or no_preamble)
-begin
-  #1;
-  while ((m_rst_n) && (md_transfer_cnt <= 64))
-  begin
-    // reset the signal - put registered data in the register (when write)
-    // check preamble
-    if (md_transfer_cnt < 33)
-    begin
-      #4 md_put_reg_data_in = 1'b0;
-      if (md_io_reg !== 1'b1)
-      begin
-        #1 md_transfer_cnt_reset = 1'b1;
-      end
-      else
-      begin
-        #1 md_transfer_cnt_reset = 1'b0;
-      end
-    end
-
-    // check start bits
-    else if (md_transfer_cnt == 33)
-    begin
-      if (no_preamble)
-      begin
-        #4 md_put_reg_data_in = 1'b0;
-        if (md_io_reg === 1'b0)
-        begin
-          #1 md_transfer_cnt_reset = 1'b0;
+    always begin
+        mtx_clk = 0;
+        #7;
+        forever begin
+            if (eth_speed == 2'b01) // 100 Mbps - 25 MHz, 40 ns
+            begin
+                #20 mtx_clk = ~mtx_clk;
+            end
+            else if(eth_speed == 2'b00) // 10 Mbps - 2.5 MHz, 400 ns
+            begin
+                #200 mtx_clk = ~mtx_clk;
+            end
         end
+    end
+
+    always begin
+        // EQUAL mrx_clk to mtx_clk
+        mrx_clk = 0;
+        #7;
+        forever begin
+            if (eth_speed == 2'b10)      // 1000 Mbps - 125 MHz, 8 ns
+            begin
+                #4  mrx_clk = ~mrx_clk;
+            end
+            else if (eth_speed == 2'b01) // 100 Mbps - 25 MHz, 40 ns
+            begin
+                #20 mrx_clk = ~mrx_clk;
+            end
+            else if (eth_speed == 2'b00) // 10 Mbps - 2.5 MHz, 400 ns
+            begin
+                #200 mrx_clk = ~mrx_clk;
+            end
+        end
+    end
+
+    //////////////////////////////////////////////////////////////////////
+    //
+    // PHY management (MIIM) interface
+    //
+    //////////////////////////////////////////////////////////////////////
+    reg             respond_to_all_phy_addr; // PHY will respond to all phy addresses
+    reg             no_preamble; // PHY responds to frames without preamble
+    
+    integer         md_transfer_cnt; // counter countes the value of whole data transfer
+    reg             md_transfer_cnt_reset; // for reseting the counter
+    reg             md_io_reg; // registered input
+    reg             md_io_output; // registered output
+    reg             md_io_rd_wr;  // op-code latched (read or write)
+    reg             md_io_enable; // output enable
+    reg     [4:0]   phy_address; // address of PHY device
+    reg     [4:0]   reg_address; // address of a register
+    reg             md_get_phy_address; // for shifting PHY address in
+    reg             md_get_reg_address; // for shifting register address in
+    reg     [15:0]  reg_data_in; // data to be written in a register
+    reg             md_get_reg_data_in; // for shifting data in
+    reg             md_put_reg_data_in; // for storing data into a selected register
+    reg     [15:0]  reg_data_out; // data to be read from a register
+    reg             md_put_reg_data_out; // for registering data from a selected register
+    
+    wire    [15:0]  register_bus_in; // data bus to a selected register
+    reg     [15:0]  register_bus_out; // data bus from a selected register
+
+    initial begin
+        md_io_enable = 1'b0;
+        respond_to_all_phy_addr = 1'b0;
+        no_preamble = 1'b0;
+    end
+
+    // tristate output
+    assign #1 md_io = (m_rst_n && md_io_enable) ? md_io_output : 1'bz ;
+
+    // registering input
+    always@(posedge mdc_i or negedge m_rst_n) begin
+        if (!m_rst_n)
+            md_io_reg <= #1 0;
         else
-        begin
-          #1 md_transfer_cnt_reset = 1'b1;
-          //if ((md_io_reg !== 1'bz) && (md_io_reg !== 1'b1))
-          if (md_io_reg !== 1'bz)
-          begin
-            // ERROR - start !
-            `ifdef VERBOSE
-            $fdisplay(phy_log, "*E (%0t)(%m)MIIM - wrong first start bit (without preamble)", $time);
-            `endif
-            #10 $stop;
-          end
-        end
-      end
-      else // with preamble
-      begin
-        #4 ;
-        `ifdef VERBOSE
-        $fdisplay(phy_log, "   (%0t)(%m)MIIM - 32-bit preamble received", $time);
-        `endif
-        // check start bit only if md_transfer_cnt_reset is inactive, because if
-        // preamble suppression was changed start bit should not be checked
-        if ((md_io_reg !== 1'b0) && (md_transfer_cnt_reset == 1'b0))
-        begin
-          // ERROR - start !
-          `ifdef VERBOSE
-          $fdisplay(phy_log, "*E (%0t)(%m)MIIM - wrong first start bit", $time);
-          `endif
-          #10 $stop;
-        end
-      end
+            md_io_reg <= #1 md_io;
     end
 
-    else if (md_transfer_cnt == 34)
-    begin
-      #4;
-      if (md_io_reg !== 1'b1)
-      begin
-        // ERROR - start !
+    // getting (shifting) PHY address, Register address and Data in
+    // putting Data out and shifting
+    always@(posedge mdc_i or negedge m_rst_n) begin
+        if (!m_rst_n) begin
+            phy_address <= 0;
+            reg_address <= 0;
+            reg_data_in <= 0;
+            reg_data_out <= 0;
+            md_io_output <= 0;
+        end
+        else begin
+            if (md_get_phy_address) begin
+                phy_address[4:1] <= phy_address[3:0]; // correct address is `ETH_PHY_ADDR
+                phy_address[0]   <= md_io;
+            end
+            if (md_get_reg_address) begin
+                reg_address[4:1] <= reg_address[3:0];
+                reg_address[0]   <= md_io;
+            end
+            if (md_get_reg_data_in) begin
+                reg_data_in[15:1] <= reg_data_in[14:0];
+                reg_data_in[0]    <= md_io;
+            end
+            if (md_put_reg_data_out) begin
+                reg_data_out <= register_bus_out;
+            end
+            if (md_io_enable) begin
+                md_io_output       <= reg_data_out[15];
+                reg_data_out[15:1] <= reg_data_out[14:0];
+                reg_data_out[0]    <= 1'b0;
+            end
+        end
+    end
+
+    assign #1 register_bus_in = reg_data_in; // md_put_reg_data_in - allows writing to a selected register
+
+    // counter for transfer to and from MIIM
+    always@(posedge mdc_i or negedge m_rst_n) begin
+        if (!m_rst_n) begin
+            if (no_preamble)
+                md_transfer_cnt <= 33;
+            else
+                md_transfer_cnt <= 1;
+        end
+        else begin
+            if (md_transfer_cnt_reset) begin
+                if (no_preamble)
+                    md_transfer_cnt <= 33;
+                else
+                    md_transfer_cnt <= 1;
+            end
+            else if (md_transfer_cnt < 64) begin
+                md_transfer_cnt <= md_transfer_cnt + 1'b1;
+            end
+            else begin
+                if (no_preamble)
+                    md_transfer_cnt <= 33;
+                else
+                    md_transfer_cnt <= 1;
+            end
+        end
+    end
+
+    // MIIM transfer control
+    always @(*) begin
         #1;
-        `ifdef VERBOSE
-        if (no_preamble)
-          $fdisplay(phy_log, "*E (%0t)(%m)MIIM - wrong second start bit (without preamble)", $time);
-        else
-          $fdisplay(phy_log, "*E (%0t)(%m)MIIM - wrong second start bit", $time);
-        `endif
-        #10 $stop;
-      end
-      else
-      begin
-        `ifdef VERBOSE
-        if (no_preamble)
-          #1 $fdisplay(phy_log, "   (%0t)(%m)MIIM - 2 start bits received (without preamble)", $time);
-        else
-          #1 $fdisplay(phy_log, "   (%0t)(%m)MIIM - 2 start bits received", $time);
-        `endif
-      end
+        while ((m_rst_n) && (md_transfer_cnt <= 64)) begin
+            // reset the signal - put registered data in the register (when write)
+            // check preamble
+            if (md_transfer_cnt < 33) begin
+                #4 md_put_reg_data_in = 1'b0;
+                if (md_io_reg !== 1'b1) begin
+                    #1 md_transfer_cnt_reset = 1'b1;
+                end
+                else begin
+                    #1 md_transfer_cnt_reset = 1'b0;
+                end
+            end
+    
+            // check start bits
+            else if (md_transfer_cnt == 33) begin
+                if (no_preamble) begin
+                    #4 md_put_reg_data_in = 1'b0;
+                    if (md_io_reg === 1'b0) begin
+                        #1 md_transfer_cnt_reset = 1'b0;
+                    end
+                    else begin
+                        #1 md_transfer_cnt_reset = 1'b1;
+                        //if ((md_io_reg !== 1'bz) && (md_io_reg !== 1'b1))
+                        if (md_io_reg !== 1'bz) begin
+                            // ERROR - start !
+                            `ifdef VERBOSE
+                            $fdisplay(phy_log, "*E (%0t)(%m)MIIM - wrong first start bit (without preamble)", $time);
+                            `endif
+                            #10 $stop;
+                        end
+                    end
+                end
+                else begin// with preamble
+                    #4 ;
+                    `ifdef VERBOSE
+                    $fdisplay(phy_log, "   (%0t)(%m)MIIM - 32-bit preamble received", $time);
+                    `endif
+                    // check start bit only if md_transfer_cnt_reset is inactive, because if
+                    // preamble suppression was changed start bit should not be checked
+                    if ((md_io_reg !== 1'b0) && (md_transfer_cnt_reset == 1'b0)) begin
+                        // ERROR - start !
+                        `ifdef VERBOSE
+                        $fdisplay(phy_log, "*E (%0t)(%m)MIIM - wrong first start bit", $time);
+                        `endif
+                        #10 $stop;
+                    end
+                end
+            end
+    
+            else if (md_transfer_cnt == 34) begin
+                #4;
+                if (md_io_reg !== 1'b1) begin
+                    // ERROR - start !
+                    #1;
+                    `ifdef VERBOSE
+                    if (no_preamble)
+                        $fdisplay(phy_log, "*E (%0t)(%m)MIIM - wrong second start bit (without preamble)", $time);
+                    else
+                        $fdisplay(phy_log, "*E (%0t)(%m)MIIM - wrong second start bit", $time);
+                    `endif
+                    #10 $stop;
+                end
+                else begin
+                    `ifdef VERBOSE
+                    if (no_preamble)
+                        #1 $fdisplay(phy_log, "   (%0t)(%m)MIIM - 2 start bits received (without preamble)", $time);
+                    else
+                        #1 $fdisplay(phy_log, "   (%0t)(%m)MIIM - 2 start bits received", $time);
+                    `endif
+                end
+            end
+    
+            // register the op-code (rd / wr)
+            else if (md_transfer_cnt == 35) begin
+                #4;
+                if (md_io_reg === 1'b1) begin
+                    #1 md_io_rd_wr = 1'b1;
+                end
+                else begin
+                    #1 md_io_rd_wr = 1'b0;
+                end
+            end
+    
+            else if (md_transfer_cnt == 36) begin
+                #4;
+                if ((md_io_reg === 1'b0) && (md_io_rd_wr == 1'b1)) begin
+                    #1 md_io_rd_wr = 1'b1; // reading from PHY registers
+                    `ifdef VERBOSE
+                    $fdisplay(phy_log, "   (%0t)(%m)MIIM - op-code for READING from registers", $time);
+                    `endif
+                end
+                else if ((md_io_reg === 1'b1) && (md_io_rd_wr == 1'b0)) begin
+                    #1 md_io_rd_wr = 1'b0; // writing to PHY registers
+                    `ifdef VERBOSE
+                    $fdisplay(phy_log, "   (%0t)(%m)MIIM - op-code for WRITING to registers", $time);
+                    `endif
+                end
+                else begin
+                    // ERROR - wrong opcode !
+                    `ifdef VERBOSE
+                    #1 $fdisplay(phy_log, "*E (%0t)(%m)MIIM - wrong OP-CODE", $time);
+                    `endif
+                    #10 $stop;
+                end
+                // set the signal - get PHY address
+                begin
+                    #1 md_get_phy_address = 1'b1;
+                end
+            end
+    
+            // reset the signal - get PHY address
+            else if (md_transfer_cnt == 41) begin
+                #4 md_get_phy_address = 1'b0;
+                // set the signal - get register address
+                #1 md_get_reg_address = 1'b1;
+            end
+    
+            // reset the signal - get register address
+            // set the signal - put register data to output register
+            else if (md_transfer_cnt == 46) begin
+                #4 md_get_reg_address = 1'b0;
+                #1 md_put_reg_data_out = 1'b1;
+            end
+    
+            // reset the signal - put register data to output register
+            // set the signal - enable md_io as output when read
+            else if (md_transfer_cnt == 47) begin
+                #4 md_put_reg_data_out = 1'b0;
+                if (md_io_rd_wr) begin//read
+                    if (md_io_reg !== 1'bz) begin
+                        // ERROR - turn around !
+                        `ifdef VERBOSE
+                        #1 $fdisplay(phy_log, "*E (%0t)(%m)MIIM - wrong turn-around cycle before reading data out", $time);
+                        `endif
+                        #10 $stop;
+                    end
+                    if ((phy_address === `ETH_PHY_ADDR) || respond_to_all_phy_addr) begin// check the PHY address
+                        #1 md_io_enable = 1'b1;
+                        `ifdef VERBOSE
+                        $fdisplay(phy_log, "   (%0t)(%m)MIIM - received correct PHY ADDRESS: %x", $time, phy_address);
+                        `endif
+                    end
+                    else begin
+                        `ifdef VERBOSE
+                        #1 $fdisplay(phy_log, "*W (%0t)(%m)MIIM - received different PHY ADDRESS: %x", $time, phy_address);
+                        `endif
+                    end
+                end
+                else begin// write
+                    #1 md_io_enable = 1'b0;
+                    // check turn around cycle when write on clock 47
+                    if (md_io_reg !== 1'b1) begin
+                        // ERROR - turn around !
+                        `ifdef VERBOSE
+                        #1 $fdisplay(phy_log, "*E (%0t)(%m)MIIM - wrong 1. turn-around cycle before writing data in", 
+                                     $time);
+                        `endif
+                        #10 $stop;
+                    end
+                end
+            end
+    
+            // set the signal - get register data in when write
+            else if (md_transfer_cnt == 48) begin
+                #4;
+                if (!md_io_rd_wr) begin// write
+                    #1 md_get_reg_data_in = 1'b1;
+                    // check turn around cycle when write on clock 48
+                    if (md_io_reg !== 1'b0) begin
+                        // ERROR - turn around !
+                        `ifdef VERBOSE
+                        #1 $fdisplay(phy_log, "*E (%0t)(%m)MIIM - wrong 2. turn-around cycle before writing data in", 
+                                     $time);
+                        `endif
+                        #10 $stop;
+                    end
+                end
+                else begin// read
+                    #1 md_get_reg_data_in = 1'b0;
+                end
+            end
+    
+            // reset the signal - enable md_io as output when read
+            // reset the signal - get register data in when write
+            // set the signal - put registered data in the register when write
+            else if (md_transfer_cnt == 64) begin
+                #1 md_io_enable = 1'b0;
+                #4 md_get_reg_data_in = 1'b0;
+                if (!md_io_rd_wr) begin// write
+                    if ((phy_address === `ETH_PHY_ADDR) || respond_to_all_phy_addr) begin // check the PHY address
+                        #1 md_put_reg_data_in = 1'b1;
+                        `ifdef VERBOSE
+                        $fdisplay(phy_log, "   (%0t)(%m)MIIM - received correct PHY ADDRESS: %x", $time, phy_address);
+                        $fdisplay(phy_log, "   (%0t)(%m)MIIM - WRITING to register %x COMPLETED!", $time, reg_address);
+                        `endif
+                    end
+                    else begin
+                        `ifdef VERBOSE
+                        #1 $fdisplay(phy_log, "*W (%0t)(%m)MIIM - received different PHY ADDRESS: %x", $time, phy_address);
+                        $fdisplay(phy_log, "*W (%0t)(%m)MIIM - NO WRITING to register %x !", $time, reg_address);
+                        `endif
+                    end
+                end
+                else begin// read
+                    `ifdef VERBOSE
+                    if ((phy_address === `ETH_PHY_ADDR) || respond_to_all_phy_addr) // check the PHY address
+                        #1 $fdisplay(phy_log, "   (%0t)(%m)MIIM - READING from register %x COMPLETED!", 
+                                   $time, reg_address);
+                    else
+                        #1 $fdisplay(phy_log, "*W (%0t)(%m)MIIM - NO READING from register %x !", $time, reg_address);
+                    `endif
+                end
+            end
+    
+            // wait for one clock period
+            @(posedge mdc_i)
+              #1;
+        end 
     end
 
-    // register the op-code (rd / wr)
-    else if (md_transfer_cnt == 35)
-    begin
-      #4;
-      if (md_io_reg === 1'b1)
-      begin
-        #1 md_io_rd_wr = 1'b1;
-      end
-      else 
-      begin
-        #1 md_io_rd_wr = 1'b0;
-      end
+    //====================================================================
+    //
+    // PHY management (MIIM) REGISTERS
+    //
+    //====================================================================
+    //
+    //   Supported registers:
+    //
+    // Addr | Register Name
+    //--------------------------------------------------------------------
+    //   0  | Control reg.         |
+    //   1  | Status reg. #1       |--> normal operation
+    //   2  | PHY ID reg. 1        |
+    //   3  | PHY ID reg. 2        |
+    //   11 | PSE Control reg.     |
+    //   12 | PSE Status reg.      |
+    //   15 | Extended Status reg. |
+    //----------------------
+    // Addr | Data MEMORY          |-->  for testing
+    //
+    //--------------------------------------------------------------------
+    //
+    // Control register
+    //  reg            control_bit15;    //Reset, self clearing bit
+    //  reg    [14:10] control_bit14_10;
+    //  reg            control_bit9;     //Auto-Negotiation Enable, self clearing bit
+    //  reg    [8:0]   control_bit8_0;
+    // Status register
+    //  wire   [15:9]  status_bit15_9 = `SUPPORTED_SPEED_AND_PORT;
+    //  wire           status_bit8    = `EXTENDED_STATUS;
+    //  wire           status_bit7    = 1'b0; // reserved
+    //  reg    [6:0]   status_bit6_0  = `DEFAULT_STATUS;
+    // PHY ID register 1
+    //  wire   [15:0]  phy_id1        = `PHY_ID1;
+    // PHY ID register 2
+    //  wire   [15:0]  phy_id2        = {`PHY_ID2, `MAN_MODEL_NUM, `MAN_REVISION_NUM};
+    //--------------------------------------------------------------------
+    //
+    // Data MEMORY
+    //  reg    [15:0]  data_mem [0:31]; // 32 locations of 16-bit data width
+    //
+    //====================================================================
+    
+    //////////////////////////////////////////////////////////////////////
+    //
+    // PHY management (MIIM) REGISTER control
+    //
+    //////////////////////////////////////////////////////////////////////
+
+    // wholy writable registers for walking ONE's on data, phy and reg. addresses
+    reg     registers_addr_data_test_operation;
+
+    // Non writable status registers
+    initial begin // always
+        #1 
+        status_bit6_0[6] = no_preamble;
+        status_bit6_0[5] = 1'b0;
+        status_bit6_0[3] = 1'b1;
+        status_bit6_0[0] = 1'b1;
     end
 
-    else if (md_transfer_cnt == 36)
-    begin
-      #4;
-      if ((md_io_reg === 1'b0) && (md_io_rd_wr == 1'b1))
-      begin
-        #1 md_io_rd_wr = 1'b1; // reading from PHY registers
-        `ifdef VERBOSE
-        $fdisplay(phy_log, "   (%0t)(%m)MIIM - op-code for READING from registers", $time);
-        `endif
-      end
-      else if ((md_io_reg === 1'b1) && (md_io_rd_wr == 1'b0))
-      begin
-        #1 md_io_rd_wr = 1'b0; // writing to PHY registers
-        `ifdef VERBOSE
-        $fdisplay(phy_log, "   (%0t)(%m)MIIM - op-code for WRITING to registers", $time);
-        `endif
-      end
-      else
-      begin
-        // ERROR - wrong opcode !
-        `ifdef VERBOSE
-        #1 $fdisplay(phy_log, "*E (%0t)(%m)MIIM - wrong OP-CODE", $time);
-        `endif
-        #10 $stop;
-      end
-    // set the signal - get PHY address
-      begin
-        #1 md_get_phy_address = 1'b1;
-      end
+    always@(posedge mrx_clk) begin
+        status_bit6_0[4] <= #1 1'b0;
+        status_bit6_0[1] <= #1 1'b0;
     end
 
-    // reset the signal - get PHY address
-    else if (md_transfer_cnt == 41)
-    begin
-      #4 md_get_phy_address = 1'b0;
-    // set the signal - get register address
-      #1 md_get_reg_address = 1'b1;
+    initial begin
+        status_bit6_0[2] = 1'b1;
+        registers_addr_data_test_operation = 0;
     end
 
-    // reset the signal - get register address
-    // set the signal - put register data to output register
-    else if (md_transfer_cnt == 46)
-    begin
-      #4 md_get_reg_address = 1'b0;
-      #1 md_put_reg_data_out = 1'b1;
-    end
-
-    // reset the signal - put register data to output register
-    // set the signal - enable md_io as output when read
-    else if (md_transfer_cnt == 47)
-    begin
-      #4 md_put_reg_data_out = 1'b0;
-      if (md_io_rd_wr) //read
-      begin
-        if (md_io_reg !== 1'bz)
-        begin
-          // ERROR - turn around !
-          `ifdef VERBOSE
-          #1 $fdisplay(phy_log, "*E (%0t)(%m)MIIM - wrong turn-around cycle before reading data out", $time);
-          `endif
-          #10 $stop;
+    // Reading from a selected registers
+    always @(*) begin
+        if (registers_addr_data_test_operation) begin // test operation
+            if (md_put_reg_data_out) begin// read enable
+                register_bus_out = #1 data_mem[reg_address];
+            end
         end
-        if ((phy_address === `ETH_PHY_ADDR) || respond_to_all_phy_addr) // check the PHY address
-        begin
-          #1 md_io_enable = 1'b1;
-          `ifdef VERBOSE
-          $fdisplay(phy_log, "   (%0t)(%m)MIIM - received correct PHY ADDRESS: %x", $time, phy_address);
-          `endif
+        else begin // normal operation
+            if (md_put_reg_data_out) begin // read enable
+                case (reg_address)
+                    5'h0:    register_bus_out = #1 {control_bit15, control_bit14_10, control_bit9, control_bit8_0};
+                    5'h1:    register_bus_out = #1 {status_bit15_9, status_bit8, status_bit7, status_bit6_0};
+                    5'h2:    register_bus_out = #1 phy_id1;
+                    5'h3:    register_bus_out = #1 phy_id2;
+                    default: register_bus_out = #1 16'hDEAD;
+                endcase
+            end
         end
-        else
-        begin
-          `ifdef VERBOSE
-          #1 $fdisplay(phy_log, "*W (%0t)(%m)MIIM - received different PHY ADDRESS: %x", $time, phy_address);
-          `endif
-        end
-      end
-      else // write
-      begin
-        #1 md_io_enable = 1'b0;
-    // check turn around cycle when write on clock 47
-        if (md_io_reg !== 1'b1) 
-        begin
-          // ERROR - turn around !
-          `ifdef VERBOSE
-          #1 $fdisplay(phy_log, "*E (%0t)(%m)MIIM - wrong 1. turn-around cycle before writing data in", 
-                       $time);
-          `endif
-          #10 $stop;
-        end
-      end
     end
 
-    // set the signal - get register data in when write
-    else if (md_transfer_cnt == 48)
-    begin
-      #4;
-      if (!md_io_rd_wr) // write
-      begin
-        #1 md_get_reg_data_in = 1'b1;
-    // check turn around cycle when write on clock 48
-        if (md_io_reg !== 1'b0)
-        begin
-          // ERROR - turn around !
-          `ifdef VERBOSE
-          #1 $fdisplay(phy_log, "*E (%0t)(%m)MIIM - wrong 2. turn-around cycle before writing data in", 
-                       $time);
-          `endif
-          #10 $stop;
+    // Self clear control signals
+    reg    self_clear_d0;
+    reg    self_clear_d1;
+    reg    self_clear_d2;
+    reg    self_clear_d3;
+
+    // Self clearing control
+    always@(posedge mdc_i or negedge m_rst_n) begin
+        if (!m_rst_n) begin
+            self_clear_d0    <= #1 0;
+            self_clear_d1    <= #1 0;
+            self_clear_d2    <= #1 0;
+            self_clear_d3    <= #1 0;
         end
-      end
-      else // read
-      begin
-        #1 md_get_reg_data_in = 1'b0;
-      end
-    end
-
-    // reset the signal - enable md_io as output when read
-    // reset the signal - get register data in when write
-    // set the signal - put registered data in the register when write
-    else if (md_transfer_cnt == 64)
-    begin
-      #1 md_io_enable = 1'b0;
-      #4 md_get_reg_data_in = 1'b0;
-      if (!md_io_rd_wr) // write
-      begin
-        if ((phy_address === `ETH_PHY_ADDR) || respond_to_all_phy_addr) // check the PHY address
-        begin
-          #1 md_put_reg_data_in = 1'b1;
-          `ifdef VERBOSE
-          $fdisplay(phy_log, "   (%0t)(%m)MIIM - received correct PHY ADDRESS: %x", $time, phy_address);
-          $fdisplay(phy_log, "   (%0t)(%m)MIIM - WRITING to register %x COMPLETED!", $time, reg_address);
-          `endif
+        else begin
+            self_clear_d0    <= #1 md_put_reg_data_in;
+            self_clear_d1    <= #1 self_clear_d0;
+            self_clear_d2    <= #1 self_clear_d1;
+            self_clear_d3    <= #1 self_clear_d2;
         end
-        else
-        begin
-          `ifdef VERBOSE
-          #1 $fdisplay(phy_log, "*W (%0t)(%m)MIIM - received different PHY ADDRESS: %x", $time, phy_address);
-          $fdisplay(phy_log, "*W (%0t)(%m)MIIM - NO WRITING to register %x !", $time, reg_address);
-          `endif
+    end
+
+    // Writing to a selected register
+    always@(posedge mdc_i or negedge m_rst_n) begin
+        if ((!m_rst_n) || (control_bit15)) begin
+            if (!registers_addr_data_test_operation) begin // normal operation
+              control_bit15    <= #1 0;
+              control_bit14_10 <= #1 {1'b0, ((~speed_i[2]) & speed_i[1]), `AUTO_NEG_EN, 2'b0};
+              control_bit9     <= #1 0;
+              control_bit8_0   <= #1 {`DUPLEX_MODE, 1'b0, speed_i[2], 6'b0};
+            end
         end
-      end
-      else // read
-      begin
-        `ifdef VERBOSE
-        if ((phy_address === `ETH_PHY_ADDR) || respond_to_all_phy_addr) // check the PHY address
-          #1 $fdisplay(phy_log, "   (%0t)(%m)MIIM - READING from register %x COMPLETED!", 
-                       $time, reg_address);
-        else
-          #1 $fdisplay(phy_log, "*W (%0t)(%m)MIIM - NO READING from register %x !", $time, reg_address);
-        `endif
-      end
-    end
-
-    // wait for one clock period
-    @(posedge mdc_i)
-      #1;
-  end 
-end
-
-//====================================================================
-//
-// PHY management (MIIM) REGISTERS
-//
-//====================================================================
-//
-//   Supported registers (normal operation):
-//
-// Addr | Register Name 
-//--------------------------------------------------------------------
-//   0  | Control reg.  
-//   1  | Status reg. #1 
-//   2  | PHY ID reg. 1 
-//   3  | PHY ID reg. 2 
-//----------------------
-// Addr | Data MEMORY      |-->  for testing
-//
-//--------------------------------------------------------------------
-//
-// Control register
-//  reg            control_bit15; // self clearing bit
-//  reg    [14:10] control_bit14_10;
-//  reg            control_bit9; // self clearing bit
-//  reg    [8:0]   control_bit8_0;
-// Status register
-//  wire   [15:9]  status_bit15_9 = `SUPPORTED_SPEED_AND_PORT;
-//  wire           status_bit8    = `EXTENDED_STATUS;
-//  wire           status_bit7    = 1'b0; // reserved
-//  reg    [6:0]   status_bit6_0  = `DEFAULT_STATUS;
-// PHY ID register 1
-//  wire   [15:0]  phy_id1        = `PHY_ID1;
-// PHY ID register 2
-//  wire   [15:0]  phy_id2        = {`PHY_ID2, `MAN_MODEL_NUM, `MAN_REVISION_NUM};
-//--------------------------------------------------------------------
-//
-// Data MEMORY
-//  reg    [15:0]  data_mem [0:31]; // 32 locations of 16-bit data width
-//
-//====================================================================
-
-//////////////////////////////////////////////////////////////////////
-//
-// PHY management (MIIM) REGISTER control
-//
-//////////////////////////////////////////////////////////////////////
-
-// wholy writable registers for walking ONE's on data, phy and reg. addresses
-reg     registers_addr_data_test_operation;
-
-// Non writable status registers
-initial // always
-begin
-  #1 status_bit6_0[6] = no_preamble;
-  status_bit6_0[5] = 1'b0;
-  status_bit6_0[3] = 1'b1;
-  status_bit6_0[0] = 1'b1;
-end
-always@(posedge mrx_clk)
-begin
-  status_bit6_0[4] <= #1 1'b0;
-  status_bit6_0[1] <= #1 1'b0;
-end
-initial
-begin
-  status_bit6_0[2] = 1'b1;
-  registers_addr_data_test_operation = 0;
-end
-
-// Reading from a selected registers
-always@(reg_address or registers_addr_data_test_operation or md_put_reg_data_out or
-        control_bit15 or control_bit14_10 or control_bit9 or control_bit8_0 or 
-        status_bit15_9 or status_bit8 or status_bit7 or status_bit6_0 or
-        phy_id1 or phy_id2)
-begin
-  if (registers_addr_data_test_operation) // test operation
-  begin
-    if (md_put_reg_data_out) // read enable
-    begin
-      register_bus_out = #1 data_mem[reg_address];
-    end
-  end
-  else // normal operation
-  begin
-    if (md_put_reg_data_out) // read enable
-    begin
-      case (reg_address)
-      5'h0:    register_bus_out = #1 {control_bit15, control_bit14_10, control_bit9, control_bit8_0};
-      5'h1:    register_bus_out = #1 {status_bit15_9, status_bit8, status_bit7, status_bit6_0};
-      5'h2:    register_bus_out = #1 phy_id1;
-      5'h3:    register_bus_out = #1 phy_id2;
-      default: register_bus_out = #1 16'hDEAD;
-      endcase
-    end
-  end
-end
-
-// Self clear control signals
-reg    self_clear_d0;
-reg    self_clear_d1;
-reg    self_clear_d2;
-reg    self_clear_d3;
-// Self clearing control
-always@(posedge mdc_i or negedge m_rst_n)
-begin
-  if (!m_rst_n)
-  begin
-    self_clear_d0    <= #1 0;
-    self_clear_d1    <= #1 0;
-    self_clear_d2    <= #1 0;
-    self_clear_d3    <= #1 0;
-  end
-  else
-  begin
-    self_clear_d0    <= #1 md_put_reg_data_in;
-    self_clear_d1    <= #1 self_clear_d0;
-    self_clear_d2    <= #1 self_clear_d1;
-    self_clear_d3    <= #1 self_clear_d2;
-  end
-end
-
-// Writing to a selected register
-always@(posedge mdc_i or negedge m_rst_n)
-begin
-  if ((!m_rst_n) || (control_bit15))
-  begin
-    if (!registers_addr_data_test_operation) // normal operation
-    begin
-      control_bit15    <= #1 0;
-      control_bit14_10 <= #1 {1'b0, (`LED_CFG1 || `LED_CFG2), `LED_CFG1, 2'b0};
-      control_bit9     <= #1 0;
-      control_bit8_0   <= #1 {`LED_CFG3, 8'b0};
-    end
-  end
-  else
-  begin
-    if (registers_addr_data_test_operation) // test operation
-    begin
-      if (md_put_reg_data_in)
-      begin
-        data_mem[reg_address] <= #1 register_bus_in[15:0];
-      end
-    end
-    else // normal operation
-    begin
-      // bits that are normaly written
-      if (md_put_reg_data_in)
-      begin
-        case (reg_address)
-        5'h0: 
-        begin
-          control_bit14_10 <= #1 register_bus_in[14:10];
-          control_bit8_0   <= #1 register_bus_in[8:0];
+        else begin
+            if (registers_addr_data_test_operation) begin // test operation
+                if (md_put_reg_data_in) begin
+                    data_mem[reg_address] <= #1 register_bus_in[15:0];
+                end
+            end
+            else begin // normal operation
+                // bits that are normaly written
+                if (md_put_reg_data_in) begin
+                    case (reg_address)
+                      5'h0: 
+                      begin
+                          control_bit14_10 <= #1 register_bus_in[14:10];
+                          control_bit8_0   <= #1 register_bus_in[8:0];
+                      end
+                      default: ;
+                    endcase
+                end
+                // self cleared bits written
+                if ((md_put_reg_data_in) && (reg_address == 5'h0)) begin
+                    control_bit15 <= #1 register_bus_in[15];
+                    control_bit9  <= #1 register_bus_in[9];
+                end
+                else if (self_clear_d3) begin // self cleared bits cleared
+                    control_bit15 <= #1 1'b0;
+                    control_bit9  <= #1 1'b0;
+                end
+            end
         end
-        default:
-        begin
-        end
-        endcase
-      end
-      // self cleared bits written
-      if ((md_put_reg_data_in) && (reg_address == 5'h0))
-      begin
-        control_bit15 <= #1 register_bus_in[15];
-        control_bit9  <= #1 register_bus_in[9];
-      end
-      else if (self_clear_d3) // self cleared bits cleared
-      begin
-        control_bit15 <= #1 1'b0;
-        control_bit9  <= #1 1'b0;
-      end
     end
-  end
-end
 
 //////////////////////////////////////////////////////////////////////
 //

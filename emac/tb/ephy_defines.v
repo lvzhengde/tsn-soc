@@ -37,11 +37,10 @@
 // Address of PHY device 
 `define ETH_PHY_ADDR                 5'h01
 
-// LED/Configuration pins on PHY device - see the specification, page 26, table 8
-// Initial set of bits 13, 12 and 8 of Control Register
-`define LED_CFG1                     1'b0
-`define LED_CFG2                     1'b0
-`define LED_CFG3                     1'b1
+// see the specification, clause 22.2.4.1, table 22-7
+// Initial set of bits 13, 12, 8 and 6 of Control Register
+`define AUTO_NEG_EN                     1'b0
+`define DUPLEX_MODE                     1'b1
 
 // Supported speeds and physical ports - see the specification, page 67, table 41
 // Set bits 15 to 9 of Status Register

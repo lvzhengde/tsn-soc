@@ -159,6 +159,7 @@ module tb_emac();
     (
         // MAC miscellaneous signals
         .m_rst_n              (sys_rst_n),
+        .speed_i              (speed    ),
         // MAC TX signals
         .mgtx_clk             (mgtx_clk),    //from MAC to PHY
         .mtx_clk              (mtx_clk ),    //from PHY to MAC
