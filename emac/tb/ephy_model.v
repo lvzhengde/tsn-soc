@@ -675,607 +675,601 @@ module ephy_model  // Simplified PHY model
         end
     end
 
-//////////////////////////////////////////////////////////////////////
-//
-// PHY <-> MAC control (RX and TX clocks are at the begining)
-//
-//////////////////////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////////////////////
+    //
+    // PHY <-> MAC control (RX and TX clocks are at the begining)
+    //
+    //////////////////////////////////////////////////////////////////////
 
-// CARRIER SENSE & COLLISION
+    // CARRIER SENSE & COLLISION
+    
+    // MAC common signals
+    // Internal signals controling Carrier sense & Collision
+    // MAC common signals generated when appropriate transfer
+    reg             mcrs_rx;
+    reg             mcrs_tx;
+    // delayed mtx_en_i signal for generating delayed tx carrier sense
+    reg             mtxen_d1;
+    reg             mtxen_d2;
+    reg             mtxen_d3;
+    reg             mtxen_d4;
+    reg             mtxen_d5;
+    reg             mtxen_d6;
+    // collision signal set or reset within task for controling collision
+    reg             task_mcoll;
+    // carrier sense signal set or reset within task for controling carrier sense
+    reg             task_mcrs;
+    reg             task_mcrs_lost;
+    // do not generate collision in half duplex - not normal operation
+    reg             no_collision_in_half_duplex;
+    // generate collision in full-duplex mode also - not normal operation
+    reg             collision_in_full_duplex;
+    // do not generate carrier sense in half duplex mode - not normal operation
+    reg             no_carrier_sense_in_tx_half_duplex;
+    reg             no_carrier_sense_in_rx_half_duplex;
+    // generate carrier sense during TX in full-duplex mode also - not normal operation
+    reg             carrier_sense_in_tx_full_duplex;
+    // do not generate carrier sense during RX in full-duplex mode - not normal operation
+    reg             no_carrier_sense_in_rx_full_duplex;
+    // on RX: delay after carrier sense signal; on TX: carrier sense delayed (delay is one clock period)
+    reg             real_carrier_sense;
 
-// MAC common signals
-// Internal signals controling Carrier sense & Collision
-  // MAC common signals generated when appropriate transfer
-reg             mcrs_rx;
-reg             mcrs_tx;
-  // delayed mtx_en_i signal for generating delayed tx carrier sense
-reg             mtxen_d1;
-reg             mtxen_d2;
-reg             mtxen_d3;
-reg             mtxen_d4;
-reg             mtxen_d5;
-reg             mtxen_d6;
-  // collision signal set or rest within task for controling collision
-reg             task_mcoll;
-  // carrier sense signal set or rest within task for controling carrier sense
-reg             task_mcrs;
-reg             task_mcrs_lost;
-  // do not generate collision in half duplex - not normal operation
-reg             no_collision_in_half_duplex;
-  // generate collision in full-duplex mode also - not normal operation
-reg             collision_in_full_duplex;
-  // do not generate carrier sense in half duplex mode - not normal operation
-reg             no_carrier_sense_in_tx_half_duplex;
-reg             no_carrier_sense_in_rx_half_duplex;
-  // generate carrier sense during TX in full-duplex mode also - not normal operation
-reg             carrier_sense_in_tx_full_duplex;
-  // do not generate carrier sense during RX in full-duplex mode - not normal operation
-reg             no_carrier_sense_in_rx_full_duplex;
-  // on RX: delay after carrier sense signal; on TX: carrier sense delayed (delay is one clock period)
-reg             real_carrier_sense;
-
-initial
-begin
-  mcrs_rx = 0;
-  mcrs_tx = 0;
-  task_mcoll = 0;
-  task_mcrs = 0;
-  task_mcrs_lost = 0;
-  no_collision_in_half_duplex = 0;
-  collision_in_full_duplex = 0;
-  no_carrier_sense_in_tx_half_duplex = 0;
-  no_carrier_sense_in_rx_half_duplex = 0;
-  carrier_sense_in_tx_full_duplex = 0;
-  no_carrier_sense_in_rx_full_duplex = 0;
-  real_carrier_sense = 0;
-end
-
-// Collision
-always@(m_rst_n or control_bit8_0 or collision_in_full_duplex or 
-        mcrs_rx or mcrs_tx or task_mcoll or no_collision_in_half_duplex
-        )
-begin
-  if (!m_rst_n)
-    mcol_o = 0;
-  else
-  begin
-    if (control_bit8_0[8]) // full duplex
-    begin
-      if (collision_in_full_duplex) // collision is usually not asserted in full duplex
-      begin
-        mcol_o = ((mcrs_rx && mcrs_tx) || task_mcoll);
-        `ifdef VERBOSE
-        if (mcrs_rx && mcrs_tx)
-          $fdisplay(phy_log, "   (%0t)(%m) Collision set in FullDuplex!", $time);
-        if (task_mcoll)
-          $fdisplay(phy_log, "   (%0t)(%m) Collision set in FullDuplex from TASK!", $time);
-        `endif
-      end
-      else
-      begin
-        mcol_o = task_mcoll;
-        `ifdef VERBOSE
-        if (task_mcoll)
-          $fdisplay(phy_log, "   (%0t)(%m) Collision set in FullDuplex from TASK!", $time);
-        `endif
-      end
+    initial begin
+        mcrs_rx = 0;
+        mcrs_tx = 0;
+        task_mcoll = 0;
+        task_mcrs = 0;
+        task_mcrs_lost = 0;
+        no_collision_in_half_duplex = 0;
+        collision_in_full_duplex = 0;
+        no_carrier_sense_in_tx_half_duplex = 0;
+        no_carrier_sense_in_rx_half_duplex = 0;
+        carrier_sense_in_tx_full_duplex = 0;
+        no_carrier_sense_in_rx_full_duplex = 0;
+        real_carrier_sense = 0;
     end
-    else // half duplex
-    begin
-      mcol_o = ((mcrs_rx && mcrs_tx && !no_collision_in_half_duplex) || 
-                  task_mcoll);
-      `ifdef VERBOSE
-      if (mcrs_rx && mcrs_tx)
-        $fdisplay(phy_log, "   (%0t)(%m) Collision set in HalfDuplex!", $time);
-      if (task_mcoll)
-        $fdisplay(phy_log, "   (%0t)(%m) Collision set in HalfDuplex from TASK!", $time);
-      `endif
-    end
-  end
-end
 
-// Carrier sense
-always@(m_rst_n or control_bit8_0 or carrier_sense_in_tx_full_duplex or
-        no_carrier_sense_in_rx_full_duplex or
-        no_carrier_sense_in_tx_half_duplex or 
-        no_carrier_sense_in_rx_half_duplex or 
-        mcrs_rx or mcrs_tx or task_mcrs or task_mcrs_lost
-        )
-begin
-  if (!m_rst_n)
-    mcrs_o = 0;
-  else
-  begin
-    if (control_bit8_0[8]) // full duplex
-    begin
-      if (carrier_sense_in_tx_full_duplex) // carrier sense is usually not asserted during TX in full duplex
-        mcrs_o = ((mcrs_rx && !no_carrier_sense_in_rx_full_duplex) || 
-                   mcrs_tx || task_mcrs) && !task_mcrs_lost;
-      else
-        mcrs_o = ((mcrs_rx && !no_carrier_sense_in_rx_full_duplex) || 
-                   task_mcrs) && !task_mcrs_lost;
-    end
-    else // half duplex
-    begin
-      mcrs_o = ((mcrs_rx && !no_carrier_sense_in_rx_half_duplex) || 
-                (mcrs_tx && !no_carrier_sense_in_tx_half_duplex) || 
-                 task_mcrs) && !task_mcrs_lost;
-    end
-  end
-end
-
-// MAC TX CONTROL (RECEIVING AT PHY)
-
-// storage memory for TX data received from MAC
-reg     [7:0]  tx_mem [0:4194303]; // 4194304 locations (22 address lines) of 8-bit data width
-reg    [31:0]  tx_mem_addr_in; // address for storing to TX memory
-reg     [7:0]  tx_mem_data_in; // data for storing to TX memory
-reg    [31:0]  tx_cnt; // counts nibbles
-
-// control data of a TX packet for upper layer of testbench
-reg            tx_preamble_ok;
-reg            tx_sfd_ok;
-// if there is a drible nibble, then tx packet is not byte aligned!
-reg            tx_byte_aligned_ok;
-// complete length of TX packet (Bytes) received (without preamble and SFD)
-reg    [31:0]  tx_len;
-// complete length of TX packet (Bytes) received (without preamble and SFD) untill MTxErr signal was set first
-reg    [31:0]  tx_len_err;
-
-// TX control
-always@(posedge mtx_clk)
-begin
-  // storing data and basic checking of frame
-  if (!m_rst_n)
-  begin
-    tx_cnt <= 0;
-    tx_preamble_ok <= 0;
-    tx_sfd_ok <= 0;
-    tx_len <= 0;
-    tx_len_err <= 0;
-  end
-  else
-  begin
-    if (!mtx_en_i)
-    begin
-      tx_cnt <= 0;
-    end
-    else
-    begin
-      // tx nibble counter
-      tx_cnt <= tx_cnt + 1;
-      // set initial values and check first preamble nibble
-      if (tx_cnt == 0)
-      begin
-        `ifdef VERBOSE
-        $fdisplay(phy_log, "   (%0t)(%m) TX frame started with tx_en set!", $time);
-        `endif
-        if (mtxd_i == 4'h5)
-          tx_preamble_ok <= 1;
-        else
-          tx_preamble_ok <= 0;
-        tx_sfd_ok <= 0;
-        tx_byte_aligned_ok <= 0;
-        tx_len <= 0;
-        tx_len_err <= 0;
-//        tx_mem_addr_in <= 0;
-      end
-
-      // check preamble
-      if ((tx_cnt > 0) && (tx_cnt <= 13))
-      begin
-        if ((tx_preamble_ok != 1) || (mtxd_i != 4'h5))
-          tx_preamble_ok <= 0;
-      end
-      // check SFD
-      if (tx_cnt == 14)
-      begin
-        `ifdef VERBOSE
-        if (tx_preamble_ok == 1)
-          $fdisplay(phy_log, "   (%0t)(%m) TX frame preamble OK!", $time);
-        else
-          $fdisplay(phy_log, "*E (%0t)(%m) TX frame preamble NOT OK!", $time);
-        `endif
-        if (mtxd_i == 4'h5)
-          tx_sfd_ok <= 1;
-        else
-          tx_sfd_ok <= 0;
-      end
-      if (tx_cnt == 15)
-      begin
-        if ((tx_sfd_ok != 1) || (mtxd_i != 4'hD))
-          tx_sfd_ok <= 0;
-      end
-
-      // control for storing addresses, type/length, data and FCS to TX memory
-      if (tx_cnt > 15)
-      begin
-        if (tx_cnt == 16)
-        begin
-          `ifdef VERBOSE
-          if (tx_sfd_ok == 1)
-            $fdisplay(phy_log, "   (%0t)(%m) TX frame SFD OK!", $time);
-          else
-            $fdisplay(phy_log, "*E (%0t)(%m) TX frame SFD NOT OK!", $time);
-          `endif
+    // Collision
+    always @(*) begin
+        if (!m_rst_n)
+            mcol_o = 0;
+        else begin
+            if (control_bit8_0[8]) begin // full duplex
+                if (collision_in_full_duplex) begin // collision is usually not asserted in full duplex
+                    mcol_o = ((mcrs_rx && mcrs_tx) || task_mcoll);
+                    `ifdef VERBOSE
+                    if (mcrs_rx && mcrs_tx)
+                        $fdisplay(phy_log, "   (%0t)(%m) Collision set in FullDuplex!", $time);
+                    if (task_mcoll)
+                        $fdisplay(phy_log, "   (%0t)(%m) Collision set in FullDuplex from TASK!", $time);
+                    `endif
+                end
+                else begin
+                    mcol_o = task_mcoll;
+                    `ifdef VERBOSE
+                    if (task_mcoll)
+                        $fdisplay(phy_log, "   (%0t)(%m) Collision set in FullDuplex from TASK!", $time);
+                    `endif
+                end
+            end
+            else begin // half duplex
+                mcol_o = ((mcrs_rx && mcrs_tx && !no_collision_in_half_duplex) || 
+                            task_mcoll);
+                `ifdef VERBOSE
+                if (mcrs_rx && mcrs_tx)
+                    $fdisplay(phy_log, "   (%0t)(%m) Collision set in HalfDuplex!", $time);
+                if (task_mcoll)
+                    $fdisplay(phy_log, "   (%0t)(%m) Collision set in HalfDuplex from TASK!", $time);
+                `endif
+            end
         end
-
-        if (tx_cnt[0] == 0)
-        begin
-          tx_mem_data_in[3:0] <= mtxd_i; // storing LSB nibble
-          tx_byte_aligned_ok <= 0; // if transfer will stop after this, then there was drible nibble
-        end
-        else
-        begin
-          tx_mem[tx_mem_addr_in[21:0]] <= {mtxd_i, tx_mem_data_in[3:0]}; // storing data into tx memory
-          tx_len <= tx_len + 1; // enlarge byte length counter
-          tx_byte_aligned_ok <= 1; // if transfer will stop after this, then transfer is byte alligned
-          tx_mem_addr_in <= tx_mem_addr_in + 1'b1;
-        end
-
-        if (mtx_er_i)
-          tx_len_err <= tx_len;
-      end
     end
-  end
 
-  // generating CARRIER SENSE for TX with or without delay
-  if (!m_rst_n)
-  begin
-    mcrs_tx  <= 0;
-    mtxen_d1 <= 0;
-    mtxen_d2 <= 0;
-    mtxen_d3 <= 0;
-    mtxen_d4 <= 0;
-    mtxen_d5 <= 0;
-    mtxen_d6 <= 0;
-  end
-  else
-  begin
-    mtxen_d1 <= mtx_en_i;
-    mtxen_d2 <= mtxen_d1;
-    mtxen_d3 <= mtxen_d2;
-    mtxen_d4 <= mtxen_d3;
-    mtxen_d5 <= mtxen_d4;
-    mtxen_d6 <= mtxen_d5;
-    if (real_carrier_sense)
-      mcrs_tx  <= mtxen_d6;
-    else
-      mcrs_tx  <= mtx_en_i;
-  end
-end
+    // Carrier sense
+    always @(*) begin
+        if (!m_rst_n)
+            mcrs_o = 0;
+        else begin
+            if (control_bit8_0[8]) begin // full duplex
+                if (carrier_sense_in_tx_full_duplex) // carrier sense is usually not asserted during TX in full duplex
+                    mcrs_o = ((mcrs_rx && !no_carrier_sense_in_rx_full_duplex) || 
+                               mcrs_tx || task_mcrs) && !task_mcrs_lost;
+                else
+                    mcrs_o = ((mcrs_rx && !no_carrier_sense_in_rx_full_duplex) || 
+                               task_mcrs) && !task_mcrs_lost;
+            end
+            else begin // half duplex
+                mcrs_o = ((mcrs_rx && !no_carrier_sense_in_rx_half_duplex) || 
+                          (mcrs_tx && !no_carrier_sense_in_tx_half_duplex) || 
+                           task_mcrs) && !task_mcrs_lost;
+            end
+        end
+    end
 
-`ifdef VERBOSE
-reg             frame_started;
+    // MAC TX CONTROL (RECEIVING AT PHY)
+    
+    // storage memory for TX data received from MAC
+    reg     [7:0]  tx_mem [0:4194303]; // 4194304 locations (22 address lines) of 8-bit data width
+    reg    [31:0]  tx_mem_addr_in; // address for storing to TX memory
+    reg     [7:0]  tx_mem_data_in; // data for storing to TX memory
+    reg    [31:0]  tx_cnt;        // counts cycles of tx_en_i
 
-initial
-begin
-  frame_started = 0;
-end
-always@(posedge mtx_en_i)
-begin
-  frame_started <= 1;
-end
-always@(negedge mtx_en_i)
-begin
-  if (frame_started)
-  begin
-    $fdisplay(phy_log, "   (%0t)(%m) TX frame ended with tx_en reset!", $time);
-    frame_started <= 0;
-  end
-end
+    // control data of a TX packet for upper layer of testbench
+    reg            tx_preamble_ok;
+    reg            tx_sfd_ok;
+    // if there is a drible nibble, then tx packet is not byte aligned!
+    reg            tx_byte_aligned_ok;
+    // complete length of TX packet (Bytes) received (without preamble and SFD)
+    reg    [31:0]  tx_len;
+    // complete length of TX packet (Bytes) received (without preamble and SFD) untill MTxErr signal was set first
+    reg    [31:0]  tx_len_err;
 
-always@(posedge mrx_er_o)
-begin
-  $fdisplay(phy_log, "   (%0t)(%m) RX frame ERROR signal was set!", $time);
-end
-`endif
+    //select TX clock
+    wire tx_clk = (eth_speed == 2'b10) ? mgtx_clk : mtx_clk;
 
-//////////////////////////////////////////////////////////////////////
-// 
-// Tasks for PHY <-> MAC transactions
-// 
-//////////////////////////////////////////////////////////////////////
+    // TX control
+    always @(posedge tx_clk) begin
+        // storing data and basic checking of frame
+        if (!m_rst_n) begin
+            tx_cnt   <= 0;
+            tx_preamble_ok <= 0;
+            tx_sfd_ok      <= 0;
+            tx_len         <= 0;
+            tx_len_err     <= 0;
+        end
+        else begin
+            if (!mtx_en_i) begin
+                tx_cnt  <= 0;
+            end
+            else begin
+                tx_cnt <= tx_cnt + 1;
 
-initial
-begin
-  tx_mem_addr_in = 0;
-end
+                // set initial values and check first preamble nibble/octet
+                if (tx_cnt == 0) begin
+                    `ifdef VERBOSE
+                    $fdisplay(phy_log, "   (%0t)(%m) TX frame started with tx_en set!", $time);
+                    `endif
 
-// setting the address of tx_mem, to set the starting point of tx packet
-task set_tx_mem_addr;
-  input [31:0] tx_mem_address;
-begin
-  #1 tx_mem_addr_in = tx_mem_address;
-end
-endtask // set_tx_mem_addr
+                    if (eth_speed == 2'b10 && mtxd_i[7:0] == 4'h55)     //1000Mbps
+                      tx_preamble_ok <= 1;
+                    else if (eth_speed != 2'b10 && mtxd_i[3:0] == 4'h5) //100/10Mbps
+                      tx_preamble_ok <= 1;
+                    else
+                      tx_preamble_ok <= 0;
 
-// storage memory for RX data to be transmited to MAC
-reg     [7:0]  rx_mem [0:4194303]; // 4194304 locations (22 address lines) of 8-bit data width
+                    tx_sfd_ok <= 0;
+                    tx_byte_aligned_ok <= 0;
+                    tx_len <= 0;
+                    tx_len_err <= 0;
+                    // tx_mem_addr_in <= 0;
+                end
+    
+                // check preamble
+                if (eth_speed == 2'b10 && (tx_cnt > 0) && (tx_cnt <= 6)) begin        //1000Mbps
+                    if ((tx_preamble_ok != 1) || (mtxd_i[7:0] != 4'h55))
+                        tx_preamble_ok <= 0;
+                end
+                else if (eth_speed != 2'b10 && (tx_cnt > 0) && (tx_cnt <= 13)) begin   //100/10Mbps
+                    if ((tx_preamble_ok != 1) || (mtxd_i[3:0] != 4'h5))
+                        tx_preamble_ok <= 0;
+                end
 
-// MAC RX signals
-initial
-begin
-  mrxd_o = 0;
-  mrx_dv_o = 0;
-  mrx_er_o = 0;
-  mcrs_rx = 0;
-end
+                // check SFD
+                if (eth_speed = 2'b10) begin    //1000Mbps
+                    if( tx_cnt == 7) begin
+                        `ifdef VERBOSE
+                        if (tx_preamble_ok == 1)
+                            $fdisplay(phy_log, "   (%0t)(%m) TX frame preamble OK!", $time);
+                        else
+                            $fdisplay(phy_log, "*E (%0t)(%m) TX frame preamble NOT OK!", $time);
+                        `endif
 
-task send_rx_packet;
-  input  [(8*8)-1:0] preamble_data; // preamble data to be sent - correct is 64'h0055_5555_5555_5555
-  input   [3:0] preamble_len; // length of preamble in bytes - max is 4'h8, correct is 4'h7 
-  input   [7:0] sfd_data; // SFD data to be sent - correct is 8'hD5
-  input  [31:0] start_addr; // start address
-  input  [31:0] len; // length of frame in Bytes (without preamble and SFD)
-  input         plus_drible_nibble; // if length is longer for one nibble
-  integer       rx_cnt;
-  reg    [31:0] rx_mem_addr_in; // address for reading from RX memory       
-  reg     [7:0] rx_mem_data_out; // data for reading from RX memory
-begin
-      @(posedge mrx_clk);
-      // generating CARRIER SENSE for TX with or without delay
-      if (real_carrier_sense)
+                        if (mtxd_i[7:0] == 4'hd5)
+                            tx_sfd_ok <= 1;
+                        else
+                            tx_sfd_ok <= 0;
+                    end
+                end
+                else begin  //100/10Mbps
+                    if (tx_cnt == 14) begin
+                        `ifdef VERBOSE
+                        if (tx_preamble_ok == 1)
+                            $fdisplay(phy_log, "   (%0t)(%m) TX frame preamble OK!", $time);
+                        else
+                            $fdisplay(phy_log, "*E (%0t)(%m) TX frame preamble NOT OK!", $time);
+                        `endif
+                        if (mtxd_i[3:0] == 4'h5)
+                            tx_sfd_ok <= 1;
+                        else
+                            tx_sfd_ok <= 0;
+                    end
+                    if (tx_cnt == 15) begin
+                        if ((tx_sfd_ok != 1) || (mtxd_i[3:0] != 4'hD))
+                            tx_sfd_ok <= 0;
+                    end
+                end
+    
+                // control for storing addresses, type/length, data and FCS to TX memory
+                if (eth_speed == 2'b10) begin   //1000Mbps
+                    if (tx_cnt > 7) begin
+                        if (tx_cnt == 8) begin
+                            `ifdef VERBOSE
+                            if (tx_sfd_ok == 1)
+                                $fdisplay(phy_log, "   (%0t)(%m) TX frame SFD OK!", $time);
+                            else
+                                $fdisplay(phy_log, "*E (%0t)(%m) TX frame SFD NOT OK!", $time);
+                            `endif
+                        end
+
+                    tx_byte_aligned_ok <= 1; // always ok for GMII
+    
+                    tx_mem[tx_mem_addr_in[21:0]] <= mtxd_i[7:0]; // storing data into tx memory
+                    tx_len <= tx_len + 1; // enlarge byte length counter
+                    tx_mem_addr_in <= tx_mem_addr_in + 1'b1;
+    
+                    if (mtx_er_i)
+                        tx_len_err <= tx_len;
+                end
+                else begin //100/10Mbps
+                    if (tx_cnt > 15) begin
+                        if (tx_cnt == 16) begin
+                            `ifdef VERBOSE
+                            if (tx_sfd_ok == 1)
+                                $fdisplay(phy_log, "   (%0t)(%m) TX frame SFD OK!", $time);
+                            else
+                                $fdisplay(phy_log, "*E (%0t)(%m) TX frame SFD NOT OK!", $time);
+                            `endif
+                        end
+    
+                        if (tx_cnt[0] == 0) begin
+                            tx_mem_data_in[3:0] <= mtxd_i; // storing LSB nibble
+                            tx_byte_aligned_ok <= 0; // if transfer will stop after this, then there was drible nibble
+                        end
+                        else begin
+                            tx_mem[tx_mem_addr_in[21:0]] <= {mtxd_i, tx_mem_data_in[3:0]}; // storing data into tx memory
+                            tx_len <= tx_len + 1; // enlarge byte length counter
+                            tx_byte_aligned_ok <= 1; // if transfer will stop after this, then transfer is byte alligned
+                            tx_mem_addr_in <= tx_mem_addr_in + 1'b1;
+                        end
+    
+                        if (mtx_er_i)
+                            tx_len_err <= tx_len;
+                    end
+                end  //100/10Mbps
+            end //else tx_en
+        end  //else if
+    
+        // generating CARRIER SENSE for TX with or without delay
+        if (!m_rst_n) begin
+            mcrs_tx  <= 0;
+            mtxen_d1 <= 0;
+            mtxen_d2 <= 0;
+            mtxen_d3 <= 0;
+            mtxen_d4 <= 0;
+            mtxen_d5 <= 0;
+            mtxen_d6 <= 0;
+        end
+        else begin
+            mtxen_d1 <= mtx_en_i;
+            mtxen_d2 <= mtxen_d1;
+            mtxen_d3 <= mtxen_d2;
+            mtxen_d4 <= mtxen_d3;
+            mtxen_d5 <= mtxen_d4;
+            mtxen_d6 <= mtxen_d5;
+
+            if (real_carrier_sense)
+              mcrs_tx  <= mtxen_d6;
+            else
+              mcrs_tx  <= mtx_en_i;
+        end
+    end
+
+    `ifdef VERBOSE
+    reg             frame_started;
+
+    initial begin
+        frame_started = 0;
+    end
+
+    always@(posedge mtx_en_i) begin
+        frame_started <= 1;
+    end
+
+    always@(negedge mtx_en_i) begin
+        if (frame_started) begin
+            $fdisplay(phy_log, "   (%0t)(%m) TX frame ended with tx_en reset!", $time);
+            frame_started <= 0;
+        end
+    end
+    
+    always@(posedge mrx_er_o) begin
+        $fdisplay(phy_log, "   (%0t)(%m) RX frame ERROR signal was set!", $time);
+    end
+    `endif
+
+    //////////////////////////////////////////////////////////////////////
+    // 
+    // Tasks for PHY <-> MAC transactions
+    // 
+    //////////////////////////////////////////////////////////////////////
+
+    initial begin
+        tx_mem_addr_in = 0;
+    end
+
+    // setting the address of tx_mem, to set the starting point of tx packet
+    task set_tx_mem_addr;
+        input [31:0] tx_mem_address;
+    begin
+        #1 tx_mem_addr_in = tx_mem_address;
+    end
+    endtask // set_tx_mem_addr
+
+    // storage memory for RX data to be transmited to MAC
+    reg     [7:0]  rx_mem [0:4194303]; // 4194304 locations (22 address lines) of 8-bit data width
+
+    // MAC RX signals
+    initial begin
+        mrxd_o = 0;
+        mrx_dv_o = 0;
+        mrx_er_o = 0;
+        mcrs_rx = 0;
+    end
+
+    task send_rx_packet;
+        input  [(8*8)-1:0] preamble_data; // preamble data to be sent - correct is 64'h0055_5555_5555_5555
+        input   [3:0] preamble_len; // length of preamble in bytes - max is 4'h8, correct is 4'h7 
+        input   [7:0] sfd_data; // SFD data to be sent - correct is 8'hD5
+        input  [31:0] start_addr; // start address
+        input  [31:0] len; // length of frame in Bytes (without preamble and SFD)
+        input         plus_drible_nibble; // if length is longer for one nibble
+        integer       rx_cnt;
+        reg    [31:0] rx_mem_addr_in; // address for reading from RX memory       
+        reg     [7:0] rx_mem_data_out; // data for reading from RX memory
+    begin
+        @(posedge mrx_clk);
+
+        // generating CARRIER SENSE for TX with or without delay
+        if (real_carrier_sense)
+          #1 mcrs_rx = 1;
+        else
+          #1 mcrs_rx = 0;
+
+        @(posedge mrx_clk);
+
         #1 mcrs_rx = 1;
-      else
+        #1 mrx_dv_o = 1;
+        `ifdef VERBOSE
+        $fdisplay(phy_log, "   (%0t)(%m) RX frame started with rx_dv set!", $time);
+        `endif
+        // set initial rx memory address
+        rx_mem_addr_in = start_addr;
+       
+        // send preamble
+        if(eth_speed == 2'b10)  begin  //1000Mbps
+            for (rx_cnt = 0; (rx_cnt < preamble_len) && (rx_cnt < 8); rx_cnt = rx_cnt + 1)
+            begin
+                #1 mrxd_o = preamble_data[7:0];
+                #1 preamble_data = preamble_data >> 8;
+                @(posedge mrx_clk);
+            end
+        end
+        else begin    //100/10Mbps
+            for (rx_cnt = 0; (rx_cnt < (preamble_len << 1)) && (rx_cnt < 16); rx_cnt = rx_cnt + 1)
+            begin
+                #1 mrxd_o = preamble_data[3:0];
+                #1 preamble_data = preamble_data >> 4;
+                @(posedge mrx_clk);
+            end
+        end
+       
+        // send SFD
+        if(eth_speed == 2'b10)  begin  //1000Mbps
+            #1 mrxd_o = sfd_data[7:0];
+            @(posedge mrx_clk);
+        end
+        else begin  //100/10Mbps
+            for (rx_cnt = 0; rx_cnt < 2; rx_cnt = rx_cnt + 1)
+            begin
+                #1 mrxd_o = sfd_data[3:0];
+                #1 sfd_data = sfd_data >> 4;
+                @(posedge mrx_clk);
+            end
+        end
+
+        `ifdef VERBOSE
+        $fdisplay(phy_log, "   (%0t)(%m) RX frame preamble and SFD sent!", $time);
+        `endif
+
+        // send packet's addresses, type/length, data and FCS
+        if(eth_speed == 2'b10)  begin  //1000Mbps
+            for (rx_cnt = 0; rx_cnt < len; rx_cnt = rx_cnt + 1)
+            begin
+                #1;
+                rx_mem_data_out = rx_mem[rx_mem_addr_in[21:0]];
+                mrxd_o = rx_mem_data_out[7:0];
+                @(posedge mrx_clk);
+                #1;
+            end
+        end
+        else begin  //100/10Mbps
+            for (rx_cnt = 0; rx_cnt < len; rx_cnt = rx_cnt + 1)
+            begin
+                #1;
+                rx_mem_data_out = rx_mem[rx_mem_addr_in[21:0]];
+                mrxd_o = rx_mem_data_out[3:0];
+                @(posedge mrx_clk);
+                #1;
+                mrxd_o = rx_mem_data_out[7:4];
+                rx_mem_addr_in = rx_mem_addr_in + 1;
+                @(posedge mrx_clk);
+                #1;
+            end
+            if (plus_drible_nibble)
+            begin
+                rx_mem_data_out = rx_mem[rx_mem_addr_in[21:0]];
+                mrxd_o = rx_mem_data_out[3:0];
+                @(posedge mrx_clk);
+            end
+        end
+
+        `ifdef VERBOSE
+        $fdisplay(phy_log, "   (%0t)(%m) RX frame addresses, type/length, data and FCS sent!", $time);
+        `endif
         #1 mcrs_rx = 0;
-      @(posedge mrx_clk);
-      #1 mcrs_rx = 1;
-      #1 mrx_dv_o = 1;
-      `ifdef VERBOSE
-      $fdisplay(phy_log, "   (%0t)(%m) RX frame started with rx_dv set!", $time);
-      `endif
-      // set initial rx memory address
-      rx_mem_addr_in = start_addr;
-    
-      // send preamble
-      for (rx_cnt = 0; (rx_cnt < (preamble_len << 1)) && (rx_cnt < 16); rx_cnt = rx_cnt + 1)
-      begin
-        #1 mrxd_o = preamble_data[3:0];
-        #1 preamble_data = preamble_data >> 4;
-        @(posedge mrx_clk);
-      end
-    
-      // send SFD
-      for (rx_cnt = 0; rx_cnt < 2; rx_cnt = rx_cnt + 1)
-      begin
-        #1 mrxd_o = sfd_data[3:0];
-        #1 sfd_data = sfd_data >> 4;
-        @(posedge mrx_clk);
-      end
-      `ifdef VERBOSE
-      $fdisplay(phy_log, "   (%0t)(%m) RX frame preamble and SFD sent!", $time);
-      `endif
-      // send packet's addresses, type/length, data and FCS
-      for (rx_cnt = 0; rx_cnt < len; rx_cnt = rx_cnt + 1)
-      begin
-        #1;
-        rx_mem_data_out = rx_mem[rx_mem_addr_in[21:0]];
-        mrxd_o = rx_mem_data_out[3:0];
-        @(posedge mrx_clk);
-        #1;
-        mrxd_o = rx_mem_data_out[7:4];
-        rx_mem_addr_in = rx_mem_addr_in + 1;
-        @(posedge mrx_clk);
-        #1;
-      end
-      if (plus_drible_nibble)
-      begin
-        rx_mem_data_out = rx_mem[rx_mem_addr_in[21:0]];
-        mrxd_o = rx_mem_data_out[3:0];
-        @(posedge mrx_clk);
-      end
-      `ifdef VERBOSE
-      $fdisplay(phy_log, "   (%0t)(%m) RX frame addresses, type/length, data and FCS sent!", $time);
-      `endif
-      #1 mcrs_rx = 0;
-      #1 mrx_dv_o = 0;
-      @(posedge mrx_clk);
-      `ifdef VERBOSE
-      $fdisplay(phy_log, "   (%0t)(%m) RX frame ended with rx_dv reset!", $time);
-      `endif
-end
-endtask // send_rx_packet
+        #1 mrx_dv_o = 0;
 
-
-
-task GetDataOnMRxD;
-  input [15:0] Len;
-  input [31:0] TransferType;
-  integer tt;
-
-  begin
-    @ (posedge mrx_clk);
-    #1 mrx_dv_o=1'b1;
-
-    for(tt=0; tt<15; tt=tt+1)
-    begin
-      mrxd_o=4'h5;              // preamble
-      @ (posedge mrx_clk);
-      #1;
+        @(posedge mrx_clk);
+        `ifdef VERBOSE
+        $fdisplay(phy_log, "   (%0t)(%m) RX frame ended with rx_dv reset!", $time);
+        `endif
     end
+    endtask // send_rx_packet
 
-    mrxd_o=4'hd;                // SFD
-
-    for(tt=1; tt<(Len+1); tt=tt+1)
+    //////////////////////////////////////////////////////////////////////
+    //
+    // Tastks for controling PHY statuses and rx error
+    //
+    //////////////////////////////////////////////////////////////////////
+    
+    // Link control tasks
+    task link_up_down;
+        input   test_op;
     begin
-      @ (posedge mrx_clk);
-      #1;
-      if(TransferType == `UNICAST_XFR && tt == 1)
-        mrxd_o = 4'h0;   // Unicast transfer
-      else if(TransferType == `BROADCAST_XFR && tt < 7)
-        mrxd_o = 4'hf;
-      else
-        mrxd_o = tt[3:0]; // Multicast transfer
-
-      @ (posedge mrx_clk);
-      #1;
-
-      if(TransferType == `BROADCAST_XFR && tt == 6)
-        mrxd_o = 4'he;
-      else
-
-      if(TransferType == `BROADCAST_XFR && tt < 7)
-        mrxd_o = 4'hf;
-      else
-        mrxd_o = tt[7:4];
+        #1 status_bit6_0[2] = test_op; // 1 - link up; 0 - link down
     end
+    endtask
 
-    @ (posedge mrx_clk);
-    #1;
-    mrx_dv_o = 1'b0;
-  end
-endtask // GetDataOnMRxD
+    // RX error
+    task rx_err;
+        input   test_op;
+    begin
+        #1 mrx_er_o = test_op; // 1 - RX error set; 0 - RX error reset
+    end
+    endtask
 
+    //////////////////////////////////////////////////////////////////////
+    //
+    // Tastks for controling PHY carrier sense and collision
+    //
+    //////////////////////////////////////////////////////////////////////
 
-//////////////////////////////////////////////////////////////////////
-//
-// Tastks for controling PHY statuses and rx error
-//
-//////////////////////////////////////////////////////////////////////
+    // Collision
+    task collision;
+        input   test_op;
+    begin
+        #1 task_mcoll = test_op;
+    end
+    endtask
 
-// Link control tasks
-task link_up_down;
-  input   test_op;
-begin
-  #1 status_bit6_0[2] = test_op; // 1 - link up; 0 - link down
-end
-endtask
+    // Carrier sense
+    task carrier_sense;
+        input   test_op;
+    begin
+        #1 task_mcrs = test_op;
+    end
+    endtask
 
-// RX error
-task rx_err;
-  input   test_op;
-begin
-  #1 mrx_er_o = test_op; // 1 - RX error set; 0 - RX error reset
-end
-endtask
+    // Carrier sense lost - higher priority than Carrier sense task
+    task carrier_sense_lost;
+        input   test_op;
+    begin
+        #1 task_mcrs_lost = test_op;
+    end
+    endtask
 
-//////////////////////////////////////////////////////////////////////
-//
-// Tastks for controling PHY carrier sense and collision
-//
-//////////////////////////////////////////////////////////////////////
+    // No collision detection in half duplex
+    task no_collision_hd_detect;
+        input   test_op;
+    begin
+        #1 no_collision_in_half_duplex = test_op;
+    end
+    endtask
 
-// Collision
-task collision;
-  input   test_op;
-begin
-  #1 task_mcoll = test_op;
-end
-endtask
+    // Collision detection in full duplex also
+    task collision_fd_detect;
+        input   test_op;
+    begin
+        #1 collision_in_full_duplex = test_op;
+    end
+    endtask
 
-// Carrier sense
-task carrier_sense;
-  input   test_op;
-begin
-  #1 task_mcrs = test_op;
-end
-endtask
+    // No carrier sense detection at TX in half duplex
+    task no_carrier_sense_tx_hd_detect;
+        input   test_op;
+    begin
+        #1 no_carrier_sense_in_tx_half_duplex = test_op;
+    end
+    endtask
 
-// Carrier sense lost - higher priority than Carrier sense task
-task carrier_sense_lost;
-  input   test_op;
-begin
-  #1 task_mcrs_lost = test_op;
-end
-endtask
+    // No carrier sense detection at RX in half duplex
+    task no_carrier_sense_rx_hd_detect;
+        input   test_op;
+    begin
+        #1 no_carrier_sense_in_rx_half_duplex = test_op;
+    end
+    endtask
 
-// No collision detection in half duplex
-task no_collision_hd_detect;
-  input   test_op;
-begin
-  #1 no_collision_in_half_duplex = test_op;
-end
-endtask
+    // Carrier sense detection at TX in full duplex also
+    task carrier_sense_tx_fd_detect;
+        input   test_op;
+    begin
+        #1 carrier_sense_in_tx_full_duplex = test_op;
+    end
+    endtask
 
-// Collision detection in full duplex also
-task collision_fd_detect;
-  input   test_op;
-begin
-  #1 collision_in_full_duplex = test_op;
-end
-endtask
+    // No carrier sense detection at RX in full duplex
+    task no_carrier_sense_rx_fd_detect;
+        input   test_op;
+    begin
+        #1 no_carrier_sense_in_rx_full_duplex = test_op;
+    end
+    endtask
 
-// No carrier sense detection at TX in half duplex
-task no_carrier_sense_tx_hd_detect;
-  input   test_op;
-begin
-  #1 no_carrier_sense_in_tx_half_duplex = test_op;
-end
-endtask
+    // Set real delay on carrier sense signal (and therefor collision signal)
+    task carrier_sense_real_delay;
+        input   test_op;
+    begin
+        #1 real_carrier_sense = test_op;
+    end
+    endtask
 
-// No carrier sense detection at RX in half duplex
-task no_carrier_sense_rx_hd_detect;
-  input   test_op;
-begin
-  #1 no_carrier_sense_in_rx_half_duplex = test_op;
-end
-endtask
+    //////////////////////////////////////////////////////////////////////
+    //
+    // Tastks for controling PHY management test operation
+    //
+    //////////////////////////////////////////////////////////////////////
 
-// Carrier sense detection at TX in full duplex also
-task carrier_sense_tx_fd_detect;
-  input   test_op;
-begin
-  #1 carrier_sense_in_tx_full_duplex = test_op;
-end
-endtask
+    // Set registers to test operation and respond to all phy addresses
+    task test_regs;
+        input   test_op;
+    begin
+        #1 registers_addr_data_test_operation = test_op;
+        respond_to_all_phy_addr = test_op;
+    end
+    endtask
 
-// No carrier sense detection at RX in full duplex
-task no_carrier_sense_rx_fd_detect;
-  input   test_op;
-begin
-  #1 no_carrier_sense_in_rx_full_duplex = test_op;
-end
-endtask
+    // Clears data memory for testing the MIIM
+    task clear_test_regs;
+        integer i;
+    begin
+        for (i = 0; i < 32; i = i + 1)
+        begin
+            #1 data_mem[i] = 16'h0;
+        end
+    end
+    endtask
 
-// Set real delay on carrier sense signal (and therefor collision signal)
-task carrier_sense_real_delay;
-  input   test_op;
-begin
-  #1 real_carrier_sense = test_op;
-end
-endtask
-
-//////////////////////////////////////////////////////////////////////
-//
-// Tastks for controling PHY management test operation
-//
-//////////////////////////////////////////////////////////////////////
-
-// Set registers to test operation and respond to all phy addresses
-task test_regs;
-  input   test_op;
-begin
-  #1 registers_addr_data_test_operation = test_op;
-  respond_to_all_phy_addr = test_op;
-end
-endtask
-
-// Clears data memory for testing the MII
-task clear_test_regs;
-  integer i;
-begin
-  for (i = 0; i < 32; i = i + 1)
-  begin
-    #1 data_mem[i] = 16'h0;
-  end
-end
-endtask
-
-// Accept frames with preamble suppresed
-task preamble_suppresed;
-  input   test_op;
-begin
-  #1 no_preamble = test_op;
-  md_transfer_cnt_reset = 1'b1;
-  @(posedge mdc_i);
-  #1 md_transfer_cnt_reset = 1'b0;
-end
-endtask
-
-
-
-
+    // Accept frames with preamble suppresed for MIIM
+    task preamble_suppresed;
+        input   test_op;
+    begin
+        #1 no_preamble = test_op;
+        md_transfer_cnt_reset = 1'b1;
+        @(posedge mdc_i);
+        #1 md_transfer_cnt_reset = 1'b0;
+    end
+    endtask
 
 endmodule
 
