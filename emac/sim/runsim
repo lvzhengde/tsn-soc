@@ -1,0 +1,27 @@
+#!/bin/bash  
+
+trap 'kill $!; exit' INT #terminate script running when press CTRL+C 
+
+#set the number of arguments
+ARG_NUM=0
+
+#check arguments
+if [ $# -ne $ARG_NUM ]; then
+  echo -e "\nargument number error: $#"
+  echo "the number of arguments should be :$ARG_NUM"
+  echo "usage: ./runsim "
+  exit 1
+fi
+
+#define variables
+#note: remove space around '='
+elfFile=emac 
+waveFile=emac
+
+#compile and run
+make clean
+mkdir log
+iverilog -o ${elfFile}.out -s sim_emac -f comp.f 
+vvp -n ${elfFile}.out -fst
+#gtkwave ${waveFile}.fst
+

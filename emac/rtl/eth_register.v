@@ -48,7 +48,7 @@ module eth_register
     output reg [WIDTH-1:0] data_o
 );
 
-    always @(posedge clk negedge rst_n) begin
+    always @(posedge clk or negedge rst_n) begin
         if(!rst_n)
             data_o <= RESET_VALUE;
         else if(sync_reset_i)

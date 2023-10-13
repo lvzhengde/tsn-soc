@@ -135,7 +135,7 @@ module ephy_model  // Simplified PHY model
 
     always @(*) begin
         eth_speed = 2'b00;
-        if (!AUTO_NEG_EN) begin
+        if (!control_bit14_10[12]) begin  //Not Auto-Negotiation Enabled
             if (speed_i[2])
                 eth_speed = 2'b10;
             else if (speed_i[1])
@@ -575,19 +575,14 @@ module ephy_model  // Simplified PHY model
 
     // Non writable status registers
     initial begin // always
-        #1 
         status_bit6_0[6] = no_preamble;
         status_bit6_0[5] = 1'b0;
         status_bit6_0[3] = 1'b1;
         status_bit6_0[0] = 1'b1;
-    end
 
-    always@(posedge mrx_clk) begin
-        status_bit6_0[4] <= #1 1'b0;
-        status_bit6_0[1] <= #1 1'b0;
-    end
+        status_bit6_0[4] = 1'b0;
+        status_bit6_0[1] = 1'b0;
 
-    initial begin
         status_bit6_0[2] = 1'b1;
         registers_addr_data_test_operation = 0;
     end
@@ -830,7 +825,7 @@ module ephy_model  // Simplified PHY model
                     $fdisplay(phy_log, "   (%0t)(%m) TX frame started with tx_en set!", $time);
                     `endif
 
-                    if (eth_speed == 2'b10 && mtxd_i[7:0] == 4'h55)     //1000Mbps
+                    if (eth_speed == 2'b10 && mtxd_i[7:0] == 8'h55)     //1000Mbps
                       tx_preamble_ok <= 1;
                     else if (eth_speed != 2'b10 && mtxd_i[3:0] == 4'h5) //100/10Mbps
                       tx_preamble_ok <= 1;
@@ -846,7 +841,7 @@ module ephy_model  // Simplified PHY model
     
                 // check preamble
                 if (eth_speed == 2'b10 && (tx_cnt > 0) && (tx_cnt <= 6)) begin        //1000Mbps
-                    if ((tx_preamble_ok != 1) || (mtxd_i[7:0] != 4'h55))
+                    if ((tx_preamble_ok != 1) || (mtxd_i[7:0] != 8'h55))
                         tx_preamble_ok <= 0;
                 end
                 else if (eth_speed != 2'b10 && (tx_cnt > 0) && (tx_cnt <= 13)) begin   //100/10Mbps
@@ -855,7 +850,7 @@ module ephy_model  // Simplified PHY model
                 end
 
                 // check SFD
-                if (eth_speed = 2'b10) begin    //1000Mbps
+                if (eth_speed == 2'b10) begin    //1000Mbps
                     if( tx_cnt == 7) begin
                         `ifdef VERBOSE
                         if (tx_preamble_ok == 1)
@@ -864,7 +859,7 @@ module ephy_model  // Simplified PHY model
                             $fdisplay(phy_log, "*E (%0t)(%m) TX frame preamble NOT OK!", $time);
                         `endif
 
-                        if (mtxd_i[7:0] == 4'hd5)
+                        if (mtxd_i[7:0] == 8'hd5)
                             tx_sfd_ok <= 1;
                         else
                             tx_sfd_ok <= 0;
@@ -901,14 +896,15 @@ module ephy_model  // Simplified PHY model
                             `endif
                         end
 
-                    tx_byte_aligned_ok <= 1; // always ok for GMII
+                        tx_byte_aligned_ok <= 1; // always ok for GMII
     
-                    tx_mem[tx_mem_addr_in[21:0]] <= mtxd_i[7:0]; // storing data into tx memory
-                    tx_len <= tx_len + 1; // enlarge byte length counter
-                    tx_mem_addr_in <= tx_mem_addr_in + 1'b1;
+                        tx_mem[tx_mem_addr_in[21:0]] <= mtxd_i[7:0]; // storing data into tx memory
+                        tx_len <= tx_len + 1; // enlarge byte length counter
+                        tx_mem_addr_in <= tx_mem_addr_in + 1'b1;
     
-                    if (mtx_er_i)
-                        tx_len_err <= tx_len;
+                        if (mtx_er_i)
+                            tx_len_err <= tx_len;
+                    end
                 end
                 else begin //100/10Mbps
                     if (tx_cnt > 15) begin
@@ -962,7 +958,7 @@ module ephy_model  // Simplified PHY model
             else
               mcrs_tx  <= mtx_en_i;
         end
-    end
+    end //always
 
     `ifdef VERBOSE
     reg             frame_started;

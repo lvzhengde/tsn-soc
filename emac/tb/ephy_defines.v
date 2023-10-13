@@ -34,6 +34,9 @@
 `ifndef EPHY_DEFINES
 `define EPHY_DEFINES
 
+// Dump test messages or not
+`define VERBOSE
+
 // Address of PHY device 
 `define ETH_PHY_ADDR                 5'h01
 

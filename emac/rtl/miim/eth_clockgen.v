@@ -66,7 +66,7 @@
 //
 //
 
-`include "timescale.v"
+//`include "timescale.v"
 
 module eth_clockgen(Clk, Reset, Divider, MdcEn, MdcEn_n, Mdc);
 

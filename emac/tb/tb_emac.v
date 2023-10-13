@@ -40,13 +40,13 @@
 module tb_emac();
 
     //System signals
-    wire              sys_rst_n;               //async. reset, active low
-    wire              clk_125m ;
-    wire              clk_user ;
+    reg               sys_rst_n;               //async. reset, active low
+    reg               clk_125m ;
+    reg               clk_user ;
     wire [2:0]        speed    ;               //3'b100: 1000Mbps, 3'b010: 100Mbps, 3'b001: 10Mbps
     
     //32 bits on chip host bus access interface
-    wire              bus2ip_clk     ;         
+    reg               bus2ip_clk     ;         
     wire              bus2ip_rst_n   ;
     wire [31:0]       bus2ip_addr    ;
     wire [31:0]       bus2ip_data    ;
@@ -192,20 +192,25 @@ module tb_emac();
         .ip2bus_data_i        (ip2bus_data   ) 
     );  
 
+    reg         StartTB;
+    integer     tb_log_file;
+
     // Generating Clock And Reset Signals
     initial begin
         sys_rst_n = 1;
+        StartTB   = 0;
 
-        #55
-        rst_sys_n = 0;
+        #55 sys_rst_n = 0;
         
-        #(40*50);
- 
-        #355 
-        rst_sys_n = 1;
+        #(20*50);
+
+        #355 sys_rst_n = 1;
+
+        clear_memories;
+        #355 StartTB   = 1;
     end
 
-    assign bus2ip_rst_n = rst_sys_n;
+    assign bus2ip_rst_n = sys_rst_n;
 
     initial begin
         clk_125m = 0;
@@ -224,5 +229,29 @@ module tb_emac();
 
         forever #5 bus2ip_clk = ~bus2ip_clk;  //2*5ns->100MHz
     end
+
+    task clear_memories;
+        reg    [22:0]  adr_i;
+        reg            delta_t;
+    begin
+        for (adr_i = 0; adr_i < 4194304; adr_i = adr_i + 1)
+        begin
+          ephy_model.rx_mem[adr_i[21:0]] = 0;
+          ephy_model.tx_mem[adr_i[21:0]] = 0;
+        end
+    end
+    endtask
+
+    task hard_reset;
+    begin
+         #55                                                                                                                   
+         sys_rst_n    = 0;
+    
+         #(20*50);
+    
+         #355
+         sys_rst_n    = 1;
+    end
+    endtask
 
 endmodule
