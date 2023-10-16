@@ -20,17 +20,13 @@ wm title . "Run Selected Test Case"
 frame .frame
 grid .frame -row 0 -column 0
 
-set filetypes {
-     {{Verilog Files}       {.v}        }
-     {{All Files}        *             }
- }
 
 
 label .frame.lbl -text "Current Test Case:" -width 30
 entry .frame.ent -textvariable testCaseName -width 50 
 button .frame.btn1 -text "Generate sim_emac.v" -width 20 -command {gen_sim_emac $testCaseName}
-button .frame.btn2 -text "Select Test Case File" -width 20 -command {[set testCaseName [tk_getOpenFile -title "Select a test case" -initialdir ../../tc -filetypes $filetypes]]]}
-button .frame.btn3 -text "Start Verify" -width 20 -command {}
+button .frame.btn2 -text "Select Test Case File" -width 20 -command {select_test_case testCaseName}
+button .frame.btn3 -text "Start Verify" -width 20 -command {run_sim}
 button .frame.btn4 -text "Quit" -width 20 -command {exit}
 
 grid .frame.lbl -row 0 -column 0
@@ -76,4 +72,28 @@ proc gen_sim_emac {test_case_name} {
 
     puts "Simulation file ../sim_emac.v generated!\n"
     return
+}
+
+# Select test case to verify
+proc select_test_case {test_case_name} {
+    upvar $test_case_name testCase
+
+    set filetypes {
+         {{Verilog Files}    {.v}   }
+         {{All Files}        *      }
+     }
+    set fileName [tk_getOpenFile -title "Select a test case" -initialdir ../../tc -filetypes $filetypes]
+
+    if {[file isfile $fileName]} {
+        set testCase [file tail $fileName]
+        gen_sim_emac $testCase
+    }
+
+    return
+}
+
+# Run verification
+proc run_sim {} {
+    source start_verify.tcl
+    start_verify 0 
 }
