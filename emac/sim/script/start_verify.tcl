@@ -25,7 +25,16 @@ proc start_verify {batch} {
     
     set output_win .l.f1.t1
 
-    cd ..
+    set currentPath [exec pwd]
+    set tailPath [file tail $currentPath]
+    if {![string compare $tailPath "script"]} {
+        cd ..
+    } elseif {![string compare $tailPath "sim"]} {
+        cd .
+    } else {
+        puts "Please enter /path/to/emac/sim or /path/to/emac/sim/script! \n"
+        return
+    }
 
     if {$batch==0} {
         Run "bash ./runsim" $output_win

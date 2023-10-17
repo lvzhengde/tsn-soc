@@ -20,8 +20,6 @@ wm title . "Run Selected Test Case"
 frame .frame
 grid .frame -row 0 -column 0
 
-
-
 label .frame.lbl -text "Current Test Case:" -width 30
 entry .frame.ent -textvariable testCaseName -width 50 
 button .frame.btn1 -text "Generate sim_emac.v" -width 20 -command {gen_sim_emac $testCaseName}
@@ -36,9 +34,24 @@ grid .frame.btn2 -row 1 -column 2 -pady 3
 grid .frame.btn3 -row 2 -column 2 -pady 3
 grid .frame.btn4 -row 3 -column 2 -pady 3
 
+variable currentPath
+variable simPath
+
+set currentPath [exec pwd]
+set tailPath [file tail $currentPath]
+if {![string compare $tailPath "script"]} {
+    set simFile ../sim_emac.v
+    set simPath ..
+} elseif {![string compare $tailPath "sim"]} {
+    set simFile ./sim_emac.v
+    set simPath .
+} else {
+    puts "Please enter /path/to/emac/sim or /path/to/emac/sim/script! \n"
+}
+
 # Open existed simulation file--sim_emac.v
-if {[catch {open ../sim_emac.v r} fileid]} {
-   puts "Failed open ../sim_emac.v file\n"
+if {[catch {open $simFile r} fileid]} {
+   puts "Failed open $simFile file\n"
 } else {
     while {[gets $fileid line] >= 0} {
         if {[lindex $line 0] == "`include"} {
@@ -50,13 +63,15 @@ if {[catch {open ../sim_emac.v r} fileid]} {
 
 # Generate sim_emac.v
 proc gen_sim_emac {test_case_name} {
-    if {[file exists ../sim_emac.v]} {
-        puts "../sim_emac.v already exists and will be deleted and re-created!"
-        exec rm ../sim_emac.v
+    global simFile
+
+    if {[file exists $simFile]} {
+        puts "$simFile already exists and will be deleted and re-created!"
+        exec rm $simFile 
     }
 
-    if {[catch {open ../sim_emac.v w} fileid]} {
-        puts "Failed open ../sim_emac.v file for write\n"
+    if {[catch {open $simFile w} fileid]} {
+        puts "Failed open $simFile file for write\n"
     } else {
         set line "module sim_emac;"
         puts $fileid $line
@@ -70,19 +85,20 @@ proc gen_sim_emac {test_case_name} {
         close $fileid
     }
 
-    puts "Simulation file ../sim_emac.v generated!\n"
+    puts "Simulation file $simFile generated!\n"
     return
 }
 
 # Select test case to verify
 proc select_test_case {test_case_name} {
     upvar $test_case_name testCase
+    global simPath
 
     set filetypes {
          {{Verilog Files}    {.v}   }
          {{All Files}        *      }
      }
-    set fileName [tk_getOpenFile -title "Select a test case" -initialdir ../../tc -filetypes $filetypes]
+    set fileName [tk_getOpenFile -title "Select a test case" -initialdir $simPath/../tc -filetypes $filetypes]
 
     if {[file isfile $fileName]} {
         set testCase [file tail $fileName]
@@ -94,6 +110,12 @@ proc select_test_case {test_case_name} {
 
 # Run verification
 proc run_sim {} {
-    source start_verify.tcl
+    global simPath
+
+    if {![string compare $simPath ".."]} {
+        source start_verify.tcl
+    } else {
+        source ./script/start_verify.tcl
+    }
     start_verify 0 
 }
