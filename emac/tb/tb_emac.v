@@ -47,7 +47,7 @@ module tb_emac();
     
     //32 bits on chip host bus access interface
     reg               bus2ip_clk     ;         
-    wire              bus2ip_rst_n   ;
+    reg               bus2ip_rst_n   ;
     wire [31:0]       bus2ip_addr    ;
     wire [31:0]       bus2ip_data    ;
     wire              bus2ip_rd_ce   ;         //active high
@@ -92,7 +92,6 @@ module tb_emac();
     tri               Mdio_IO;
     wire              Mdc_O;
     
-    parameter Tp = 1;
 
     // Connecting Ethernet MAC top module
     emac_top emac_top (
@@ -196,21 +195,23 @@ module tb_emac();
     integer     tb_log_file;
 
     // Generating Clock And Reset Signals
+    // assign bus2ip_rst_n = sys_rst_n;
     initial begin
         sys_rst_n = 1;
-        StartTB   = 0;
+        bus2ip_rst_n = 1;
+        StartTB = 0;
 
-        #55 sys_rst_n = 0;
-        
-        #(20*50);
+        #55 
+        sys_rst_n = 0;
+        bus2ip_rst_n = 0;
 
-        #355 sys_rst_n = 1;
+        #355
+        sys_rst_n = 1;
+        bus2ip_rst_n = 1;
 
-        clear_memories;
-        #355 StartTB   = 1;
+        #355 
+        StartTB = 1;
     end
-
-    assign bus2ip_rst_n = sys_rst_n;
 
     initial begin
         clk_125m = 0;
@@ -225,32 +226,18 @@ module tb_emac();
     end
 
     initial begin
-        clk_user = 0;
+        bus2ip_clk = 0;
 
         forever #5 bus2ip_clk = ~bus2ip_clk;  //2*5ns->100MHz
     end
 
-    task clear_memories;
-        reg    [22:0]  adr_i;
-        reg            delta_t;
-    begin
-        for (adr_i = 0; adr_i < 4194304; adr_i = adr_i + 1)
-        begin
-          ephy_model.rx_mem[adr_i[21:0]] = 0;
-          ephy_model.tx_mem[adr_i[21:0]] = 0;
-        end
-    end
-    endtask
-
+    //reset MAC registers
     task hard_reset;
     begin
-         #55                                                                                                                   
-         sys_rst_n    = 0;
-    
-         #(20*50);
-    
-         #355
-         sys_rst_n    = 1;
+        @(posedge bus2ip_clk);
+        #2 bus2ip_rst_n = 0;
+        repeat(2) @(posedge bus2ip_clk);  
+        #2 bus2ip_rst_n = 1;
     end
     endtask
 

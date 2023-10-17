@@ -38,6 +38,8 @@
 `include "tb_emac_defines.v"
 `define VCD
 
+parameter Tp = 1;
+
 // open dump files
 initial begin
     tb.tb_log_file = $fopen("./log/tb_emac.log");
@@ -67,16 +69,11 @@ integer      tests_successfull;
 integer      tests_failed;
 reg [799:0]  test_name; // used for tb_log_file
 
-reg   [3:0]  wbm_init_waits; // initial wait cycles between CYC_O and STB_O of WB Master
-reg   [3:0]  wbm_subseq_waits; // subsequent wait cycles between STB_Os of WB Master
-reg   [3:0]  wbs_waits; // wait cycles befor WB Slave responds
-reg   [7:0]  wbs_retries; // if RTY response, then this is the number of retries before ACK
-
-reg          wbm_working; // tasks wbm_write and wbm_read set signal when working and reset it when stop working
-
 // main simulation thread
 initial begin
     wait(tb.StartTB);  // Start of testbench
+
+    clear_memories;
   
     // Initial global values
     tests_successfull = 0;
@@ -85,7 +82,8 @@ initial begin
     //  Call tests
     //  ----------
     //test_access_to_mac_reg(0, 4);           // 0 - 4
-    //test_mii(0, 17);                        // 0 - 17
+    //test_miim(0, 17);                        // 0 - 17
+    test_miim(0, 0);                        // 0 - 17
 
     // Finish test's logs
     //test_summary;
@@ -95,3 +93,367 @@ initial begin
     $stop;
 end
 
+//////////////////////////////////////////////////////////////
+// Log files and memory tasks
+//////////////////////////////////////////////////////////////
+
+task clear_memories;
+    reg    [22:0]  adr_i;
+    reg            delta_t;
+begin
+    for (adr_i = 0; adr_i < 4194304; adr_i = adr_i + 1)
+    begin
+        tb.ephy_model.rx_mem[adr_i[21:0]] = 0;
+        tb.ephy_model.tx_mem[adr_i[21:0]] = 0;
+    end
+end
+endtask // clear_memories
+
+task test_note;
+    input [799:0] test_note ;
+    reg   [799:0] display_note ;
+begin
+    display_note = test_note;
+    while ( display_note[799:792] == 0 )
+        display_note = display_note << 8 ;
+    $fdisplay( tb.tb_log_file, " " ) ;
+    $fdisplay( tb.tb_log_file, "NOTE: %s", display_note ) ;
+    $fdisplay( tb.tb_log_file, " " ) ;
+end
+endtask // test_note
+
+task test_heading;
+    input [799:0] test_heading ;
+    reg   [799:0] display_test ;
+begin
+    display_test = test_heading;
+    while ( display_test[799:792] == 0 )
+      display_test = display_test << 8 ;
+    $fdisplay( tb.tb_log_file, "  ***************************************************************************************" ) ;
+    $fdisplay( tb.tb_log_file, "  ***************************************************************************************" ) ;
+    $fdisplay( tb.tb_log_file, "  Heading: %s", display_test ) ;
+    $fdisplay( tb.tb_log_file, "  ***************************************************************************************" ) ;
+    $fdisplay( tb.tb_log_file, "  ***************************************************************************************" ) ;
+    $fdisplay( tb.tb_log_file, " " ) ;
+end
+endtask // test_heading
+
+task test_fail ;
+    input [7999:0] failure_reason ;
+    reg   [7999:0] display_failure ;
+    reg   [799:0] display_test ;
+begin
+    tests_failed = tests_failed + 1 ;
+  
+    display_failure = failure_reason; // {failure_reason, "!"} ;
+    while ( display_failure[7999:7992] == 0 )
+        display_failure = display_failure << 8 ;
+  
+    display_test = test_name ;
+    while ( display_test[799:792] == 0 )
+        display_test = display_test << 8 ;
+  
+    $fdisplay( tb.tb_log_file, "    *************************************************************************************" ) ;
+    $fdisplay( tb.tb_log_file, "    At time: %t ", $time ) ;
+    $fdisplay( tb.tb_log_file, "    Test: %s", display_test ) ;
+    $fdisplay( tb.tb_log_file, "    *FAILED* because") ;
+    $fdisplay( tb.tb_log_file, "    %s", display_failure ) ;
+    $fdisplay( tb.tb_log_file, "    *************************************************************************************" ) ;
+    $fdisplay( tb.tb_log_file, " " ) ;
+  
+    `ifdef STOP_ON_FAILURE
+       #20 $stop ;
+    `endif
+end
+endtask // test_fail
+
+task test_fail_num ;
+    input [7999:0] failure_reason ;
+    input [31:0]   number ;
+    reg   [7999:0] display_failure ;
+    reg   [799:0] display_test ;
+begin
+    tests_failed = tests_failed + 1 ;
+  
+    display_failure = failure_reason; // {failure_reason, "!"} ;
+    while ( display_failure[7999:7992] == 0 )
+        display_failure = display_failure << 8 ;
+  
+    display_test = test_name ;
+    while ( display_test[799:792] == 0 )
+        display_test = display_test << 8 ;
+  
+    $fdisplay( tb.tb_log_file, "    *************************************************************************************" ) ;
+    $fdisplay( tb.tb_log_file, "    At time: %t ", $time ) ;
+    $fdisplay( tb.tb_log_file, "    Test: %s", display_test ) ;
+    $fdisplay( tb.tb_log_file, "    *FAILED* because") ;
+    $fdisplay( tb.tb_log_file, "    %s; %d", display_failure, number ) ;
+    $fdisplay( tb.tb_log_file, "    *************************************************************************************" ) ;
+    $fdisplay( tb.tb_log_file, " " ) ;
+  
+    `ifdef STOP_ON_FAILURE
+       #20 $stop ;
+    `endif
+end
+endtask // test_fail_num
+
+task test_ok ;
+    reg [799:0] display_test ;
+begin
+    tests_successfull = tests_successfull + 1 ;
+
+    display_test = test_name ;
+    while ( display_test[799:792] == 0 )
+        display_test = display_test << 8 ;
+
+    $fdisplay( tb.tb_log_file, "    *************************************************************************************" ) ;
+    $fdisplay( tb.tb_log_file, "    At time: %t ", $time ) ;
+    $fdisplay( tb.tb_log_file, "    Test: %s", display_test ) ;
+    $fdisplay( tb.tb_log_file, "    reported *SUCCESSFULL*! ") ;
+    $fdisplay( tb.tb_log_file, "    *************************************************************************************" ) ;
+    $fdisplay( tb.tb_log_file, " " ) ;
+end
+endtask // test_ok
+
+
+task test_summary;
+begin
+    $fdisplay(tb.tb_log_file, "**************************** Ethernet MAC test summary **********************************") ;
+    $fdisplay(tb.tb_log_file, "Tests performed:   %d", tests_successfull + tests_failed) ;
+    $fdisplay(tb.tb_log_file, "Failed tests   :   %d", tests_failed) ;
+    $fdisplay(tb.tb_log_file, "Successfull tests: %d", tests_successfull) ;
+    $fdisplay(tb.tb_log_file, "**************************** Ethernet MAC test summary **********************************") ;
+    $fclose(tb.tb_log_file) ;
+end
+endtask // test_summary
+
+//////////////////////////////////////////////////////////////
+// MIIM Basic tasks
+//////////////////////////////////////////////////////////////
+
+task miim_set_clk_div; // set clock divider for MII clock
+    input [7:0]  clk_div;
+begin
+    // MDIO mode register
+    tb.bus_master.write_reg(`EMAC_MDIOMODE, (`EMAC_MDIOMODE_CLKDIV & clk_div));
+end
+endtask // miim_set_clk_div
+
+task check_miim_busy; // MIIM - check if BUSY
+    reg [31:0] tmp;
+begin
+    @(posedge tb.bus2ip_clk);                                                                  
+    // MIIM read status register
+    tb.bus_master.read_reg(`EMAC_MDIOSTATUS, tmp);
+    while(tmp[`EMAC_MDIOSTATUS_BUSY] !== 1'b0) //`EMAC_MDIOSTATUS_BUSY
+    begin
+        @(posedge tb.bus2ip_clk);                                                                  
+        tb.bus_master.read_reg(`EMAC_MDIOSTATUS, tmp);
+    end
+end
+endtask // check_miim_busy
+
+task check_miim_scan_valid; // MIIM - check if SCAN data are valid
+    reg [31:0] tmp;
+begin
+    @(posedge tb.bus2ip_clk);                                                                  
+    // MIIM read status register
+    tb.bus_master.read_reg(`EMAC_MDIOSTATUS, tmp);
+    while(tmp[`EMAC_MDIOSTATUS_NVALID] !== 1'b0) //`EMAC_MDIOSTATUS_NVALID
+    begin
+        @(posedge tb.bus2ip_clk);                                                                  
+        tb.bus_master.read_reg(`EMAC_MDIOSTATUS, tmp);
+    end
+end
+endtask // check_miim_scan_valid
+
+task miim_write_req; // requests write to MDIO
+    input [4:0]  phy_addr;
+    input [4:0]  reg_addr;
+    input [15:0] data_in;
+begin
+    // MDIO address, PHY address = 1, command register address = 0
+    tb.bus_master.write_reg(`EMAC_MDIOADDRESS, (`EMAC_MDIOADDRESS_FIAD & phy_addr) | (`EMAC_MDIOADDRESS_RGAD & (reg_addr << 8)));
+    // MDIO TX data
+    tb.bus_master.write_reg(`EMAC_MDIOTX_DATA, {16'h0000, data_in});
+    // MDIO command
+    tb.bus_master.write_reg(`EMAC_MDIOCOMMAND, `EMAC_MDIOCOMMAND_WCTRLDATA);
+    @(posedge tb.bus2ip_clk);                                                                  
+end
+endtask // miim_write_req
+
+task miim_read_req; // requests read from MDIO
+    input [4:0]  phy_addr;
+    input [4:0]  reg_addr;
+begin
+    // MDIO address, PHY address = 1, command register address = 0
+    tb.bus_master.write_reg(`EMAC_MDIOADDRESS, (`EMAC_MDIOADDRESS_FIAD & phy_addr) | (`EMAC_MDIOADDRESS_RGAD & (reg_addr << 8)));
+    // MDIO command
+    tb.bus_master.write_reg(`EMAC_MDIOCOMMAND, `EMAC_MDIOCOMMAND_RSTAT);
+    @(posedge tb.bus2ip_clk);                                                                  
+end
+endtask // miim_read_req
+
+task miim_scan_req; // requests scan from MDIO
+    input [4:0]  phy_addr;
+    input [4:0]  reg_addr;
+begin
+    // MDIO address, PHY address = 1, command register address = 0
+    tb.bus_master.write_reg(`EMAC_MDIOADDRESS, (`EMAC_MDIOADDRESS_FIAD & phy_addr) | (`EMAC_MDIOADDRESS_RGAD & (reg_addr << 8)));
+    // MDIO command
+    tb.bus_master.write_reg(`EMAC_MDIOCOMMAND, `EMAC_MDIOCOMMAND_SCANSTAT);
+    @(posedge tb.bus2ip_clk);                                                                  
+end
+endtask // miim_scan_req
+
+task miim_scan_finish; // finish scan from MDIO
+begin
+    // MDIO command
+    tb.bus_master.write_reg(`EMAC_MDIOCOMMAND, 32'h0);
+    @(posedge tb.bus2ip_clk);                                                                  
+end
+endtask // miim_scan_finish
+
+
+//////////////////////////////////////////////////////////////
+// Test tasks
+//////////////////////////////////////////////////////////////
+
+task test_miim;
+    input  [31:0]  start_task;
+    input  [31:0]  end_task;
+    integer        i;
+    integer        i1;
+    integer        i2;
+    integer        i3;
+    integer        cnt;
+    integer        fail;
+    integer        test_num;
+    reg     [8:0]  clk_div; // only 8 bits are valid!
+    reg     [4:0]  phy_addr;
+    reg     [4:0]  reg_addr;
+    reg     [15:0] phy_data;
+    reg     [15:0] tmp_data;
+begin
+    // MIIM MODULE TEST
+    test_heading("MIIM MODULE TEST");
+    $display(" ");
+    $display("MIIM MODULE TEST");
+    fail = 0;
+    
+    // reset MAC registers
+    tb.hard_reset;
+
+    //////////////////////////////////////////////////////////////////////
+    ////                                                              ////
+    ////  test_miim:                                                  ////
+    ////                                                              ////
+    ////  0:  Test clock divider of mii management module with all    ////
+    ////      possible frequences.                                    ////
+    ////  1:  Test various readings from 'real' phy registers.        ////
+    ////  2:  Test various writings to 'real' phy registers (control  ////
+    ////      and non writable registers)                             ////
+    ////  3:  Test reset phy through miim management module           ////
+    ////  4:  Test 'walking one' across phy address (with and without ////
+    ////      preamble)                                               ////
+    ////  5:  Test 'walking one' across phy's register address (with  ////
+    ////      and without preamble)                                   ////
+    ////  6:  Test 'walking one' across phy's data (with and without  ////
+    ////      preamble)                                               ////
+    ////  7:  Test reading from phy with wrong phy address (host      ////
+    ////      reading high 'z' data)                                  ////
+    ////  8:  Test writing to phy with wrong phy address and reading  ////
+    ////      from correct one                                        ////
+    ////  9:  Test sliding stop scan command immediately after read   ////
+    ////      request (with and without preamble)                     ////
+    //// 10:  Test sliding stop scan command immediately after write  ////
+    ////      request (with and without preamble)                     ////
+    //// 11:  Test busy and nvalid status durations during write      ////
+    ////      (with and without preamble)                             ////
+    //// 12:  Test busy and nvalid status durations during write      ////
+    ////      (with and without preamble)                             ////
+    //// 13:  Test busy and nvalid status durations during scan (with ////
+    ////      and without preamble)                                   ////
+    //// 14:  Test scan status from phy with detecting link-fail bit  ////
+    ////      (with and without preamble)                             ////
+    //// 15:  Test scan status from phy with sliding link-fail bit    ////
+    ////      (with and without preamble)                             ////
+    //// 16:  Test sliding stop scan command immediately after scan   ////
+    ////      request (with and without preamble)                     ////
+    //// 17:  Test sliding stop scan command after 2. scan (with and  ////
+    ////      without preamble)                                       ////
+    ////                                                              ////
+    //////////////////////////////////////////////////////////////////////
+
+    for (test_num = start_task; test_num <= end_task; test_num = test_num + 1) begin
+        ////////////////////////////////////////////////////////////////////
+        ////                                                            ////
+        ////  Test clock divider of mii management module with all      ////
+        ////  possible frequences.                                      ////
+        ////                                                            ////
+        ////////////////////////////////////////////////////////////////////
+        if (test_num == 0) begin //
+            // TEST 0: CLOCK DIVIDER OF MII MANAGEMENT MODULE WITH ALL POSSIBLE FREQUENCES
+            test_name   = "TEST 0: CLOCK DIVIDER OF MII MANAGEMENT MODULE WITH ALL POSSIBLE FREQUENCES";
+            `TIME; $display("  TEST 0: CLOCK DIVIDER OF MII MANAGEMENT MODULE WITH ALL POSSIBLE FREQUENCES");
+        
+            wait(tb.Mdc_O); // wait for MDIO clock to be 1
+            for(clk_div = 0; clk_div <= 255; clk_div = clk_div + 1) begin
+                i1 = 0;
+                i2 = 0;
+                #Tp miim_set_clk_div(clk_div[7:0]);
+                @(posedge tb.Mdc_O);
+                #Tp;
+                fork
+                    begin
+                        @(posedge tb.Mdc_O);
+                        #Tp;
+                        disable count_i1;
+                        disable count_i2;
+                    end
+                    begin: count_i1
+                        forever begin
+                            @(posedge tb.bus2ip_clk);
+                            i1 = i1 + 1;
+                            #Tp;
+                        end
+                    end
+                    begin: count_i2
+                        forever begin
+                            @(negedge tb.bus2ip_clk);
+                            i2 = i2 + 1;
+                            #Tp;
+                        end
+                    end
+                join
+
+                if((clk_div[7:0] == 0) || (clk_div[7:0] == 1) || (clk_div[7:0] == 2) || (clk_div[7:0] == 3)) begin
+                    if((i1 == i2) && (i1 == 2)) begin
+                    end
+                    else begin
+                        fail = fail + 1;
+                        test_fail("Clock divider of MII module did'nt divide frequency corectly (it should divide by 2)");
+                    end
+                end
+                else begin
+                    if((i1 == i2) && (i1 == {clk_div[7:1], 1'b0})) begin
+                    end
+                    else begin
+                        fail = fail + 1;
+                        test_fail("Clock divider of MII module did'nt divide frequency corectly");
+                    end
+                end
+            end
+
+            if(fail == 0) begin
+                test_ok;
+                `TIME; $display("  TEST 0: CLOCK DIVIDER OF MII MANAGEMENT MODULE WITH ALL POSSIBLE FREQUENCES: All Passed!");
+            end 
+            else begin
+                fail = 0;
+            end
+        end // test_num == 0
+    end   //  for (test_num=start_task; test_num <= end_task; test_num=test_num+1)
+end
+endtask // test_miim
+  
