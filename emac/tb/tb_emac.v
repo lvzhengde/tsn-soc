@@ -92,6 +92,7 @@ module tb_emac();
     tri               Mdio_IO;
     wire              Mdc_O;
     
+    assign speed = `EMAC_SPEED;
 
     // Connecting Ethernet MAC top module
     emac_top emac_top (
@@ -99,7 +100,7 @@ module tb_emac();
         .sys_rst_n            (sys_rst_n),             
         .clk_125m             (clk_125m ),
         .clk_user             (clk_user ),
-        .speed_o              (speed    ),
+        .speed_o              (/*speed*/),
     
         //32 bits on chip host bus access interface
         .bus2ip_clk           (bus2ip_clk    ),         

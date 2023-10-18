@@ -147,12 +147,12 @@ module ephy_model  // Simplified PHY model
 
     `ifdef VERBOSE
     always @(*) begin
-      if (eth_speed == 2'b10)
-        #1 $fdisplay(phy_log, "   (%0t)(%m)PHY configured to 1000 Mbps!", $time);
-      if (eth_speed == 2'b01)
-        #1 $fdisplay(phy_log, "   (%0t)(%m)PHY configured to 100 Mbps!", $time);
-      else
-        #1 $fdisplay(phy_log, "   (%0t)(%m)PHY configured tp 10 Mbps!", $time);
+        if (eth_speed == 2'b10)
+            #1 $fdisplay(phy_log, "   (%0t)(%m)PHY configured to 1000 Mbps!", $time);
+        if (eth_speed == 2'b01)
+            #1 $fdisplay(phy_log, "   (%0t)(%m)PHY configured to 100 Mbps!", $time);
+        else
+            #1 $fdisplay(phy_log, "   (%0t)(%m)PHY configured tp 10 Mbps!", $time);
     end
     `endif
 

@@ -82,8 +82,8 @@ initial begin
     //  Call tests
     //  ----------
     //test_access_to_mac_reg(0, 4);           // 0 - 4
-    //test_miim(0, 17);                        // 0 - 17
-    test_miim(0, 0);                        // 0 - 17
+    //test_miim(0, 17);                       // 0 - 17
+    test_miim(0, 2);                        
 
     // Finish test's logs
     //test_summary;
@@ -453,6 +453,128 @@ begin
                 fail = 0;
             end
         end // test_num == 0
+
+        ////////////////////////////////////////////////////////////////////
+        ////                                                            ////
+        ////  Test various readings from 'real' phy registers.          ////
+        ////                                                            ////
+        ////////////////////////////////////////////////////////////////////
+        if (test_num == 1) begin//
+            // TEST 1: VARIOUS READINGS FROM 'REAL' PHY REGISTERS
+            test_name   = "TEST 1: VARIOUS READINGS FROM 'REAL' PHY REGISTERS";
+            `TIME; $display("  TEST 1: VARIOUS READINGS FROM 'REAL' PHY REGISTERS");
+        
+            // set the fastest possible MII
+            clk_div = 0;
+            miim_set_clk_div(clk_div[7:0]);
+            // set address
+            reg_addr = 5'h1F;
+            phy_addr = 5'h1;
+            while(reg_addr >= 5'h4) begin
+                // read request
+                #Tp miim_read_req(phy_addr, reg_addr);
+                check_miim_busy; // wait for read to finish
+                // read data
+                tb.bus_master.read_reg(`EMAC_MDIORX_DATA, phy_data);
+                if (phy_data !== 16'hDEAD) begin
+                    test_fail("Wrong data was read from PHY from 'not used' address space");
+                    fail = fail + 1;
+                end
+                if (reg_addr == 5'h4) // go out of for loop
+                    reg_addr = 5'h3;
+                else
+                    reg_addr = reg_addr - 5'h9;
+            end
+        
+            // set address
+            reg_addr = 5'h3;
+            // read request
+            #Tp miim_read_req(phy_addr, reg_addr);
+            check_miim_busy; // wait for read to finish
+            // read data
+            tb.bus_master.read_reg(`EMAC_MDIORX_DATA, phy_data);
+            if (phy_data !== {`PHY_ID2, `MAN_MODEL_NUM, `MAN_REVISION_NUM}) begin
+              test_fail("Wrong data was read from PHY from ID register 2");
+              fail = fail + 1;
+            end
+
+            if(fail == 0) begin
+                test_ok;
+                `TIME; $display("  TEST 1: VARIOUS READINGS FROM 'REAL' PHY REGISTERS: All Passed!");
+            end
+            else begin
+                fail = 0;
+            end
+        end //test_num == 1
+        
+        ////////////////////////////////////////////////////////////////////
+        ////                                                            ////
+        ////  Test various writings to 'real' phy registers (control    ////
+        ////  and non writable registers)                               ////
+        ////                                                            ////
+        ////////////////////////////////////////////////////////////////////
+        if (test_num == 2) begin// 
+            // TEST 2: VARIOUS WRITINGS TO 'REAL' PHY REGISTERS ( CONTROL AND NON WRITABLE REGISTERS )
+            test_name   = "TEST 2: VARIOUS WRITINGS TO 'REAL' PHY REGISTERS ( CONTROL AND NON WRITABLE REGISTERS )";
+            `TIME; $display("  TEST 2: VARIOUS WRITINGS TO 'REAL' PHY REGISTERS ( CONTROL AND NON WRITABLE REGISTERS )");
+        
+            // negate data and try to write into unwritable register
+            tmp_data = ~phy_data;
+            // write request
+            #Tp miim_write_req(phy_addr, reg_addr, tmp_data);
+            check_miim_busy; // wait for write to finish
+            // read request
+            #Tp miim_read_req(phy_addr, reg_addr);
+            check_miim_busy; // wait for read to finish
+            // read data
+            tb.bus_master.read_reg(`EMAC_MDIORX_DATA, tmp_data);
+            if (tmp_data !== phy_data) begin
+                test_fail("Data was written into unwritable PHY register - ID register 2");
+                fail = fail + 1;
+            end
+        
+            // set address
+            reg_addr = 5'h0; // control register
+            // read request
+            #Tp miim_read_req(phy_addr, reg_addr);
+            check_miim_busy; // wait for read to finish
+            // read data
+            tb.bus_master.read_reg(`EMAC_MDIORX_DATA, tmp_data);
+            // write request
+            phy_data = 16'h7DFF; // bit 15 (RESET bit) and bit 9 are self clearing bits
+            #Tp miim_write_req(phy_addr, reg_addr, phy_data);
+            check_miim_busy; // wait for write to finish
+            // read request
+            #Tp miim_read_req(phy_addr, reg_addr);
+            check_miim_busy; // wait for read to finish
+            // read data
+            tb.bus_master.read_reg(`EMAC_MDIORX_DATA, phy_data);
+            if (phy_data !== 16'h7DFF) begin
+                test_fail("Data was not correctly written into OR read from writable PHY register - control register");
+                fail = fail + 1;
+            end
+            // write request
+            #Tp miim_write_req(phy_addr, reg_addr, tmp_data);
+            check_miim_busy; // wait for write to finish
+            // read request
+            #Tp miim_read_req(phy_addr, reg_addr);
+            check_miim_busy; // wait for read to finish
+            // read data
+            tb.bus_master.read_reg(`EMAC_MDIORX_DATA, phy_data);
+            if (phy_data !== tmp_data) begin
+                test_fail("Data was not correctly written into OR read from writable PHY register - control register");
+                fail = fail + 1;
+            end
+
+            if(fail == 0) begin
+                test_ok;
+                `TIME; $display("  TEST 2: VARIOUS WRITINGS TO 'REAL' PHY REGISTERS ( CONTROL AND NON WRITABLE REGISTERS ): All Passed!");
+            end
+            else begin
+                fail = 0;
+            end
+        end
+        
     end   //  for (test_num=start_task; test_num <= end_task; test_num=test_num+1)
 end
 endtask // test_miim
