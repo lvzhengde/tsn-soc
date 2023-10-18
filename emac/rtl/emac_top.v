@@ -109,29 +109,29 @@ module emac_top (
     // Connecting miim module
     eth_miim u_eth_miim
     (
-        .Clk                 (bus2ip_clk),
-        .Reset               (~bus2ip_rst_n),
+        .Clk                   (bus2ip_clk),
+        .rst_n                 (bus2ip_rst_n),
 
-        .Mdi                 (mdi_i),
-        .Mdo                 (mdo_o),
-        .MdoEn               (mdo_en_o),
-        .Mdc                 (mdc_o),
+        .Mdi_i                 (mdi_i),
+        .Mdo_o                 (mdo_o),
+        .MdoEn_o               (mdo_en_o),
+        .Mdc_o                 (mdc_o),
 
-        .Divider             (r_ClkDiv),
-        .NoPre               (r_MiiNoPre),
-        .CtrlData            (r_CtrlData),
-        .Rgad                (r_RGAD),
-        .Fiad                (r_FIAD),
-        .WCtrlData           (r_WCtrlData),
-        .RStat               (r_RStat),
-        .ScanStat            (r_ScanStat),
-        .Busy                (Busy_stat),
-        .Prsd                (Prsd),
-        .LinkFail            (LinkFail),
-        .Nvalid              (NValid_stat),
-        .WCtrlDataStart      (WCtrlDataStart),
-        .RStatStart          (RStatStart),
-        .UpdateMIIRX_DATAReg (UpdateMIIRX_DATAReg)
+        .Divider_i             (r_ClkDiv),
+        .NoPre_i               (r_MiiNoPre),
+        .CtrlData_i            (r_CtrlData),
+        .Rgad_i                (r_RGAD),
+        .Fiad_i                (r_FIAD),
+        .WCtrlData_i           (r_WCtrlData),
+        .RStat_i               (r_RStat),
+        .ScanStat_i            (r_ScanStat),
+        .Busy_o                (Busy_stat),
+        .Prsd_o                (Prsd),
+        .LinkFail_o            (LinkFail),
+        .Nvalid_o              (NValid_stat),
+        .WCtrlDataStart_o      (WCtrlDataStart),
+        .RStatStart_o          (RStatStart),
+        .UpdateMIIRX_DATAReg_o (UpdateMIIRX_DATAReg)
     );
 
     // Connecting Ethernet registers
