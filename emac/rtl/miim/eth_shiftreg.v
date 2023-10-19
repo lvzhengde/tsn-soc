@@ -1,151 +1,94 @@
-//////////////////////////////////////////////////////////////////////
-////                                                              ////
-////  eth_shiftreg.v                                              ////
-////                                                              ////
-////  This file is part of the Ethernet IP core project           ////
-////  http://www.opencores.org/project,ethmac                     ////
-////                                                              ////
-////  Author(s):                                                  ////
-////      - Igor Mohor (igorM@opencores.org)                      ////
-////                                                              ////
-////  All additional information is avaliable in the Readme.txt   ////
-////  file.                                                       ////
-////                                                              ////
-//////////////////////////////////////////////////////////////////////
-////                                                              ////
-//// Copyright (C) 2001 Authors                                   ////
-////                                                              ////
-//// This source file may be used and distributed without         ////
-//// restriction provided that this copyright statement is not    ////
-//// removed from the file and that any derivative work contains  ////
-//// the original copyright notice and the associated disclaimer. ////
-////                                                              ////
-//// This source file is free software; you can redistribute it   ////
-//// and/or modify it under the terms of the GNU Lesser General   ////
-//// Public License as published by the Free Software Foundation; ////
-//// either version 2.1 of the License, or (at your option) any   ////
-//// later version.                                               ////
-////                                                              ////
-//// This source is distributed in the hope that it will be       ////
-//// useful, but WITHOUT ANY WARRANTY; without even the implied   ////
-//// warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR      ////
-//// PURPOSE.  See the GNU Lesser General Public License for more ////
-//// details.                                                     ////
-////                                                              ////
-//// You should have received a copy of the GNU Lesser General    ////
-//// Public License along with this source; if not, download it   ////
-//// from http://www.opencores.org/lgpl.shtml                     ////
-////                                                              ////
-//////////////////////////////////////////////////////////////////////
-//
-// CVS Revision History
-//
-// $Log: not supported by cvs2svn $
-// Revision 1.5  2002/08/14 18:16:59  mohor
-// LinkFail signal was not latching appropriate bit.
-//
-// Revision 1.4  2002/03/02 21:06:01  mohor
-// LinkFail signal was not latching appropriate bit.
-//
-// Revision 1.3  2002/01/23 10:28:16  mohor
-// Link in the header changed.
-//
-// Revision 1.2  2001/10/19 08:43:51  mohor
-// eth_timescale.v changed to timescale.v This is done because of the
-// simulation of the few cores in a one joined project.
-//
-// Revision 1.1  2001/08/06 14:44:29  mohor
-// A define FPGA added to select between Artisan RAM (for ASIC) and Block Ram (For Virtex).
-// Include files fixed to contain no path.
-// File names and module names changed ta have a eth_ prologue in the name.
-// File eth_timescale.v is used to define timescale
-// All pin names on the top module are changed to contain _I, _O or _OE at the end.
-// Bidirectional signal MDIO is changed to three signals (Mdc_O, Mdi_I, Mdo_O
-// and Mdo_OE. The bidirectional signal must be created on the top level. This
-// is done due to the ASIC tools.
-//
-// Revision 1.1  2001/07/30 21:23:42  mohor
-// Directory structure changed. Files checked and joind together.
-//
-// Revision 1.3  2001/06/01 22:28:56  mohor
-// This files (MIIM) are fully working. They were thoroughly tested. The testbench is not updated.
-//
-//
+/*+
+ * Copyright (c) 2022-2023 Zhengde
+ *
+ * Copyright (c) 2001 Igor Mohor (igorM@opencores.org) 
+ * 
+ * All rights reserved.
+ * 
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ * 
+ * 1 Redistributions of source code must retain the above copyright notice, this
+ *   list of conditions and the following disclaimer.
+ * 
+ * 2 Redistributions in binary form must reproduce the above copyright notice,
+ *   this list of conditions and the following disclaimer in the documentation
+ *   and/or other materials provided with the distribution.
+ * 
+ * 3 Neither the name of the copyright holder nor the names of its
+ *   contributors may be used to endorse or promote products derived from
+ *   this software without specific prior written permission.
+ * 
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+ * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+ * CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+ * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+-*/
 
-//`include "timescale.v"
+/*+
+ * Shift register for PHY MDIO interface 
+-*/
 
+module eth_shiftreg (
+    input                Clk,                // Input clock (Host clock)
+    input                rst_n,              // Reset signal
+    input                MdcEn_n_i,          // Enable signal is asserted for one Clk period before Mdc falls.
+    input                Mdi_i,              // MII input data
+    input  [4:0]         Fiad_i,             // PHY address
+    input  [4:0]         Rgad_i,             // Register address (within the selected PHY)
+    input  [15:0]        CtrlData_i,         // Control data (data to be written to the PHY)
+    input                WriteOp_i,          // The current operation is a PHY register write operation
+    input  [3:0]         ByteSelect_i,       // Byte select
+    input  [1:0]         LatchByte_i,        // Byte select for latching (read operation)
+    
+    output               ShiftedBit_o,       // Bit shifted out of the shift register
+    output reg [15:0]    Prsd_o,             // Read Status Data (data read from the PHY)
+    output reg           LinkFail_o          // Link Integrity Signal
+);
 
-module eth_shiftreg(Clk, Reset, MdcEn_n, Mdi, Fiad, Rgad, CtrlData, WriteOp, ByteSelect, 
-                    LatchByte, ShiftedBit, Prsd, LinkFail);
+    reg   [7:0] ShiftReg;         // Shift register for shifting the data in and out
 
-
-input       Clk;              // Input clock (Host clock)
-input       Reset;            // Reset signal
-input       MdcEn_n;          // Enable signal is asserted for one Clk period before Mdc falls.
-input       Mdi;              // MII input data
-input [4:0] Fiad;             // PHY address
-input [4:0] Rgad;             // Register address (within the selected PHY)
-input [15:0]CtrlData;         // Control data (data to be written to the PHY)
-input       WriteOp;          // The current operation is a PHY register write operation
-input [3:0] ByteSelect;       // Byte select
-input [1:0] LatchByte;        // Byte select for latching (read operation)
-
-output      ShiftedBit;       // Bit shifted out of the shift register
-output[15:0]Prsd;             // Read Status Data (data read from the PHY)
-output      LinkFail;         // Link Integrity Signal
-
-reg   [7:0] ShiftReg;         // Shift register for shifting the data in and out
-reg   [15:0]Prsd;
-reg         LinkFail;
-
-
-
-
-// ShiftReg[7:0] :: Shift Register Data
-always @ (posedge Clk or posedge Reset) 
-begin
-  if(Reset)
-    begin
-      ShiftReg[7:0] <=  8'h0;
-      Prsd[15:0] <=  16'h0;
-      LinkFail <=  1'b0;
-    end
-  else
-    begin
-      if(MdcEn_n)
-        begin 
-          if(|ByteSelect)
-            begin
-	       /* verilator lint_off CASEINCOMPLETE */
-              case (ByteSelect[3:0])  // synopsys parallel_case full_case
-                4'h1 :    ShiftReg[7:0] <=  {2'b01, ~WriteOp, WriteOp, Fiad[4:1]};
-                4'h2 :    ShiftReg[7:0] <=  {Fiad[0], Rgad[4:0], 2'b10};
-                4'h4 :    ShiftReg[7:0] <=  CtrlData[15:8];
-                4'h8 :    ShiftReg[7:0] <=  CtrlData[7:0];
-              endcase // case (ByteSelect[3:0])
-	       /* verilator lint_on CASEINCOMPLETE */
-            end 
-          else
-            begin
-              ShiftReg[7:0] <=  {ShiftReg[6:0], Mdi};
-              if(LatchByte[0])
-                begin
-                  Prsd[7:0] <=  {ShiftReg[6:0], Mdi};
-                  if(Rgad == 5'h01)
-                    LinkFail <=  ~ShiftReg[1];  // this is bit [2], because it is not shifted yet
-                end
-              else
-                begin
-                  if(LatchByte[1])
-                    Prsd[15:8] <=  {ShiftReg[6:0], Mdi};
+    // ShiftReg[7:0] :: Shift Register Data
+    always @ (posedge Clk or negedge rst_n) begin
+        if(!rst_n) begin
+            ShiftReg[7:0] <=  8'h0;
+            Prsd_o[15:0] <=  16'h0;
+            LinkFail_o <=  1'b0;
+        end
+        else begin
+            if(MdcEn_n_i) begin 
+                if(|ByteSelect_i) begin
+                 /* verilator lint_off CASEINCOMPLETE */
+                    case (ByteSelect_i[3:0])  // synopsys parallel_case full_case
+                      4'h1 :    ShiftReg[7:0] <=  {2'b01, ~WriteOp_i, WriteOp_i, Fiad_i[4:1]};
+                      4'h2 :    ShiftReg[7:0] <=  {Fiad_i[0], Rgad_i[4:0], 2'b10};
+                      4'h4 :    ShiftReg[7:0] <=  CtrlData_i[15:8];
+                      4'h8 :    ShiftReg[7:0] <=  CtrlData_i[7:0];
+                    endcase // case (ByteSelect_i[3:0])
+                 /* verilator lint_on CASEINCOMPLETE */
+                end 
+                else begin
+                    ShiftReg[7:0] <=  {ShiftReg[6:0], Mdi_i};
+                    if(LatchByte_i[0]) begin
+                        Prsd_o[7:0] <=  {ShiftReg[6:0], Mdi_i};
+                        if(Rgad_i == 5'h01)
+                            LinkFail_o <=  ~ShiftReg[1];  // this is bit [2], because it is not shifted yet
+                    end
+                    else begin
+                        if(LatchByte_i[1])
+                            Prsd_o[15:8] <=  {ShiftReg[6:0], Mdi_i};
+                    end
                 end
             end
         end
     end
-end
 
-
-assign ShiftedBit = ShiftReg[7];
-
+    assign ShiftedBit_o = ShiftReg[7];
 
 endmodule

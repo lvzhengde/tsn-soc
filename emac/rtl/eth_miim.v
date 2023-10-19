@@ -309,19 +309,50 @@ module eth_miim (
 
 
     // Connecting the Clock Generator Module
-    eth_clockgen clkgen(.Clk(Clk), .Reset(~rst_n), .Divider(Divider_i[7:0]), .MdcEn(MdcEn), .MdcEn_n(MdcEn_n), .Mdc(Mdc_o) 
-                   );
+    eth_clockgen clkgen
+    (
+        .Clk                   (Clk), 
+        .rst_n                 (rst_n), 
+        .Divider_i             (Divider_i[7:0]), 
+        .MdcEn_o               (MdcEn), 
+        .MdcEn_n_o             (MdcEn_n), 
+        .Mdc_o                 (Mdc_o) 
+    );
 
     // Connecting the Shift Register Module
-    eth_shiftreg shftrg(.Clk(Clk), .Reset(~rst_n), .MdcEn_n(MdcEn_n), .Mdi(Mdi_i), .Fiad(Fiad_i), .Rgad(Rgad_i), 
-                        .CtrlData(CtrlData_i), .WriteOp(WriteOp), .ByteSelect(ByteSelect), .LatchByte(LatchByte), 
-                        .ShiftedBit(ShiftedBit), .Prsd(Prsd_o), .LinkFail(LinkFail_o)
-                       );
+    eth_shiftreg shftrg
+    (
+        .Clk                   (Clk), 
+        .rst_n                 (rst_n), 
+        .MdcEn_n_i             (MdcEn_n), 
+        .Mdi_i                 (Mdi_i), 
+        .Fiad_i                (Fiad_i), 
+        .Rgad_i                (Rgad_i), 
+        .CtrlData_i            (CtrlData_i), 
+        .WriteOp_i             (WriteOp), 
+        .ByteSelect_i          (ByteSelect), 
+        .LatchByte_i           (LatchByte), 
+
+        .ShiftedBit_o          (ShiftedBit), 
+        .Prsd_o                (Prsd_o), 
+        .LinkFail_o            (LinkFail_o)
+    );
     
     // Connecting the Output Control Module
-    eth_outputcontrol outctrl(.Clk(Clk), .Reset(~rst_n), .MdcEn_n(MdcEn_n), .InProgress(InProgress), 
-                              .ShiftedBit(ShiftedBit), .BitCounter(BitCounter), .WriteOp(WriteOp), .NoPre(NoPre_i), 
-                              .Mdo(Mdo_o), .MdoEn(MdoEn_o)
-                             );
+    eth_outputcontrol outctrl
+    (
+        .Clk                  (Clk), 
+        .rst_n                (rst_n), 
+        .MdcEn_n_i            (MdcEn_n), 
+        .InProgress_i         (InProgress), 
+                              
+        .ShiftedBit_i         (ShiftedBit), 
+        .BitCounter_i         (BitCounter), 
+        .WriteOp_i            (WriteOp), 
+        .NoPre_i              (NoPre_i), 
+                              
+        .Mdo_o                (Mdo_o), 
+        .MdoEn_o              (MdoEn_o)
+    );
 
 endmodule
