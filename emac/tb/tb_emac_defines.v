@@ -70,7 +70,7 @@
 `define EMAC_MDIOSTATUS_NVALID      2 /* Data in MDIO Status Register is invalid bit */
 
 /*Ethernet Speed */
-`define EMAC_SPEED                  3'b010 //3'b100: 1000Mbps, 3'b010: 100Mbps, 3'b001: 10Mbps
+`define EMAC_SPEED                  3'b100 //3'b100: 1000Mbps, 3'b010: 100Mbps, 3'b001: 10Mbps
 
 `define TIME $display("  Time: %0t", $time)
 

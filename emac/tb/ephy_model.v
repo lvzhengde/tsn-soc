@@ -136,31 +136,31 @@ module ephy_model  // Simplified PHY model
     always @(*) begin
         eth_speed = 2'b00;
         if (!control_bit14_10[12]) begin  //Not Auto-Negotiation Enabled
-            if (speed_i[2])
+            if(speed_i[2])
                 eth_speed = 2'b10;
-            else if (speed_i[1])
+            else if(speed_i[1])
                 eth_speed = 2'b01;
-            else if (speed_i[0])
+            else if(speed_i[0])
                 eth_speed = 2'b00;
         end
     end
 
     `ifdef VERBOSE
     always @(*) begin
-        if (eth_speed == 2'b10)
+        if(eth_speed == 2'b10)
             #1 $fdisplay(phy_log, "   (%0t)(%m)PHY configured to 1000 Mbps!", $time);
-        if (eth_speed == 2'b01)
+        else if(eth_speed == 2'b01)
             #1 $fdisplay(phy_log, "   (%0t)(%m)PHY configured to 100 Mbps!", $time);
         else
-            #1 $fdisplay(phy_log, "   (%0t)(%m)PHY configured tp 10 Mbps!", $time);
+            #1 $fdisplay(phy_log, "   (%0t)(%m)PHY configured to 10 Mbps!", $time);
     end
     `endif
 
-    always begin
+    initial begin
         mtx_clk = 0;
         #7;
         forever begin
-            if (eth_speed == 2'b01) // 100 Mbps - 25 MHz, 40 ns
+            if(eth_speed == 2'b01) // 100 Mbps - 25 MHz, 40 ns
             begin
                 #20 mtx_clk = ~mtx_clk;
             end
@@ -168,26 +168,30 @@ module ephy_model  // Simplified PHY model
             begin
                 #200 mtx_clk = ~mtx_clk;
             end
+            else
+                #1;  //to avoid dead loop
         end
     end
 
-    always begin
+    initial begin
         // EQUAL mrx_clk to mtx_clk
         mrx_clk = 0;
         #7;
         forever begin
-            if (eth_speed == 2'b10)      // 1000 Mbps - 125 MHz, 8 ns
+            if(eth_speed == 2'b10)      // 1000 Mbps - 125 MHz, 8 ns
             begin
                 #4  mrx_clk = ~mrx_clk;
             end
-            else if (eth_speed == 2'b01) // 100 Mbps - 25 MHz, 40 ns
+            else if(eth_speed == 2'b01) // 100 Mbps - 25 MHz, 40 ns
             begin
                 #20 mrx_clk = ~mrx_clk;
             end
-            else if (eth_speed == 2'b00) // 10 Mbps - 2.5 MHz, 400 ns
+            else if(eth_speed == 2'b00) // 10 Mbps - 2.5 MHz, 400 ns
             begin
                 #200 mrx_clk = ~mrx_clk;
             end
+            else
+                #1;  //to avoid dead loop
         end
     end
 

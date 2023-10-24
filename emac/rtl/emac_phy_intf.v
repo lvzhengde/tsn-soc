@@ -43,13 +43,13 @@ module emac_phy_intf (
     output reg         MRxDv_o        ,       
     output reg [7:0]   MRxD_o         ,       
     output             MRxErr_o       ,       
+    output             MCRS_o         ,
     //TX interface from MAC core
     input   [7:0]      MTxD_i         ,
     input              MTxEn_i        ,   
     input              MTxErr_i       ,
-    output             MCRS_o         ,
     //PHY interface
-    output             tx_er_o        ,
+    output reg         tx_er_o        ,
     output reg         tx_en_o        ,
     output reg [7:0]   txd_o          ,
     input              rx_er_i        ,
@@ -64,6 +64,7 @@ module emac_phy_intf (
     //internal signals                                                              
     reg     [7:0]   MTxD_d1         ;
     reg             MTxEn_d1        ;
+    reg             MTxErr_d1       ;
     reg             tx_odd_data_ptr ;  
     reg             rx_odd_data_ptr ;
     reg             rx_er_d1        ;
@@ -78,106 +79,111 @@ module emac_phy_intf (
     //Tx control                                                              
     //--
 
-//latch boundery signals
-always @ (posedge mac_tx_clk or negedge rst_n)
-    if (!rst_n)
-        begin
-        MTxD_d1            <=0;
-        MTxEn_d1           <=0;
+    //latch boundery signals
+    always @ (posedge mac_tx_clk or negedge rst_n) begin
+        if (!rst_n) begin
+            MTxD_d1    <= 0;
+            MTxEn_d1   <= 0;
+            MTxErr_d1  <= 0;
         end  
-    else
-        begin
-        MTxD_d1            <=MTxD_i  ;
-        MTxEn_d1           <=MTxEn_i ;
+        else begin
+            MTxD_d1    <= MTxD_i  ;
+            MTxEn_d1   <= MTxEn_i ;
+            MTxErr_d1  <= MTxErr_i;
         end 
+    end
      
-always @ (posedge mac_tx_clk or negedge rst_n)
-    if (!rst_n)   
-        tx_odd_data_ptr     <=0;
-    else if (!MTxD_d1)
-        tx_odd_data_ptr     <=0;
-    else 
-        tx_odd_data_ptr     <=!tx_odd_data_ptr;
+    always @ (posedge mac_tx_clk or negedge rst_n) begin
+        if (!rst_n)   
+            tx_odd_data_ptr <= 0;
+        else if (!MTxEn_d1)
+            tx_odd_data_ptr <= 0;
+        else 
+            tx_odd_data_ptr <= !tx_odd_data_ptr;
+    end
         
 
-always @ (posedge mac_tx_clk or negedge rst_n)
-    if (!rst_n)  
-        txd_o                 <=0;
-    else if(speed_i[2]&&MTxEn_d1)
-        txd_o                 <=MTxD_d1;
-    else if(MTxEn_d1&&!tx_odd_data_ptr)
-        txd_o                 <={4'b0,MTxD_d1[3:0]};
-    else if(MTxEn_d1&&tx_odd_data_ptr)
-        txd_o                 <={4'b0,MTxD_d1[7:4]};
-    else
-        txd_o                 <=0;
+    always @ (posedge mac_tx_clk or negedge rst_n) begin
+        if (!rst_n)  
+            txd_o <= 0;
+        else if(speed_i[2] && MTxEn_d1)
+            txd_o <= MTxD_d1;
+        else if(MTxEn_d1 && !tx_odd_data_ptr)
+            txd_o <= {4'b0,MTxD_d1[3:0]};
+        else if(MTxEn_d1 && tx_odd_data_ptr)
+            txd_o <= {4'b0,MTxD_d1[7:4]};
+        else
+            txd_o <= 0;
+    end
 
-always @ (posedge mac_tx_clk or negedge rst_n)
-    if (!rst_n)  
-        tx_en_o               <=0;
-    else if(MTxEn_d1)
-        tx_en_o               <=1;    
-    else
-        tx_en_o               <=0;
-
-assign tx_er_o = MTxErr_i;
-
-//******************************************************************************
-//Rx control                                                              
-//******************************************************************************
-//reg boundery signals
-always @ (posedge mac_rx_clk or negedge rst_n)
-    if (!rst_n)  
-        begin
-        rx_er_d1           <=0;
-        rx_dv_d1           <=0;
-        rx_dv_d2           <=0 ;
-        rxd_d1             <=0;
-        rxd_d2             <=0;
-        crs_d1             <=0;
-        col_d1             <=0;
+    always @ (posedge mac_tx_clk or negedge rst_n) begin
+        if (!rst_n) begin 
+            tx_en_o <= 0;
+            tx_er_o <= 0;
         end
-    else
-        begin
-        rx_er_d1           <=rx_er_i     ;
-        rx_dv_d1           <=rx_dv_i     ;
-        rx_dv_d2           <=rx_dv_d1 ;
-        rxd_d1             <=rxd_i       ;
-        rxd_d2             <=rxd_d1   ;
-        crs_d1             <=crs_i       ;
-        col_d1             <=col_i       ;
+        else begin
+            tx_en_o <= MTxEn_d1;
+            tx_er_o <= MTxErr_d1;
+        end
+    end
+
+    //++
+    //Rx control                                                              
+    //--
+
+    //latch boundery signals
+    always @ (posedge mac_rx_clk or negedge rst_n) begin
+        if (!rst_n)  begin
+            rx_er_d1 <= 0;
+            rx_dv_d1 <= 0;
+            rx_dv_d2 <= 0;
+            rxd_d1   <= 0;
+            rxd_d2   <= 0;
+            crs_d1   <= 0;
+            col_d1   <= 0;
+        end
+        else begin
+            rx_er_d1 <= rx_er_i  ;
+            rx_dv_d1 <= rx_dv_i  ;
+            rx_dv_d2 <= rx_dv_d1 ;
+            rxd_d1   <= rxd_i    ;
+            rxd_d2   <= rxd_d1   ;
+            crs_d1   <= crs_i    ;
+            col_d1   <= col_i    ;
         end     
+    end
 
-assign MRxErr_o   =rx_er_d1      ;
-assign MCRS_o     =crs_d1        ;
+    assign MRxErr_o   =rx_er_d1      ;
+    assign MCRS_o     =crs_d1        ;
 
-always @ (posedge mac_rx_clk or negedge rst_n)
-    if (!rst_n)  
-        MRxDv_o         <=0;
-    else if(line_loop_en_i)
-        MRxDv_o         <=tx_en_o;
-    else if(rx_dv_d2)
-        MRxDv_o         <=1;
-    else
-        MRxDv_o         <=0;
+    always @ (posedge mac_rx_clk or negedge rst_n) begin
+        if (!rst_n)  
+            MRxDv_o <= 0;
+        else if(line_loop_en_i)
+            MRxDv_o <= tx_en_o;
+        else
+            MRxDv_o <= rx_dv_d2;
+    end
 
-always @ (posedge mac_rx_clk or negedge rst_n)
-    if (!rst_n)   
-        rx_odd_data_ptr     <=0;
-    else if (!rx_dv_d1)
-        rx_odd_data_ptr     <=0;
-    else 
-        rx_odd_data_ptr     <=!rx_odd_data_ptr;
+    always @ (posedge mac_rx_clk or negedge rst_n) begin
+        if (!rst_n)   
+            rx_odd_data_ptr <= 0;
+        else if (!rx_dv_d1)
+            rx_odd_data_ptr <= 0;
+        else 
+            rx_odd_data_ptr <= !rx_odd_data_ptr;
+    end
         
-always @ (posedge mac_rx_clk or negedge rst_n)
-    if (!rst_n)  
-        MRxD_o            <=0;
-    else if(line_loop_en_i)
-        MRxD_o            <=txd_o;
-    else if(speed_i[2]&&rx_dv_d2)
-        MRxD_o            <=rxd_d2;
-    else if(rx_dv_d1&&rx_odd_data_ptr)
-        MRxD_o            <={rxd_d1[3:0],rxd_d2[3:0]};
-    
+    always @ (posedge mac_rx_clk or negedge rst_n) begin
+        if (!rst_n)  
+            MRxD_o <= 0;
+        else if(line_loop_en_i)
+            MRxD_o <= txd_o;
+        else if(speed_i[2] && rx_dv_d2)
+            MRxD_o <= rxd_d2;
+        else if(rx_dv_d1 && rx_odd_data_ptr)
+            MRxD_o <= {rxd_d1[3:0],rxd_d2[3:0]};
+    end
+        
 endmodule           
 

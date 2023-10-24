@@ -89,7 +89,7 @@ module emac_top (
     output              mdo_o     ,              //mdio serial data output
     input               mdi_i                    //mdio serial data input
 );
-
+    //miim related signals
     wire  [7:0]     r_ClkDiv;
     wire            r_MiiNoPre;
     wire  [15:0]    r_CtrlData;
@@ -105,6 +105,71 @@ module emac_top (
     wire            WCtrlDataStart;
     wire            RStatStart;
     wire            UpdateMIIRX_DATAReg;
+
+    //signals for connections
+    wire  [2:0]     r_speed;
+    wire            r_line_loop_en;
+    wire            mac_tx_clk    ;
+    wire            mac_rx_clk    ;
+    wire            mac_tx_clk_div;
+    wire            mac_rx_clk_div; 
+    //RX interface from PHY to MAC core
+    wire            MRxDv  ;       
+    wire  [7:0]     MRxD   ;       
+    wire            MRxErr ;       
+    wire            MCRS   ;
+    //TX interface from MAC core to PHY
+    wire  [7:0]      MTxD  ;
+    wire             MTxEn ;   
+    wire             MTxErr;
+
+    // Connecting EMAC clock control module
+    emac_clk_ctrl u_clk_ctrl
+    (   
+        .rst_n                 (sys_rst_n),
+        .clk_125m              (clk_125m ),
+    
+        //registers interface
+        .speed_i               (r_speed),       
+    
+        //clock signals between PHY/MAC interface
+        .gtx_clk               (gtx_clk),
+        .rx_clk                (rx_clk ),
+        .tx_clk                (tx_clk ),
+    
+        //internal clock signals for TX/RX data processing
+        .mac_tx_clk            (mac_tx_clk    ),
+        .mac_rx_clk            (mac_rx_clk    ),
+        .mac_tx_clk_div        (mac_tx_clk_div),
+        .mac_rx_clk_div        (mac_rx_clk_div)  
+    );
+
+    emac_phy_intf u_phy_intf (
+        .rst_n                 (sys_rst_n ),
+        .mac_rx_clk            (mac_rx_clk),
+        .mac_tx_clk            (mac_tx_clk),
+        //RX interface to MAC core
+        .MRxDv_o               (MRxDv ),       
+        .MRxD_o                (MRxD  ),       
+        .MRxErr_o              (MRxErr),       
+        .MCRS_o                (MCRS  ),
+        //TX interface from MAC core
+        .MTxD_i                (MTxD  ),
+        .MTxEn_i               (MTxEn ),   
+        .MTxErr_i              (MTxErr),
+        //PHY interface
+        .tx_er_o               (tx_er_o),
+        .tx_en_o               (tx_en_o),
+        .txd_o                 (txd_o  ),
+        .rx_er_i               (rx_er_i),
+        .rx_dv_i               (rx_dv_i),
+        .rxd_i                 (rxd_i  ),
+        .crs_i                 (crs_i  ),
+        .col_i                 (col_i  ),
+        //registers interface
+        .line_loop_en_i        (r_line_loop_en),
+        .speed_i               (r_speed       ) 
+    );
 
     // Connecting miim module
     eth_miim u_eth_miim
