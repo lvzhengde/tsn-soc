@@ -34,6 +34,10 @@
 
 `define EMAC_BLK_ADR           (24'h00_0003)    //EMAC block address
 
+`define EMAC_CONFIG_ADR        (8'h00)       //EMAC configuration {line_loop_en, speed[2:0]}
+`define EMAC_INT_SOURCE_ADR    (8'h04)       //EMAC Interrupt source register
+`define EMAC_INT_MASK_ADR      (8'h08)       //EMAC Interrupt mask register
+
 `define EMAC_MDIOMODE_ADR      (8'h30)       //MDIO mode {23'h0, MiiNoPre, ClkDiv[7:0]}
 `define EMAC_MDIOCOMMAND_ADR   (8'h34)       //MDIO command {29'h0, WCtrlData, RStat, ScanStat}
 `define EMAC_MDIOADDRESS_ADR   (8'h38)       //MDIO address {19'h0, RGAD[4:0], 3'b0, FIAD[4:0]}
@@ -41,5 +45,5 @@
 `define EMAC_MDIORX_DATA_ADR   (8'h40)       //MDIO receive data {16'h0, Prsd[15:0]}
 `define EMAC_MDIOSTATUS_ADR    (8'h44)       //MDIO status {29'b0, NValid_stat, Busy_stat, LinkFail}
 
-//`timescale 1ns / 1ns
+`timescale 1ns / 1ns
 `endif

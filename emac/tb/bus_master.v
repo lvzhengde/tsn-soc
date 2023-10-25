@@ -45,6 +45,8 @@ module bus_master (
     output reg             bus2ip_wr_ce_o ,         //active high
     input   [31:0]         ip2bus_data_i   
 );  
+    parameter Tp = 1;    //add Tp delay to avoid write/read simulation exception
+
     //initialize outputs
     initial begin
         bus2ip_addr_o  = {32{1'bx}};
@@ -59,32 +61,25 @@ module bus_master (
         output [31:0] rd_data;
 
     begin
-        force bus2ip_rd_ce_o = 1'b0;
-        force bus2ip_addr_o = 32'h0;
-
-        @(posedge bus2ip_clk) begin
-            force bus2ip_rd_ce_o = 1'b1;
-            force bus2ip_addr_o = rd_addr; 
-        end
-
-        @(posedge bus2ip_clk);
-        @(posedge bus2ip_clk);
+        bus2ip_rd_ce_o = 1'b0;
+        bus2ip_addr_o = 32'h0;
 
         @(posedge bus2ip_clk) 
+        #Tp;
+
+        bus2ip_rd_ce_o = 1'b1;
+        bus2ip_addr_o = rd_addr; 
+
+        repeat(2) @(posedge bus2ip_clk);
+        #Tp;
+
         rd_data = ip2bus_data_i;
 
-        @(posedge bus2ip_clk);
+        repeat(2) @(posedge bus2ip_clk);
+        #Tp;
      
-        @(posedge bus2ip_clk);
-        force bus2ip_rd_ce_o = 1'b0;  
-
-        @(posedge bus2ip_clk);
-        @(posedge bus2ip_clk);
-        
-        force bus2ip_addr_o = 32'h0;
-         
-        release bus2ip_rd_ce_o;
-        release bus2ip_addr_o ;
+        bus2ip_rd_ce_o = 1'b0;  
+        bus2ip_addr_o = 32'h0;
     end
     endtask
 
@@ -94,27 +89,23 @@ module bus_master (
         input [31:0] wr_data;
 
     begin
-        force bus2ip_wr_ce_o = 0;
-        force bus2ip_addr_o = 32'h0;
-        force bus2ip_data_o = 32'h0;
+        bus2ip_wr_ce_o = 0;
+        bus2ip_addr_o  = 32'h0;
+        bus2ip_data_o  = 32'h0;
 
-        @(posedge bus2ip_clk) begin
-            force bus2ip_wr_ce_o = 1;
-            force bus2ip_addr_o = wr_addr;
-            force bus2ip_data_o = wr_data;
-        end
+        @(posedge bus2ip_clk) 
+        #Tp;
 
-        @(posedge bus2ip_clk);
+        bus2ip_wr_ce_o = 1;
+        bus2ip_addr_o  = wr_addr;
+        bus2ip_data_o  = wr_data;
 
-        @(posedge bus2ip_clk) begin
-            force bus2ip_wr_ce_o = 0;
-            force bus2ip_addr_o = 32'h0;
-            force bus2ip_data_o = 32'h0;
-        end
+        repeat(2) @(posedge bus2ip_clk);  
+        #Tp;
 
-        release bus2ip_wr_ce_o;
-        release bus2ip_addr_o;
-        release bus2ip_data_o; 
+        bus2ip_wr_ce_o = 0;
+        bus2ip_addr_o = 32'h0;
+        bus2ip_data_o = 32'h0;
     end
     endtask
 

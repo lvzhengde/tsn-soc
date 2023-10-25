@@ -210,7 +210,11 @@ module emac_top (
         .bus2ip_wr_ce_i        (bus2ip_wr_ce_i),        
         .ip2bus_data_o         (ip2bus_data_o ), 
 
-        // miim registers
+        //EMAC control and status registers
+        .r_speed_o             (r_speed       ),
+        .r_line_loop_en_o      (r_line_loop_en),
+
+        // EMAC MIIM registers
         .r_ClkDiv_o            (r_ClkDiv),
         .r_MiiNoPre_o          (r_MiiNoPre),
         .r_CtrlData_o          (r_CtrlData),
@@ -227,5 +231,6 @@ module emac_top (
         .RStatStart_i          (RStatStart),
         .UpdateMIIRX_DATAReg_i (UpdateMIIRX_DATAReg)
     );
+    assign speed_o = r_speed;
 
 endmodule

@@ -43,6 +43,10 @@
 `define EMAC_BASE              (32'h0000_0300)
 
 /* Register space */
+`define EMAC_CONFIG      `EMAC_BASE + 32'h00 /* EMAC configuration  */
+`define EMAC_INT_SOURCE  `EMAC_BASE + 32'h04 /* EMAC Interrupt source register  */
+`define EMAC_INT_MASK    `EMAC_BASE + 32'h08 /* EMAC Interrupt mask register  */
+
 `define EMAC_MDIOMODE    `EMAC_BASE + 32'h30 /* MDIO Mode Register */
 `define EMAC_MDIOCOMMAND `EMAC_BASE + 32'h34 /* MDIO Command Register */
 `define EMAC_MDIOADDRESS `EMAC_BASE + 32'h38 /* MDIO Address Register */

@@ -45,7 +45,11 @@ module emac_registers (
     input               bus2ip_wr_ce_i ,         //active high
     output reg [31:0]   ip2bus_data_o  , 
 
-    // miim registers
+    //EMAC control and status registers
+    output [2:0]        r_speed_o            ,
+    output              r_line_loop_en_o     ,
+
+    //EMAC MIIM registers
     output [7:0]        r_ClkDiv_o           , 
     output              r_MiiNoPre_o         , 
     output [15:0]       r_CtrlData_o         , 
@@ -70,6 +74,22 @@ module emac_registers (
     //instantiate emac registers
     //--
 
+    //EMAC configuration
+    wire emac_config_wr = emac_blk_sel & bus2ip_wr_ce_i & (bus2ip_addr_i[7:0] == `EMAC_CONFIG_ADR);
+    wire [31:0] emac_config;
+    eth_register #(32, 0) u_emac_config
+    (
+        .clk            (bus2ip_clk),
+        .rst_n          (bus2ip_rst_n),  
+    
+        .sync_reset_i   (1'b0), 
+        .write_en_i     (emac_config_wr), 
+        .data_i         (bus2ip_data_i[31:0]),
+        .data_o         (emac_config[31:0]) 
+    );
+    assign r_speed_o        = emac_config[2:0];  
+    assign r_line_loop_en_o = emac_config[3]  ; 
+    
     //MDIO MODE register
     wire mdio_mode_wr = emac_blk_sel & bus2ip_wr_ce_i & (bus2ip_addr_i[7:0] == `EMAC_MDIOMODE_ADR);
     wire [31:0] mdio_mode;
@@ -216,12 +236,13 @@ module emac_registers (
 
         if(bus2ip_rd_ce_i == 1'b1 && emac_blk_sel) begin   
             case(bus2ip_addr_i[7:0])    //deal with offset address
-                `EMAC_MDIOMODE_ADR:     ip2bus_data = mdio_mode;  
+                `EMAC_CONFIG_ADR     :  ip2bus_data = emac_config;
+                `EMAC_MDIOMODE_ADR   :  ip2bus_data = mdio_mode;  
                 `EMAC_MDIOCOMMAND_ADR:  ip2bus_data = mdio_command;
                 `EMAC_MDIOADDRESS_ADR:  ip2bus_data = mdio_address;
                 `EMAC_MDIOTX_DATA_ADR:  ip2bus_data = mdio_tx_data;
                 `EMAC_MDIORX_DATA_ADR:  ip2bus_data = mdio_rx_data;
-                `EMAC_MDIOSTATUS_ADR:   ip2bus_data = {29'b0, NValid_stat_i, Busy_stat_i, LinkFail_i};
+                `EMAC_MDIOSTATUS_ADR :  ip2bus_data = {29'b0, NValid_stat_i, Busy_stat_i, LinkFail_i};
                 default:            ip2bus_data = 32'h0;
             endcase                        
         end   

@@ -344,6 +344,11 @@ begin
     // reset MAC registers
     tb.hard_reset;
 
+    #200;
+
+    // Set MAC speed
+    tb.bus_master.write_reg(`EMAC_CONFIG, {29'b0, `EMAC_SPEED});
+
     //////////////////////////////////////////////////////////////////////
     ////                                                              ////
     ////  test_miim:                                                  ////
