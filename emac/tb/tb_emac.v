@@ -98,7 +98,8 @@ module tb_emac();
         .sys_rst_n            (sys_rst_n),             
         .clk_125m             (clk_125m ),
         .clk_user             (clk_user ),
-        .speed_o              (  speed  ),
+        .speed_o              (speed    ),
+        .dl_xmt_i             (1'b0     ),
     
         //32 bits on chip host bus access interface
         .bus2ip_clk           (bus2ip_clk    ),         

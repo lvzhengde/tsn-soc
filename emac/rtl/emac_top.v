@@ -41,6 +41,7 @@ module emac_top (
     input               clk_125m ,
     input               clk_user ,
     output [2:0]        speed_o  ,
+    input               dl_xmt_i ,               //downlink(PTP) is transmitting, backpressure signal
 
     //32 bits on chip host bus access interface
     input               bus2ip_clk     ,         //clock used for register access and mdio
@@ -117,11 +118,11 @@ module emac_top (
     wire            MRxDv  ;       
     wire  [7:0]     MRxD   ;       
     wire            MRxErr ;       
-    wire            MCRS   ;
+    wire            mcrs   ;
     //TX interface from MAC core to PHY
-    wire  [7:0]      MTxD  ;
-    wire             MTxEn ;   
-    wire             MTxErr;
+    wire  [7:0]     MTxD  ;
+    wire            MTxEn ;   
+    wire            MTxErr;
 
     // Connecting EMAC clock control module
     emac_clk_ctrl u_clk_ctrl
@@ -144,6 +145,7 @@ module emac_top (
         .mac_rx_clk_div        (mac_rx_clk_div)  
     );
 
+    // Connecting PHY interface
     emac_phy_intf u_phy_intf (
         .rst_n                 (sys_rst_n ),
         .mac_rx_clk            (mac_rx_clk),
@@ -152,7 +154,7 @@ module emac_top (
         .MRxDv_o               (MRxDv ),       
         .MRxD_o                (MRxD  ),       
         .MRxErr_o              (MRxErr),       
-        .MCRS_o                (MCRS  ),
+        .MCRS_o                (mcrs  ),
         //TX interface from MAC core
         .MTxD_i                (MTxD  ),
         .MTxEn_i               (MTxEn ),   
