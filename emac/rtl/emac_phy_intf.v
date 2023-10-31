@@ -42,7 +42,7 @@ module emac_phy_intf (
     //RX interface to MAC core
     output reg         MRxDv_o        ,       
     output reg [7:0]   MRxD_o         ,       
-    output             MRxErr_o       ,       
+    output reg         MRxErr_o       ,       
     output             MCRS_o         ,
     output             MCOL_o         ,
     //TX interface from MAC core
@@ -69,6 +69,7 @@ module emac_phy_intf (
     reg             tx_odd_data_ptr ;  
     reg             rx_odd_data_ptr ;
     reg             rx_er_d1        ;
+    reg             rx_er_d2        ;
     reg             rx_dv_d1        ;
     reg             rx_dv_d2        ;
     reg     [7:0]   rxd_d1          ;
@@ -134,6 +135,7 @@ module emac_phy_intf (
     always @ (posedge mac_rx_clk or negedge rst_n) begin
         if (!rst_n)  begin
             rx_er_d1 <= 0;
+            rx_er_d2 <= 0;
             rx_dv_d1 <= 0;
             rx_dv_d2 <= 0;
             rxd_d1   <= 0;
@@ -141,6 +143,7 @@ module emac_phy_intf (
         end
         else begin
             rx_er_d1 <= rx_er_i  ;
+            rx_er_d2 <= rx_er_d1 ;
             rx_dv_d1 <= rx_dv_i  ;
             rx_dv_d2 <= rx_dv_d1 ;
             rxd_d1   <= rxd_i    ;
@@ -148,17 +151,22 @@ module emac_phy_intf (
         end     
     end
 
-    assign MRxErr_o =rx_er_d1;
     assign MCRS_o   = crs_i  ;
     assign MCOL_o   = col_i  ;
 
     always @ (posedge mac_rx_clk or negedge rst_n) begin
-        if (!rst_n)  
-            MRxDv_o <= 0;
-        else if(line_loop_en_i)
-            MRxDv_o <= tx_en_o;
-        else
-            MRxDv_o <= rx_dv_d2;
+        if (!rst_n) begin 
+            MRxDv_o  <= 0;
+            MRxErr_o <= 0;
+        end
+        else if(line_loop_en_i) begin
+            MRxDv_o  <= tx_en_o;
+            MRxErr_o <= tx_er_o;
+        end
+        else begin
+            MRxDv_o  <= rx_dv_d2;
+            MRxErr_o <= rx_er_d2;
+        end
     end
 
     always @ (posedge mac_rx_clk or negedge rst_n) begin
