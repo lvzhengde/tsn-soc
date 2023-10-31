@@ -119,6 +119,7 @@ module emac_top (
     wire  [7:0]     MRxD   ;       
     wire            MRxErr ;       
     wire            mcrs   ;
+    wire            mcol   ;
     //TX interface from MAC core to PHY
     wire  [7:0]     MTxD  ;
     wire            MTxEn ;   
@@ -155,6 +156,7 @@ module emac_top (
         .MRxD_o                (MRxD  ),       
         .MRxErr_o              (MRxErr),       
         .MCRS_o                (mcrs  ),
+        .MCOL_o                (mcol  ),
         //TX interface from MAC core
         .MTxD_i                (MTxD  ),
         .MTxEn_i               (MTxEn ),   

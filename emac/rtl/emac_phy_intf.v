@@ -44,6 +44,7 @@ module emac_phy_intf (
     output reg [7:0]   MRxD_o         ,       
     output             MRxErr_o       ,       
     output             MCRS_o         ,
+    output             MCOL_o         ,
     //TX interface from MAC core
     input   [7:0]      MTxD_i         ,
     input              MTxEn_i        ,   
@@ -72,8 +73,6 @@ module emac_phy_intf (
     reg             rx_dv_d2        ;
     reg     [7:0]   rxd_d1          ;
     reg     [7:0]   rxd_d2          ;
-    reg             crs_d1          ;
-    reg             col_d1          ;
 
     //++
     //Tx control                                                              
@@ -139,8 +138,6 @@ module emac_phy_intf (
             rx_dv_d2 <= 0;
             rxd_d1   <= 0;
             rxd_d2   <= 0;
-            crs_d1   <= 0;
-            col_d1   <= 0;
         end
         else begin
             rx_er_d1 <= rx_er_i  ;
@@ -148,13 +145,12 @@ module emac_phy_intf (
             rx_dv_d2 <= rx_dv_d1 ;
             rxd_d1   <= rxd_i    ;
             rxd_d2   <= rxd_d1   ;
-            crs_d1   <= crs_i    ;
-            col_d1   <= col_i    ;
         end     
     end
 
-    assign MRxErr_o   =rx_er_d1      ;
-    assign MCRS_o     =crs_d1        ;
+    assign MRxErr_o =rx_er_d1;
+    assign MCRS_o   = crs_i  ;
+    assign MCOL_o   = col_i  ;
 
     always @ (posedge mac_rx_clk or negedge rst_n) begin
         if (!rst_n)  

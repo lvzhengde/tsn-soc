@@ -36,42 +36,44 @@
 -*/
 
 module emac_tx (
-    input           rst_n                  ,
-    input           clk                    ,
-    input           clk_user               ,
+    input               rst_n                  ,
+    input               clk                    ,
+    input               clk_user               ,
+    input               xmt_en_i               , //transmit enable
     // PHY interface
-    output  [7:0]   TxD_o                  ,
-    output          TxEn_o                 ,   
-    output          TxErr_o                ,
-    input           CRS_i                  ,
+    output  [7:0]       TxD_o                  ,
+    output              TxEn_o                 ,   
+    output              TxErr_o                ,
+    input               CRS_i                  , //carrier sense
+    input               COL_i                  , //collision
     // RMON
-    output  [2:0]   tx_pkt_type_rmon_o     ,
-    output  [15:0]  tx_pkt_length_rmon_o   ,
-    output          tx_apply_rmon_o        ,
-    output  [2:0]   tx_pkt_err_type_rmon_o ,
+    output  [2:0]       tx_pkt_type_rmon_o     ,
+    output  [15:0]      tx_pkt_length_rmon_o   ,
+    output              tx_apply_rmon_o        ,
+    output  [2:0]       tx_pkt_err_type_rmon_o ,
     // user interface 
-    output          tx_mac_wa_o            ,
-    input           tx_mac_wr_i            ,
-    input   [31:0]  tx_mac_data_i          ,
-    input   [1:0]   tx_mac_be_i            ,
-    input           tx_mac_sop_i           ,
-    input           tx_mac_eop_i           ,
+    output              tx_mac_wa_o            ,
+    input               tx_mac_wr_i            ,
+    input   [31:0]      tx_mac_data_i          ,
+    input   [1:0]       tx_mac_be_i            ,
+    input               tx_mac_sop_i           ,
+    input               tx_mac_eop_i           ,
     // host interface 
-    input   [4:0]   r_txHwMark_i           , //TX FIFO high water mark
-    input   [4:0]   r_txLwMark_i           , //TX FIFO low water mark 
-    input           r_pause_frame_send_en_i, //enable transmit logic to send pause frame               
-    input   [15:0]  r_pause_quanta_set_i   , //quanta value in sending pause frame
-    input           r_FullDuplex_i         , //full duplex mode
-    input   [3:0]   r_MaxRetry_i           , //Maximum retry times when collision occurred
-    input   [5:0]   r_IFGSet_i             , //Minimum IFG value
-    input           r_txMacAddr_en_i       , //enable to replace destination MAC address of transmitting packet            
-    input   [47:0]  r_txMacAddr_i          , //mac address which will replace the target mac address of transmit packet.
-    input           r_tx_pause_en_i        , //respond to received pause frame enable
-    input           r_xmtPause_off_i       , //transmit pause frame with zero quanta
-    input           r_xmtPause_on_i        , //transmit pause frame with setting quanta value
+    input   [4:0]       r_txHwMark_i           , //TX FIFO high water mark
+    input   [4:0]       r_txLwMark_i           , //TX FIFO low water mark 
+    input               r_pause_frame_send_en_i, //enable transmit logic to send pause frame               
+    input   [15:0]      r_pause_quanta_set_i   , //quanta value in sending pause frame
+    input               r_FullDuplex_i         , //full duplex mode
+    input   [3:0]       r_MaxRetry_i           , //Maximum retry times when collision occurred
+    input   [5:0]       r_IFGSet_i             , //Minimum IFG value
+    input               r_txMacAddr_en_i       , //enable to replace source MAC address of transmitting packet            
+    input   [47:0]      r_txMacAddr_i          , //mac address which will replace the source mac address of transmit packet.
+    input               r_tx_pause_en_i        , //respond to received pause frame enable
+    input               r_xmtPause_off_i       , //transmit pause frame with zero quanta
+    input               r_xmtPause_on_i        , //transmit pause frame with setting quanta value
     // from MAC rx flow control       
-    input   [15:0]  pause_quanta_i         ,   
-    input           pause_quanta_val_i       
+    input   [15:0]      pause_quanta_i         ,   
+    input               pause_quanta_val_i       
 );
 
     //++
@@ -148,6 +150,7 @@ MAC_tx_ctrl U_MAC_tx_ctrl(
 .TxEn_o                     (TxEn_o                   ),        
 .TxErr_o                    (TxErr_o                  ),
 .CRS_i                      (CRS_i                    ),            
+.COL_i                      (COL_i                    ),
  //RMON                   (//RMON                 ),           
 .tx_pkt_type_rmon_o         (tx_pkt_type_rmon_o       ),        
 .tx_pkt_length_rmon_o       (tx_pkt_length_rmon_o     ),            
