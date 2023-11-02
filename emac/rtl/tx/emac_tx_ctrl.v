@@ -61,7 +61,6 @@ module emac_tx_ctrl (
     input  [7:0]        fifo_data_i           ,
     output reg          fifo_rd_o             ,
     input               fifo_eop_i            ,
-    input               fifo_da_i             ,
     output reg          fifo_rd_finish_o      ,
     output reg          fifo_rd_retry_o       ,
     input               fifo_ra_i             ,
@@ -120,7 +119,6 @@ module emac_tx_ctrl (
     reg             mac_header_slot_tmp ;
     reg             src_mac_ptr         ;
     reg [7:0]       FrameLengthCounter  ;//for pad append
-    reg [1:0]       PADCounter          ;
     reg [7:0]       JamCounter          ;
     reg             PktDrpEvenPtr       ;
     reg [7:0]       pause_counter       ;
@@ -165,15 +163,6 @@ module emac_tx_ctrl (
         else if(FrameLengthCounter != 8'hff && (current_state == StateData 
             || current_state == StateSendPauseFrame || current_state == StatePAD))
             FrameLengthCounter <=FrameLengthCounter + 1;
-    end
-
-    always @(posedge clk or negedge rst_n) begin
-        if(!rst_n)
-            PADCounter <= 0;
-        else if(current_state != StatePAD)
-            PADCounter <= 0;
-        else
-            PADCounter <= PADCounter + 1;
     end
 
     //state transition
@@ -418,7 +407,7 @@ module emac_tx_ctrl (
     end
 
     always @(*) begin
-        if(current_state == StateData && fifo_data_err_empty_i)
+        if(current_state == StateData && (fifo_data_err_empty_i || fifo_data_err_full_i))
             TxErr_tmp = 1;
         else
             TxErr_tmp = 0;
@@ -488,85 +477,91 @@ module emac_tx_ctrl (
         end     
     end
     
+    //++
+    //RMON MIB counter logics
+    //--
 
-
-//RMON
-
-
-always @ (posedge clk or negedge rst_n)
-    if (!rst_n)
-        tx_pkt_length_rmon_o      <=0;
-    else if (current_state==StateSFD)
-        tx_pkt_length_rmon_o      <=0;
-    else if (current_state==StateData||current_state==StateSendPauseFrame||current_state==StatePAD||current_state==StateFCS)
-        tx_pkt_length_rmon_o      <=tx_pkt_length_rmon_o+1;
+    always @(posedge clk or negedge rst_n) begin
+        if(!rst_n)
+            tx_pkt_length_rmon_o <= 0;
+        else if(current_state == StateSFD)
+            tx_pkt_length_rmon_o <= 0;
+        else if(current_state == StateData || current_state == StateSendPauseFrame ||
+                current_state == StatePAD || current_state == StateFCS)
+            tx_pkt_length_rmon_o <= tx_pkt_length_rmon_o + 1;
+    end
         
-always @ (posedge clk or negedge rst_n)
-    if (!rst_n)
-        tx_apply_rmon_tmp       <=0;
-    else if ((fifo_eop_i&&current_state==StateJamDrop)||
-             (fifo_eop_i&&current_state==StateFFEmptyDrop)||
-             crc_end_i)
-        tx_apply_rmon_tmp       <=1;
-    else
-        tx_apply_rmon_tmp       <=0; 
+    always @(posedge clk or negedge rst_n) begin
+        if(!rst_n)
+            tx_apply_rmon_tmp <= 0;
+        else if((fifo_eop_i && current_state == StateJamDrop) ||
+                 (fifo_eop_i && current_state == StateFFEmptyDrop) || crc_end_i)
+            tx_apply_rmon_tmp <= 1;
+        else
+            tx_apply_rmon_tmp <= 0; 
+    end
 
-always @ (posedge clk or negedge rst_n)
-    if (!rst_n)
-        tx_apply_rmon_tmp_pl1   <=0;
-    else
-        tx_apply_rmon_tmp_pl1   <=tx_apply_rmon_tmp;
+    always @(posedge clk or negedge rst_n) begin
+        if(!rst_n)
+            tx_apply_rmon_tmp_pl1 <= 0;
+        else
+            tx_apply_rmon_tmp_pl1 <= tx_apply_rmon_tmp;
+    end
         
-always @ (posedge clk or negedge rst_n)
-    if (!rst_n)
-        tx_apply_rmon_o       <=0;
-    else if ((fifo_eop_i&&current_state==StateJamDrop)||
-             (fifo_eop_i&&current_state==StateFFEmptyDrop)||
-             crc_end_i)
-        tx_apply_rmon_o       <=1;
-    else if (tx_apply_rmon_tmp_pl1)
-        tx_apply_rmon_o       <=0;
+    always @(posedge clk or negedge rst_n) begin
+        if(!rst_n)
+            tx_apply_rmon_o <= 0;
+        else if((fifo_eop_i && current_state == StateJamDrop) ||
+                 (fifo_eop_i && current_state == StateFFEmptyDrop) || crc_end_i)
+            tx_apply_rmon_o <= 1;
+        else if (tx_apply_rmon_tmp_pl1)
+            tx_apply_rmon_o <= 0;
+    end
         
-always @ (posedge clk or negedge rst_n)
-    if (!rst_n)
-        tx_pkt_err_type_rmon_o    <=0;    
-    else if(fifo_eop_i&&current_state==StateJamDrop)
-        tx_pkt_err_type_rmon_o    <=3'b001;//
-    else if(fifo_eop_i&&current_state==StateFFEmptyDrop)
-        tx_pkt_err_type_rmon_o    <=3'b010;//underflow
-    else if(fifo_eop_i&&fifo_data_err_full_i)
-        tx_pkt_err_type_rmon_o    <=3'b011;//overflow
-    else if(crc_end_i)
-        tx_pkt_err_type_rmon_o    <=3'b100;//normal
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n)
+            tx_pkt_err_type_rmon_o <= 0;    
+        else if(fifo_eop_i && current_state==StateJamDrop)
+            tx_pkt_err_type_rmon_o <= 3'b001;//
+        else if(fifo_eop_i && current_state == StateFFEmptyDrop)
+            tx_pkt_err_type_rmon_o <= 3'b010;//underflow
+        else if(fifo_eop_i && fifo_data_err_full_i)
+            tx_pkt_err_type_rmon_o <= 3'b011;//overflow
+        else if(crc_end_i)
+            tx_pkt_err_type_rmon_o <= 3'b100;//normal
+    end
         
-always @ (posedge clk or negedge rst_n)
-    if (!rst_n)
-        mac_header_slot_tmp <=0;
-    else if(current_state==StateSFD&&next_state==StateData)
-        mac_header_slot_tmp <=1;    
-    else
-        mac_header_slot_tmp <=0;
+    always @(posedge clk or negedge rst_n) begin
+        if(!rst_n)
+            mac_header_slot_tmp <= 0;
+        else if(current_state == StateSFD && next_state==StateData)
+            mac_header_slot_tmp <= 1;    
+        else
+            mac_header_slot_tmp <= 0;
+    end
         
-always @ (posedge clk or negedge rst_n)
-    if (!rst_n)
-        mac_header_slot     <=0;
-    else 
-        mac_header_slot     <=mac_header_slot_tmp;
-
-always @ (posedge clk or negedge rst_n)
-    if (!rst_n)
-        tx_pkt_type_rmon_o    <=0;
-    else if (current_state==StateSendPauseFrame)
-        tx_pkt_type_rmon_o    <=3'b100;
-    else if(mac_header_slot)
-        tx_pkt_type_rmon_o    <={1'b0,TxD_o[7:6]};
-
+    always @(posedge clk or negedge rst_n) begin
+        if(!rst_n)
+            mac_header_slot <= 0;
+        else 
+            mac_header_slot <= mac_header_slot_tmp;
+    end
+    
+    always @(posedge clk or negedge rst_n) begin
+        if(!rst_n)
+            tx_pkt_type_rmon_o <= 0;
+        else if(current_state == StateSendPauseFrame)
+            tx_pkt_type_rmon_o <= 3'b100;
+        else if(mac_header_slot)
+            tx_pkt_type_rmon_o <= {1'b0,TxD_o[1:0]};  //FIXME.
+    end
        
-always @(tx_pkt_length_rmon_o)
-    if (tx_pkt_length_rmon_o>=6&&tx_pkt_length_rmon_o<=11)
-        src_mac_ptr         =1;
-    else
-        src_mac_ptr         =0;        
+    always @(*) begin
+        if(tx_pkt_length_rmon_o >= 6 && tx_pkt_length_rmon_o <= 11)
+            src_mac_ptr = 1;
+        else
+            src_mac_ptr = 0;  
+    end      
 
     always @(*) begin
         case (tx_pkt_length_rmon_o)
@@ -580,47 +575,36 @@ always @(tx_pkt_length_rmon_o)
         endcase
     end
 
-//MAC_tx_addr_add  
-always @ (posedge clk or negedge rst_n)
-    if (!rst_n)
-        MAC_tx_addr_rd  <=0;
-    else if ((tx_pkt_length_rmon_o>=4&&tx_pkt_length_rmon_o<=9)&&(r_txMacAddr_en_i||current_state==StateSendPauseFrame))
-        MAC_tx_addr_rd  <=1;
-    else
-        MAC_tx_addr_rd  <=0;
+    //++
+    //flow control
+    //--
 
-always @ (tx_pkt_length_rmon_o or fifo_rd_o)
-    if ((tx_pkt_length_rmon_o==3)&&fifo_rd_o)
-        MAC_tx_addr_init=1;
-    else
-        MAC_tx_addr_init=0;
-
-//flow control
-always @ (posedge clk or negedge rst_n)
-    if (!rst_n)
-        pause_quanta_sub_o    <=0;
-    else if(pause_counter==512/8)
-        pause_quanta_sub_o    <=1;
-    else
-        pause_quanta_sub_o    <=0;
-
+    always @(posedge clk or negedge rst_n) begin
+        if(!rst_n)
+            pause_quanta_sub_o <= 0;
+        else if(pause_counter == 512/8)
+            pause_quanta_sub_o <= 1;
+        else
+            pause_quanta_sub_o <= 0;
+    end
  
-always @ (posedge clk or negedge rst_n)
-    if (!rst_n) 
-        xoff_gen_complete_o   <=0;
-    else if(current_state==StateDefer&&xoff_gen)
-        xoff_gen_complete_o   <=1;
-    else
-        xoff_gen_complete_o   <=0;
+    always @(posedge clk or negedge rst_n) begin
+        if(!rst_n) 
+            xoff_gen_complete_o   <=0;
+        else if(current_state == StateDefer && xoff_gen_i)
+            xoff_gen_complete_o   <=1;
+        else
+            xoff_gen_complete_o   <=0;
+    end
     
+    always @(posedge clk or negedge rst_n) begin
+        if(!rst_n) 
+            xon_gen_complete_o <= 0;
+        else if(current_state == StateDefer && xon_gen_i)
+            xon_gen_complete_o <= 1;
+        else
+            xon_gen_complete_o <= 0;
+    end
     
-always @ (posedge clk or negedge rst_n)
-    if (!rst_n) 
-        xon_gen_complete_o    <=0;
-    else if(current_state==StateDefer&&xon_gen_i)
-        xon_gen_complete_o    <=1;
-    else
-        xon_gen_complete_o    <=0;
-
 endmodule
 

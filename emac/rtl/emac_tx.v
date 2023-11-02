@@ -111,90 +111,93 @@ module emac_tx (
     wire            fifo_data_err_empty ;
     wire            fifo_data_err_full  ;
 
-//******************************************************************************        
-//instantiation                                                              
-//****************************************************************************** 
-MAC_tx_ctrl U_MAC_tx_ctrl(
-.rst_n                    (rst_n                  ),                    
-.clk                      (clk                    ),            
- //CRC_gen Interface      (//CRC_gen Interface    ),           
-.crc_init                 (crc_init               ),        
-.frame_data               (frame_data             ),            
-.data_en                  (data_en                ),            
-.crc_rd                   (crc_rd                 ),            
-.crc_end                  (crc_end                ),            
-.crc_out                  (crc_out                ),            
- //random_gen interfac    (//random_gen interfac  ),           
-.random_init              (random_init            ),            
-.retry_cnt                 (retry_cnt               ),        
-.random_time_meet         (random_time_meet       ),        
- //flow control           (//flow control         ),           
-.pause_apply              (pause_apply            ),            
-.pause_quanta_sub         (pause_quanta_sub       ),        
-.xoff_gen                 (xoff_gen               ),        
-.xoff_gen_complete        (xoff_gen_complete      ),            
-.xon_gen                  (xon_gen                ),            
-.xon_gen_complete         (xon_gen_complete       ),        
- //MAC_tx_FF              (//MAC_tx_FF            ),           
-.fifo_data                (fifo_data              ),            
-.fifo_rd                  (fifo_rd                ),            
-.fifo_eop                 (fifo_eop               ),        
-.fifo_da                  (fifo_da                ),            
-.fifo_rd_finish           (fifo_rd_finish         ),            
-.fifo_rd_retry            (fifo_rd_retry          ),            
-.fifo_ra                  (fifo_ra                ),            
-.fifo_data_err_empty      (fifo_data_err_empty    ),            
-.fifo_data_err_full       (fifo_data_err_full     ),            
- //RMII                   (//RMII                 ),           
-.TxD_o                      (TxD_o                    ),            
-.TxEn_o                     (TxEn_o                   ),        
-.TxErr_o                    (TxErr_o                  ),
-.CRS_i                      (CRS_i                    ),            
-.COL_i                      (COL_i                    ),
- //RMON                   (//RMON                 ),           
-.tx_pkt_type_rmon_o         (tx_pkt_type_rmon_o       ),        
-.tx_pkt_length_rmon_o       (tx_pkt_length_rmon_o     ),            
-.tx_apply_rmon_o            (tx_apply_rmon_o          ),            
-.tx_pkt_err_type_rmon_o     (tx_pkt_err_type_rmon_o   ),           
- //CPU                    (//CPU                  ),           
-.r_pause_frame_send_en_i      (r_pause_frame_send_en_i    ),            
-.r_pause_quanta_set_i         (r_pause_quanta_set_i       ),                
-.r_txMacAddr_en_i            (r_txMacAddr_en_i          ),            
-.r_txMacAddr_i               (r_txMacAddr_i ),
-.r_FullDuplex_i               (r_FullDuplex_i             ),            
-.r_MaxRetry_i                 (r_MaxRetry_i               ),        
-.r_IFGSet_i                   (r_IFGSet_i                 )            
-);
+    // Connecting emac_tx_ctrl                                                             
+    emac_tx_ctrl emac_tx_ctrl
+    (
+        .rst_n                    (rst_n                  ),                    
+        .clk                      (clk                    ),            
+        .xmt_en_i                 (xmt_en_i               ),
+        //CRC generator Interface 
+        .crc_init_o               (crc_init               ),        
+        .frame_data_o             (frame_data             ),            
+        .data_en_o                (data_en                ),            
+        .crc_rd_o                 (crc_rd                 ),            
+        .crc_end_i                (crc_end                ),            
+        .crc_out_i                (crc_out                ),            
+        //random generator interface
+        .random_init_o            (random_init            ),            
+        .retry_cnt_o              (retry_cnt              ),        
+        .random_time_meet_i       (random_time_meet       ),        
+        //flow control
+        .pause_apply_i            (pause_apply            ),            
+        .pause_quanta_sub_o       (pause_quanta_sub       ),        
+        .xoff_gen_i               (xoff_gen               ),        
+        .xoff_gen_complete_o      (xoff_gen_complete      ),            
+        .xon_gen_i                (xon_gen                ),            
+        .xon_gen_complete_o       (xon_gen_complete       ),        
+        //MAC TX FIFO interface
+        .fifo_data_i              (fifo_data              ),            
+        .fifo_rd_o                (fifo_rd                ),            
+        .fifo_eop_i               (fifo_eop               ),        
+        .fifo_rd_finish_o         (fifo_rd_finish         ),            
+        .fifo_rd_retry_o          (fifo_rd_retry          ),            
+        .fifo_ra_i                (fifo_ra                ),            
+        .fifo_data_err_empty_i    (fifo_data_err_empty    ),            
+        .fifo_data_err_full_i     (fifo_data_err_full     ),            
+        //GMII/MII
+        .TxD_o                    (TxD_o                  ),            
+        .TxEn_o                   (TxEn_o                 ),        
+        .TxErr_o                  (TxErr_o                ),
+        .CRS_i                    (CRS_i                  ),            
+        .COL_i                    (COL_i                  ),
+        //RMON
+        .tx_pkt_type_rmon_o       (tx_pkt_type_rmon_o     ),        
+        .tx_pkt_length_rmon_o     (tx_pkt_length_rmon_o   ),            
+        .tx_apply_rmon_o          (tx_apply_rmon_o        ),            
+        .tx_pkt_err_type_rmon_o   (tx_pkt_err_type_rmon_o ),           
+        //Host interface
+        .r_pause_frame_send_en_i  (r_pause_frame_send_en_i),            
+        .r_pause_quanta_set_i     (r_pause_quanta_set_i   ),                
+        .r_txMacAddr_en_i         (r_txMacAddr_en_i       ),            
+        .r_txMacAddr_i            (r_txMacAddr_i          ),
+        .r_FullDuplex_i           (r_FullDuplex_i         ),            
+        .r_MaxRetry_i             (r_MaxRetry_i           ),        
+        .r_IFGSet_i               (r_IFGSet_i             )            
+    );
 
-crc_gen U_crc_gen(
-.rst_n                    (rst_n                  ),
-.clk                      (clk                    ),
-.Init                     (crc_init               ),
-.frame_data               (frame_data             ),
-.data_en                  (data_en                ),
-.crc_rd                   (crc_rd                 ),
-.crc_out                  (crc_out                ),
-.crc_end                  (crc_end                )
-);
+    // Connecting emac_crc_gen
+    crc_gen U_crc_gen 
+    (
+        .rst_n                    (rst_n      ),
+        .clk                      (clk        ),
+        .init_i                   (crc_init   ),
+        .frame_data_i             (frame_data ),
+        .data_en_i                (data_en    ),
+        .crc_rd_i                 (crc_rd     ),
+        .crc_out_o                (crc_out    ),
+        .crc_end_o                (crc_end    )
+    );
 
-flow_ctrl U_flow_ctrl(
-.rst_n                    (rst_n                  ),
-.clk                      (clk                    ),
- //host processor         (//host processor       ),
-.r_tx_pause_en_i              (r_tx_pause_en_i            ),
-.r_xmtPause_off_i                 (r_xmtPause_off_i               ),
-.r_xmtPause_on_i                  (r_xmtPause_on_i                ),
- //MAC_rx_flow            (//MAC_rx_flow          ),
-.pause_quanta_i             (pause_quanta_i           ),
-.pause_quanta_val_i         (pause_quanta_val_i       ),
- //MAC_tx_ctrl            (//MAC_tx_ctrl          ),
-.pause_apply              (pause_apply            ),
-.pause_quanta_sub         (pause_quanta_sub       ),
-.xoff_gen                 (xoff_gen               ),
-.xoff_gen_complete        (xoff_gen_complete      ),
-.xon_gen                  (xon_gen                ),
-.xon_gen_complete         (xon_gen_complete       )
-);
+    // Connecting emac_flow_ctrl
+    emac_flow_ctrl emac_flow_ctrl
+    (
+        .rst_n                    (rst_n                  ),
+        .clk                      (clk                    ),
+        //host interface    
+        .r_tx_pause_en_i          (r_tx_pause_en_i        ),
+        .r_xoff_cpu_i             (r_xmtPause_off_i       ),
+        .r_xoff_cpu_i             (r_xmtPause_on_i        ),
+        //from MAC RX flow control       
+        .pause_quanta_i           (pause_quanta_i        ),
+        .pause_quanta_val_i       (pause_quanta_val_i    ),
+        //MAC TX flow control     
+        .pause_apply_o            (pause_apply            ),
+        .pause_quanta_sub_i       (pause_quanta_sub       ),
+        .xoff_gen_o               (xoff_gen               ),
+        .xoff_gen_complete_i      (xoff_gen_complete      ),
+        .xon_gen_o                (xon_gen                ),
+        .xon_gen_complete_i       (xon_gen_complete       )
+    );
 
 MAC_tx_FF U_MAC_tx_FF(
 .rst_n                    (rst_n                  ),
