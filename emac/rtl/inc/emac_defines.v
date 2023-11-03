@@ -45,5 +45,8 @@
 `define EMAC_MDIORX_DATA_ADR   (8'h40)       //MDIO receive data {16'h0, Prsd[15:0]}
 `define EMAC_MDIOSTATUS_ADR    (8'h44)       //MDIO status {29'b0, NValid_stat, Busy_stat, LinkFail}
 
+`define EMAC_TXFF_AWIDTH       (9)           //TX FIFO address width
+`define EMAC_RXFF_AWIDTH       (9)           //RX FIFO address width
+
 `timescale 1ns / 1ns
 `endif
