@@ -45,11 +45,11 @@ module emac_tx_fifo (
     input               fifo_rd_retry_i       ,
     output reg          fifo_eop_o            ,
     output reg          fifo_da_o             ,
-    output reg          fifo_ra_o             ,
+    output reg          fifo_ra_o             ,//FIFO read available
     output reg          fifo_data_err_empty_o ,
     output              fifo_data_err_full_o  ,
     //user interface 
-    output reg          tx_mac_wa_o           ,
+    output reg          tx_mac_wa_o           ,//FIFO write available
     input               tx_mac_wr_i           ,//MAC data write enable
     input  [31:0]       tx_mac_data_i         ,//MAC data input
     input  [1:0]        tx_mac_be_i           ,//big endian
@@ -111,8 +111,6 @@ module emac_tx_fifo (
     wire [35:0]      dout    ;
     reg              wr_en   ;
 
-    wire [`EMAC_TXFF_AWIDTH-1:0]       add_wr_pluse    ;
-    wire [`EMAC_TXFF_AWIDTH-1:0]       add_wr_pluse_pluse;
     wire [`EMAC_TXFF_AWIDTH-1:0]       add_rd_pluse   ;
     reg  [`EMAC_TXFF_AWIDTH-1:0]       add_rd_reg_d1  ;
 
@@ -133,11 +131,6 @@ module emac_tx_fifo (
     wire [31:0]     dout_data       ;     
     reg  [35:0]     dout_reg        /* synthesis syn_preserve=1 */;
 
-    reg             packet_number_sub_d1   ;
-    reg             packet_number_sub_d2   ;
-    reg             packet_number_sub_edge  /* synthesis syn_preserve=1 */;
-    reg             packet_number_add       /* synthesis syn_preserve=1 */;
-
     reg [4:0]       fifo_data_count   ;
     reg             fifo_rd_d1        ;
     reg             fifo_ra_tmp       ;      
@@ -149,18 +142,10 @@ module emac_tx_fifo (
 
     reg             add_rd_reg_rdy_tmp  ;
     reg             add_rd_reg_rdy      ;   
-    reg             add_rd_reg_rdy_d1   ;   
-    reg             add_rd_reg_rdy_d2   ;
-
-    reg [4:0]       txHwMark_d1     ;
-    reg [4:0]       txLwMark_d1     ;
 
     reg             add_rd_jump_tmp    ;
     reg             add_rd_jump_tmp_d1 ;
     reg             add_rd_jump        ;
-    reg             add_rd_jump_wr_d1  ;
-
-    integer         i ;
 
     //++
     //write data to FIFO 
@@ -276,7 +261,7 @@ module emac_tx_fifo (
     end
             
     //binary to Gray address--write address
-    always @(*) begin : WRITE_GRAY_ADDR
+    always @(*) begin : GRAY_WRITE
         integer i;
 
         add_wr_gray[`EMAC_TXFF_AWIDTH-1] <= add_wr[`EMAC_TXFF_AWIDTH-1];
@@ -295,18 +280,23 @@ module emac_tx_fifo (
             {add_rd_gray_d1, add_rd_gray_d2} <= {add_rd_gray, add_rd_gray_d1};
     end
                     
+    reg             add_rd_jump_wr_d1, add_rd_jump_wr_d2;
+
     always @(posedge clk_sys or negedge rst_n) begin
         if(!rst_n)
-            add_rd_jump_wr_d1 <= 0;
+            {add_rd_jump_wr_d1, add_rd_jump_wr_d2} <= 0;
         else        
-            add_rd_jump_wr_d1 <= add_rd_jump;
+            {add_rd_jump_wr_d1, add_rd_jump_wr_d2} <= {add_rd_jump, add_rd_jump_wr_d1};
     end
 
     reg  [`EMAC_TXFF_AWIDTH-1:0]       add_rd_ungray_reg;
 
-    always @(*) begin
+    always @(*) begin : UNGRAY_READ
+        integer i;
+
         add_rd_ungray = add_rd_ungray_reg;
-        if(!add_rd_jump_wr_d1) begin
+
+        if(!add_rd_jump_wr_d2) begin
             add_rd_ungray[`EMAC_TXFF_AWIDTH-1] = add_rd_gray_d2[`EMAC_TXFF_AWIDTH-1];   
 
             for(i = `EMAC_TXFF_AWIDTH-2; i >= 0; i = i-1)
@@ -321,185 +311,164 @@ module emac_tx_fifo (
             add_rd_ungray_reg <= add_rd_ungray;
     end
 
+    //generate fifo full and almostfull flags
+    wire [`EMAC_TXFF_AWIDTH-1:0]       add_wr_plus1    ;
+    wire [`EMAC_TXFF_AWIDTH-1:0]       add_wr_plus4;
 
-                    
+    assign  add_wr_plus1 = add_wr + 1;
+    assign  add_wr_plus4 = add_wr + 4;
 
+    always @(*) begin
+        if(add_wr_plus1 == add_rd_ungray)
+            full = 1;
+        else
+            full = 0;
+    end
 
-assign          add_wr_pluse        =add_wr+1;
-assign          add_wr_pluse_pluse  =add_wr+4;
-
-always @ (add_wr_pluse or add_rd_ungray)
-    if (add_wr_pluse==add_rd_ungray)
-        full    =1;
-    else
-        full    =0;
-
-always @ (posedge clk_sys or negedge rst_n)
-    if (!rst_n)
-        almost_full  <=0;
-    else if (add_wr_pluse_pluse==add_rd_ungray)
-        almost_full  <=1;
-    else
-        almost_full  <=0;
+    always @(posedge clk_sys or negedge rst_n) begin
+        if(!rst_n)
+            almost_full <= 0;
+        else if(add_wr_plus4 == add_rd_ungray)
+            almost_full <= 1;
+        else
+            almost_full <= 0;
+    end
         
-        
-        
-//
-always @ (posedge clk_sys or negedge rst_n)
-    if (!rst_n)
-        begin
-        packet_number_sub_d1   <=0;
-        packet_number_sub_d2   <=0;
+    //calculate packet available in TX FIFO
+    reg             packet_number_sub_d1   ;
+    reg             packet_number_sub_d2   ;
+    reg             packet_number_sub_d3   ;
+    reg             packet_number_sub_edge  /* synthesis syn_preserve=1 */;
+    reg             packet_number_add       /* synthesis syn_preserve=1 */;
+
+    always @(posedge clk_sys or negedge rst_n) begin
+        if (!rst_n) begin
+            packet_number_sub_d1 <= 0;
+            packet_number_sub_d2 <= 0;
+            packet_number_sub_d3 <= 0;
         end
-    else 
-        begin
-        packet_number_sub_d1   <=pkt_sub_apply;
-        packet_number_sub_d2   <=packet_number_sub_d1;
+        else begin
+            packet_number_sub_d1 <= pkt_sub_apply;
+            packet_number_sub_d2 <= packet_number_sub_d1;
+            packet_number_sub_d3 <= packet_number_sub_d2;
         end
+    end
         
-always @ (posedge clk_sys or negedge rst_n)
-    if (!rst_n)
-        packet_number_sub_edge  <=0;
-    else if (packet_number_sub_d1&!packet_number_sub_d2)
-        packet_number_sub_edge  <=1;
-    else
-        packet_number_sub_edge  <=0;
+    always @(posedge clk_sys or negedge rst_n) begin
+        if(!rst_n)
+            packet_number_sub_edge <= 0;
+        else if(packet_number_sub_d2 & !packet_number_sub_d3)
+            packet_number_sub_edge <= 1;
+        else
+            packet_number_sub_edge <= 0;
+    end
 
-always @ (posedge clk_sys or negedge rst_n)
-    if (!rst_n)
-        packet_number_add       <=0;    
-    else if (current_state_sys==SYS_EOP_OK||current_state_sys==SYS_EOP_ERR)
-        packet_number_add       <=1;
-    else
-        packet_number_add       <=0;    
+    always @(posedge clk_sys or negedge rst_n) begin
+        if(!rst_n)
+            packet_number_add <= 0;    
+        else if(current_state_sys == SYS_EOP_OK || current_state_sys == SYS_EOP_ERR)
+            packet_number_add <= 1;
+        else
+            packet_number_add <= 0;    
+    end
         
+    always @(posedge clk_sys or negedge rst_n) begin
+        if(!rst_n)
+            packet_number_in_fifo <= 0;
+        else if(packet_number_add && !packet_number_sub_edge)
+            packet_number_in_fifo <= packet_number_in_fifo + 1'b1;
+        else if(!packet_number_add && packet_number_sub_edge)
+            packet_number_in_fifo <= packet_number_in_fifo - 1'b1;
+    end
+    
+    always @(posedge clk_sys or negedge rst_n) begin
+        if(!rst_n)
+            packet_number_in_fifo_reg <= 0;
+        else
+            packet_number_in_fifo_reg <= packet_number_in_fifo;
+    end
 
-always @ (posedge clk_sys or negedge rst_n)
-    if (!rst_n)
-        packet_number_in_fifo      <=0;
-    else if (packet_number_add&&!packet_number_sub_edge)
-        packet_number_in_fifo      <=packet_number_in_fifo + 1'b1;
-    else if (!packet_number_add&&packet_number_sub_edge)
-        packet_number_in_fifo      <=packet_number_in_fifo - 1'b1;
+    //generate control signals for TX FIFO read and write
+    reg             add_rd_reg_rdy_d1   ;   
+    reg             add_rd_reg_rdy_d2   ;
+    reg             add_rd_reg_rdy_d3   ;
 
-
-always @ (posedge clk_sys or negedge rst_n)
-    if (!rst_n)
-        packet_number_in_fifo_reg      <=0;
-    else
-        packet_number_in_fifo_reg      <=packet_number_in_fifo;
-
-always @ (posedge clk_sys or negedge rst_n)
-    if (!rst_n)
-        begin
-        add_rd_reg_rdy_d1          <=0;
-        add_rd_reg_rdy_d2          <=0;
+    always @(posedge clk_sys or negedge rst_n) begin
+        if(!rst_n) begin
+            add_rd_reg_rdy_d1  <= 0;
+            add_rd_reg_rdy_d2  <= 0;
+            add_rd_reg_rdy_d3  <= 0;
         end
-    else
-        begin
-        add_rd_reg_rdy_d1          <=add_rd_reg_rdy;
-        add_rd_reg_rdy_d2          <=add_rd_reg_rdy_d1;
+        else begin
+            add_rd_reg_rdy_d1  <= add_rd_reg_rdy;
+            add_rd_reg_rdy_d2  <= add_rd_reg_rdy_d1;
+            add_rd_reg_rdy_d3  <= add_rd_reg_rdy_d2;
         end     
+    end
 
-always @ (posedge clk_sys or negedge rst_n)
-    if (!rst_n)
-        add_rd_reg_d1              <=0;
-    else if (add_rd_reg_rdy_d1&!add_rd_reg_rdy_d2)
-        add_rd_reg_d1              <=add_rd_reg;
+    always @(posedge clk_sys or negedge rst_n) begin
+        if(!rst_n)
+            add_rd_reg_d1 <= 0;
+        else if(add_rd_reg_rdy_d2 & !add_rd_reg_rdy_d3)
+            add_rd_reg_d1 <= add_rd_reg;
+    end
 
-
-
-always @ (posedge clk_sys or negedge rst_n)
-    if (!rst_n)
-        fifo_data_count     <=0;
-    else if (r_FullDuplex_i)
-        fifo_data_count     <=add_wr[`EMAC_TXFF_AWIDTH-1:`EMAC_TXFF_AWIDTH-5]-add_rd_ungray[`EMAC_TXFF_AWIDTH-1:`EMAC_TXFF_AWIDTH-5];
-    else
-        fifo_data_count     <=add_wr[`EMAC_TXFF_AWIDTH-1:`EMAC_TXFF_AWIDTH-5]-add_rd_reg_d1[`EMAC_TXFF_AWIDTH-1:`EMAC_TXFF_AWIDTH-5]; //for half duplex backoff requirement
-        
-
-always @ (posedge clk_sys or negedge rst_n)
-    if (!rst_n)
-        fifo_ra_tmp <=0;    
-    else if (packet_number_in_fifo_reg>=1||fifo_data_count>=r_txLwMark_i)
-        fifo_ra_tmp <=1;        
-    else 
-        fifo_ra_tmp <=0;
-
-always @ (posedge clk_sys or negedge rst_n)
-    if (!rst_n)
-        begin 
-        txHwMark_d1        <=0;
-        txLwMark_d1        <=0;    
-        end
-    else
-        begin 
-        txHwMark_d1        <=r_txHwMark_i;
-        txLwMark_d1        <=r_txLwMark_i;    
-        end    
-    
-always @ (posedge clk_sys or negedge rst_n)
-    if (!rst_n)
-        tx_mac_wa_o   <=0;  
-    else if (fifo_data_count>=txHwMark_d1)
-        tx_mac_wa_o   <=0;
-    else if (fifo_data_count<txLwMark_d1)
-        tx_mac_wa_o   <=1;
-
-//******************************************************************************
-
-    
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    
-//******************************************************************************
-//rd data to from FF .
-//domain clk_mac
-//******************************************************************************
-reg[35:0]   dout_d1;
-reg         dout_reg_en /* synthesis syn_keep=1 */;
-
-always @ (posedge clk_mac or negedge rst_n)
-    if (!rst_n)
-        dout_d1    <=0;
-    else
-        dout_d1    <=dout;
-
-always @ (current_state_mac or next_state_mac)
-    if ((current_state_mac==MAC_IDLE||current_state_mac==MAC_BYTE0)&&next_state_mac==MAC_BYTE3)
-        dout_reg_en     =1;
-    else
-        dout_reg_en     =0; 
+    always @(posedge clk_sys or negedge rst_n) begin
+        if(!rst_n)
+            fifo_data_count <= 0;
+        else if(r_FullDuplex_i)
+            fifo_data_count <= add_wr[`EMAC_TXFF_AWIDTH-1:`EMAC_TXFF_AWIDTH-5] - add_rd_ungray[`EMAC_TXFF_AWIDTH-1:`EMAC_TXFF_AWIDTH-5];
+        else //for half duplex backoff requirement
+            fifo_data_count <= add_wr[`EMAC_TXFF_AWIDTH-1:`EMAC_TXFF_AWIDTH-5] - add_rd_reg_d1[`EMAC_TXFF_AWIDTH-1:`EMAC_TXFF_AWIDTH-5]; 
+    end
             
-always @ (posedge clk_mac or negedge rst_n)
-    if (!rst_n)
-        dout_reg        <=0;
-    else if (dout_reg_en)
-        dout_reg    <=dout_d1;     
+    //fifo read available
+    always @(*) begin
+        if(packet_number_in_fifo_reg >= 1 || fifo_data_count >= r_txLwMark_i)
+            fifo_ra_tmp = 1;        
+        else 
+            fifo_ra_tmp = 0;
+    end
+
+    //fifo write available
+    always @(posedge clk_sys or negedge rst_n) begin
+        if(!rst_n)
+            tx_mac_wa_o <= 0;  
+        else if (fifo_data_count >= txHwMark_i)
+            tx_mac_wa_o <= 0;
+        else if (fifo_data_count < txLwMark_i)
+            tx_mac_wa_o <= 1;
+    end
+
+    //++
+    //read data from FIFO
+    //clk_mac clock domain
+    //-- 
+
+    reg  [35:0]   dout_d1;
+    reg           dout_reg_en /* synthesis syn_keep=1 */;
+
+    always @(posedge clk_mac or negedge rst_n) begin
+        if(!rst_n)
+            dout_d1 <= 0;
+        else
+            dout_d1 <= dout;
+    end
+
+    always @(*) begin
+        if((current_state_mac == MAC_IDLE || current_state_mac == MAC_BYTE0) && next_state_mac == MAC_BYTE3)
+            dout_reg_en = 1;
+        else
+            dout_reg_en = 0; 
+    end
+            
+    always @(posedge clk_mac or negedge rst_n) begin
+        if(!rst_n)
+            dout_reg <= 0;
+        else if(dout_reg_en)
+            dout_reg <= dout_d1;     
         
-assign {dout_eop,dout_err,dout_be,dout_data}=dout_reg;
+    assign {dout_eop, dout_err, dout_be, dout_data} = dout_reg;
 
 always @ (posedge clk_mac or negedge rst_n)
     if (!rst_n)
@@ -610,13 +579,16 @@ always @ (posedge clk_mac or negedge rst_n)
     else
         empty   <=0;    
         
-//ra
-always @ (posedge clk_mac or negedge rst_n)
-    if (!rst_n)
-        fifo_ra_o <=0;
-    else
-        fifo_ra_o <=fifo_ra_tmp;
+    //fifo read available (ra)
+    reg  fifo_ra_sync1;
 
+    always @(posedge clk_mac or negedge rst_n) begin
+        if(!rst_n)
+            {fifo_ra_o, fifo_ra_sync1} <= 0;
+        else
+            {fifo_ra_o, fifo_ra_sync1} <= {fifo_ra_sync1, fifo_ra_tmp};
+    end
+    
 
 
 always @ (posedge clk_mac or negedge rst_n)     
@@ -627,13 +599,21 @@ always @ (posedge clk_mac or negedge rst_n)
     else
         pkt_sub_apply_tmp   <=0;
         
-always @ (posedge clk_mac or negedge rst_n) 
-    if (!rst_n)
-        pkt_sub_apply   <=0;
-    else if ((current_state_mac==MAC_PKT_SUB)||pkt_sub_apply_tmp)
-        pkt_sub_apply   <=1;
-    else                
-        pkt_sub_apply   <=0;
+    
+    always @(*)  begin
+        if((current_state_mac == MAC_PKT_SUB) || pkt_sub_apply_tmp)
+            pkt_sub_apply <= 1;
+        else              
+            pkt_sub_apply <= 0;
+    end
+
+//always @ (posedge clk_mac or negedge rst_n) 
+//    if (!rst_n)
+//        pkt_sub_apply   <=0;
+//    else if ((current_state_mac==MAC_PKT_SUB)||pkt_sub_apply_tmp)
+//        pkt_sub_apply   <=1;
+//    else                
+//        pkt_sub_apply   <=0;
 
 //reg add_rd for collison retry
 always @ (posedge clk_mac or negedge rst_n)
@@ -650,14 +630,21 @@ always @ (posedge clk_mac or negedge rst_n)
     else
         add_rd_reg_rdy_tmp      <=0;
         
-always @ (posedge clk_mac or negedge rst_n)
-    if (!rst_n)
-        add_rd_reg_rdy      <=0;
-    else if (fifo_rd_finish_i||add_rd_reg_rdy_tmp)
-        add_rd_reg_rdy      <=1;
-    else
-        add_rd_reg_rdy      <=0;         
+    always @(*) begin
+        if(fifo_rd_finish_i || add_rd_reg_rdy_tmp)
+            add_rd_reg_rdy = 1;
+        else
+            add_rd_reg_rdy = 0;         
+    end
  
+//always @ (posedge clk_mac or negedge rst_n)
+//    if (!rst_n)
+//        add_rd_reg_rdy      <=0;
+//    else if (fifo_rd_finish_i||add_rd_reg_rdy_tmp)
+//        add_rd_reg_rdy      <=1;
+//    else
+//        add_rd_reg_rdy      <=0;         
+
 reg add_rd_add /* synthesis syn_keep=1 */;
 
 always @ (current_state_mac or next_state_mac)
@@ -689,13 +676,32 @@ always @ (posedge clk_mac or negedge rst_n)
     else
         add_rd_jump_tmp_d1 <=add_rd_jump_tmp;    
         
-always @ (posedge clk_mac or negedge rst_n)
-    if (!rst_n)
-        add_rd_jump <=0;
-    else if (current_state_mac==MAC_RETRY)
-        add_rd_jump <=1;
-    else if (add_rd_jump_tmp_d1)
-        add_rd_jump <=0;    
+    reg   add_rd_jump_reg;
+
+    always @(posedge clk_mac or negedge rst_n) begin
+        if (!rst_n)
+            add_rd_jump_reg  <= 0;
+        else
+            add_rd_jump_reg  <= add_rd_jump;    
+    end
+
+    always @(*) begin
+        add_rd_jump = add_rd_jump_reg;
+        if(current_state_mac == MAC_RETRY)
+            add_rd_jump = 1;
+        else if (add_rd_jump_tmp_d1)
+            add_rd_jump = 0;    
+    end
+
+
+    
+//always @ (posedge clk_mac or negedge rst_n)
+//    if (!rst_n)
+//        add_rd_jump <=0;
+//    else if (current_state_mac==MAC_RETRY)
+//        add_rd_jump <=1;
+//    else if (add_rd_jump_tmp_d1)
+//        add_rd_jump <=0;    
                             
 //gen fifo data output 
 
