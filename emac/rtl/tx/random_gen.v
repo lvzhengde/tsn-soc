@@ -42,6 +42,11 @@ module random_gen (
     output  reg         random_time_meet_o   
 );
     parameter SLOT_CYCLES = 64; //512 bits /8, FIXME
+    //As to slotTime, refer to IEEE 802.3-2018, clause 4.4.2, page 161.
+    //for 10/100M Ethernet, slotTime = 512 bit times.
+    //for 1000M Ethernet, slotTime = 4096 bit times.
+    //this design support 1Gb/s Ethernet full duplex only.
+
     //++
     //internal signals                                                              
     //--
@@ -49,7 +54,7 @@ module random_gen (
     reg [9:0]       random_sequence ;
     reg [9:0]       rand_x          ;
     reg [9:0]       random_counter  ;
-    reg [7:0]       slot_time_counter; //256*2=512bit=1 slot time ?? 
+    reg [7:0]       slot_time_counter; 
 
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n)
