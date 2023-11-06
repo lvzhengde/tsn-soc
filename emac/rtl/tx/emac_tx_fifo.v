@@ -39,20 +39,20 @@ module emac_tx_fifo (
     input               clk_mac               ,
     input               clk_sys               ,
     //emac_tx_ctrl interface
-    output reg [7:0]    fifo_data_o           ,
-    input               fifo_rd_i             ,
+    output reg [7:0]    fifo_data_o           ,//FIFO data output (4 octets --> 1 octets)
+    input               fifo_rd_i             ,//FIFO read enable (every 4 octets, address increase 1)
     input               fifo_rd_finish_i      ,
     input               fifo_rd_retry_i       ,
-    output reg          fifo_eop_o            ,
-    output reg          fifo_da_o             ,
-    output reg          fifo_ra_o             ,//FIFO read available
+    output reg          fifo_eop_o            ,//end of packet, aligned to last valid data byte
+    output reg          fifo_da_o             ,//FIFO data output valid (Not Used in fact)
+    output reg          fifo_ra_o             ,//FIFO data read available
     output reg          fifo_data_err_empty_o ,
     output              fifo_data_err_full_o  ,
     //user interface 
-    output reg          tx_mac_wa_o           ,//FIFO write available
+    output reg          tx_mac_wa_o           ,//FIFO write data available
     input               tx_mac_wr_i           ,//MAC data write enable
     input  [31:0]       tx_mac_data_i         ,//MAC data input
-    input  [1:0]        tx_mac_be_i           ,//big endian
+    input  [1:0]        tx_mac_be_i           ,//byte enable, little endian
     input               tx_mac_sop_i          ,//Start of Packet input
     input               tx_mac_eop_i          ,//End of Packet input
     //host interface 
@@ -64,10 +64,10 @@ module emac_tx_fifo (
     //internal signals                                                              
     //--
     //MAC side state machine parameters and signals
-    parameter       MAC_BYTE3             = 4'd00;     
-    parameter       MAC_BYTE2             = 4'd01;
-    parameter       MAC_BYTE1             = 4'd02; 
-    parameter       MAC_BYTE0             = 4'd03; 
+    parameter       MAC_BYTE0             = 4'd00;     
+    parameter       MAC_BYTE1             = 4'd01;
+    parameter       MAC_BYTE2             = 4'd02; 
+    parameter       MAC_BYTE3             = 4'd03; 
     parameter       MAC_WAIT_FINISH       = 4'd04;
     parameter       MAC_RETRY             = 4'd08;
     parameter       MAC_IDLE              = 4'd09;
@@ -97,22 +97,17 @@ module emac_tx_fifo (
     reg  [`EMAC_TXFF_AWIDTH-1:0]       add_wr          ;
     reg  [`EMAC_TXFF_AWIDTH-1:0]       add_wr_ungray   ;
     reg  [`EMAC_TXFF_AWIDTH-1:0]       add_wr_gray     ;
-    reg  [`EMAC_TXFF_AWIDTH-1:0]       add_wr_gray_d1  ;
     wire [`EMAC_TXFF_AWIDTH-1:0]       add_wr_gray_tmp ;
 
     reg  [`EMAC_TXFF_AWIDTH-1:0]       add_rd          ;
     reg  [`EMAC_TXFF_AWIDTH-1:0]       add_rd_reg      ;
     reg  [`EMAC_TXFF_AWIDTH-1:0]       add_rd_gray     ;
-    reg  [`EMAC_TXFF_AWIDTH-1:0]       add_rd_gray_d1  ;
     wire [`EMAC_TXFF_AWIDTH-1:0]       add_rd_gray_tmp ;
     reg  [`EMAC_TXFF_AWIDTH-1:0]       add_rd_ungray   ;
 
     wire [35:0]      din     ;
     wire [35:0]      dout    ;
     reg              wr_en   ;
-
-    wire [`EMAC_TXFF_AWIDTH-1:0]       add_rd_pluse   ;
-    reg  [`EMAC_TXFF_AWIDTH-1:0]       add_rd_reg_d1  ;
 
     reg             full            /* synthesis syn_keep=1 */;
     reg             almost_full     /* synthesis syn_keep=1 */;
@@ -132,7 +127,6 @@ module emac_tx_fifo (
     reg  [35:0]     dout_reg        /* synthesis syn_preserve=1 */;
 
     reg [4:0]       fifo_data_count   ;
-    reg             fifo_rd_d1        ;
     reg             fifo_ra_tmp       ;      
 
     reg [5:0]       packet_number_in_fifo      /* synthesis syn_keep=1 */;   
@@ -271,6 +265,7 @@ module emac_tx_fifo (
     end
 
     //synchronize read Gray address to clk_sys domain
+    reg  [`EMAC_TXFF_AWIDTH-1:0]       add_rd_gray_d1  ;
     reg  [`EMAC_TXFF_AWIDTH-1:0]       add_rd_gray_d2;
 
     always @(posedge clk_sys or negedge rst_n) begin
@@ -406,6 +401,8 @@ module emac_tx_fifo (
         end     
     end
 
+    reg  [`EMAC_TXFF_AWIDTH-1:0]       add_rd_reg_d1  ;
+
     always @(posedge clk_sys or negedge rst_n) begin
         if(!rst_n)
             add_rd_reg_d1 <= 0;
@@ -456,7 +453,7 @@ module emac_tx_fifo (
     end
 
     always @(*) begin
-        if((current_state_mac == MAC_IDLE || current_state_mac == MAC_BYTE0) && next_state_mac == MAC_BYTE3)
+        if((current_state_mac == MAC_IDLE || current_state_mac == MAC_BYTE3) && next_state_mac == MAC_BYTE0)
             dout_reg_en = 1;
         else
             dout_reg_en = 0; 
@@ -470,114 +467,125 @@ module emac_tx_fifo (
         
     assign {dout_eop, dout_err, dout_be, dout_data} = dout_reg;
 
-always @ (posedge clk_mac or negedge rst_n)
-    if (!rst_n)
-        current_state_mac   <=MAC_IDLE;
-    else
-        current_state_mac   <=next_state_mac;       
-        
-always @ (current_state_mac or fifo_rd_i or dout_be or dout_eop or fifo_rd_retry_i
-            or fifo_rd_finish_i or empty or fifo_rd_i or fifo_eop_o)
-        case (current_state_mac)
-            MAC_IDLE:
-                if (empty&&fifo_rd_i)
-                    next_state_mac=MAC_FF_ERR;
-                else if (fifo_rd_i)
-                    next_state_mac=MAC_BYTE3;
-                else
-                    next_state_mac=current_state_mac;
-            MAC_BYTE3:
-                if (fifo_rd_retry_i)
-                    next_state_mac=MAC_RETRY;           
-                else if (fifo_eop_o)
-                    next_state_mac=MAC_WAIT_FINISH;
-                else if (fifo_rd_i&&!fifo_eop_o)
-                    next_state_mac=MAC_BYTE2;
-                else
-                    next_state_mac=current_state_mac;
-            MAC_BYTE2:
-                if (fifo_rd_retry_i)
-                    next_state_mac=MAC_RETRY;
-                else if (fifo_eop_o)
-                    next_state_mac=MAC_WAIT_FINISH;
-                else if (fifo_rd_i&&!fifo_eop_o)
-                    next_state_mac=MAC_BYTE1;
-                else
-                    next_state_mac=current_state_mac;       
-            MAC_BYTE1:
-                if (fifo_rd_retry_i)
-                    next_state_mac=MAC_RETRY;
-                else if (fifo_eop_o)
-                    next_state_mac=MAC_WAIT_FINISH;
-                else if (fifo_rd_i&&!fifo_eop_o)
-                    next_state_mac=MAC_BYTE0;
-                else
-                    next_state_mac=current_state_mac;   
-            MAC_BYTE0:
-                if (empty&&fifo_rd_i&&!fifo_eop_o)
-                    next_state_mac=MAC_FFEMPTY;
-                else if (fifo_rd_retry_i)
-                    next_state_mac=MAC_RETRY;
-                else if (fifo_eop_o)
-                    next_state_mac=MAC_WAIT_FINISH;     
-                else if (fifo_rd_i&&!fifo_eop_o)
-                    next_state_mac=MAC_BYTE3;
-                else
-                    next_state_mac=current_state_mac;   
-            MAC_RETRY:
-                    next_state_mac=MAC_IDLE;
-            MAC_WAIT_FINISH:
-                if (fifo_rd_finish_i)
-                    next_state_mac=MAC_PKT_SUB;
-                else
-                    next_state_mac=current_state_mac;
-            MAC_PKT_SUB:
-                    next_state_mac=MAC_IDLE;
-            MAC_FFEMPTY:
-                if (!empty)
-                    next_state_mac=MAC_BYTE3;
-                else
-                    next_state_mac=current_state_mac;
-            MAC_FF_ERR:  //stopped state-machine need change                         
-                    next_state_mac=current_state_mac;
-            default
-                    next_state_mac=MAC_IDLE;    
-        endcase
-//
-always @(posedge clk_mac or negedge rst_n)
-    if (!rst_n)
-        add_rd_gray         <=0;
-    else 
-        begin
-        add_rd_gray[`EMAC_TXFF_AWIDTH-1]    <=add_rd[`EMAC_TXFF_AWIDTH-1];
-        for (i=`EMAC_TXFF_AWIDTH-2;i>=0;i=i-1)
-        add_rd_gray[i]          <=add_rd[i+1]^add_rd[i];
-        end
-//
-
-always @ (posedge clk_mac or negedge rst_n)
-    if (!rst_n)
-        add_wr_gray_d1     <=0;
-    else
-        add_wr_gray_d1     <=add_wr_gray;
+    //state transition
+    always @(posedge clk_mac or negedge rst_n) begin
+        if(!rst_n)
+            current_state_mac <= MAC_IDLE;
+        else
+            current_state_mac <= next_state_mac;       
+    end
             
-always @ (posedge clk_mac or negedge rst_n)
-    if (!rst_n)
-        add_wr_ungray       =0;
-    else        
-        begin
-        add_wr_ungray[`EMAC_TXFF_AWIDTH-1]  =add_wr_gray_d1[`EMAC_TXFF_AWIDTH-1];   
-        for (i=`EMAC_TXFF_AWIDTH-2;i>=0;i=i-1)
-            add_wr_ungray[i]    =add_wr_ungray[i+1]^add_wr_gray_d1[i];  
-        end                   
-//empty     
-always @ (posedge clk_mac or negedge rst_n)
-    if (!rst_n)      
-        empty   <=1;
-    else if (add_rd==add_wr_ungray)
-        empty   <=1;
-    else
-        empty   <=0;    
+    //combinational logic for state machine
+    always @(*) begin
+        case(current_state_mac)
+            MAC_IDLE:
+                if((!empty) && fifo_rd_i)
+                    next_state_mac = MAC_BYTE0;
+                else
+                    next_state_mac = current_state_mac;
+
+            MAC_BYTE0:
+                if(fifo_rd_retry_i)
+                    next_state_mac = MAC_RETRY;           
+                else if(fifo_eop_o)
+                    next_state_mac = MAC_WAIT_FINISH;
+                else if(fifo_rd_i && !fifo_eop_o)
+                    next_state_mac = MAC_BYTE1;
+                else
+                    next_state_mac = current_state_mac;
+
+            MAC_BYTE1:
+                if(fifo_rd_retry_i)
+                    next_state_mac = MAC_RETRY;
+                else if(fifo_eop_o)
+                    next_state_mac = MAC_WAIT_FINISH;
+                else if(fifo_rd_i && !fifo_eop_o)
+                    next_state_mac = MAC_BYTE2;
+                else
+                    next_state_mac = current_state_mac;       
+                
+            MAC_BYTE2:
+                if(fifo_rd_retry_i)
+                    next_state_mac = MAC_RETRY;
+                else if(fifo_eop_o)
+                    next_state_mac = MAC_WAIT_FINISH;
+                else if(fifo_rd_i && !fifo_eop_o)
+                    next_state_mac = MAC_BYTE3;
+                else
+                    next_state_mac = current_state_mac; 
+
+            MAC_BYTE3:
+                if(empty && fifo_rd_i && !fifo_eop_o)
+                    next_state_mac = MAC_FFEMPTY;
+                else if(fifo_rd_retry_i)
+                    next_state_mac = MAC_RETRY;
+                else if(fifo_eop_o)
+                    next_state_mac = MAC_WAIT_FINISH;     
+                else if(fifo_rd_i && !fifo_eop_o)
+                    next_state_mac = MAC_BYTE0;
+                else
+                    next_state_mac = current_state_mac;   
+
+            MAC_RETRY:
+                    next_state_mac = MAC_IDLE;
+
+            MAC_WAIT_FINISH:
+                if(fifo_rd_finish_i)
+                    next_state_mac = MAC_PKT_SUB;
+                else
+                    next_state_mac = current_state_mac;
+
+            MAC_PKT_SUB:
+                    next_state_mac = MAC_IDLE;
+
+            MAC_FFEMPTY:
+                if(!empty)
+                    next_state_mac = MAC_BYTE0;
+                else
+                    next_state_mac = current_state_mac;
+
+            default
+                    next_state_mac = MAC_IDLE;    
+        endcase
+    end
+
+    //binary to Gray address--read address
+    always @(*) begin : GRAY_READ
+        integer i;
+
+        add_rd_gray[`EMAC_TXFF_AWIDTH-1] = add_rd[`EMAC_TXFF_AWIDTH-1];
+        for(i =`EMAC_TXFF_AWIDTH-2; i >= 0; i = i-1)
+            add_rd_gray[i] = add_rd[i+1] ^ add_rd[i];
+    end
+
+    //synchronize write Gray address to clk_mac domain
+    reg  [`EMAC_TXFF_AWIDTH-1:0]       add_wr_gray_d1  ;
+    reg  [`EMAC_TXFF_AWIDTH-1:0]       add_wr_gray_d2  ;
+
+    always @(posedge clk_mac or negedge rst_n) begin
+        if(!rst_n)
+            {add_wr_gray_d1, add_wr_gray_d2} <= 0;
+        else
+            {add_wr_gray_d1, add_wr_gray_d2} <= {add_wr_gray, add_wr_gray_d1};
+    end
+            
+    always @(*) begin : UNGRAY_WRITE
+        integer i;
+
+        add_wr_ungray[`EMAC_TXFF_AWIDTH-1] = add_wr_gray_d2[`EMAC_TXFF_AWIDTH-1];   
+        for(i = `EMAC_TXFF_AWIDTH-2; i >= 0; i = i-1)
+            add_wr_ungray[i] =add_wr_ungray[i+1] ^ add_wr_gray_d2[i];  
+    end
+
+    //empty     
+    always @(posedge clk_mac or negedge rst_n) begin
+        if(!rst_n)      
+            empty <= 1;
+        else if(add_rd == add_wr_ungray)
+            empty <= 1;
+        else
+            empty <= 0;    
+    end
         
     //fifo read available (ra)
     reg  fifo_ra_sync1;
@@ -589,16 +597,14 @@ always @ (posedge clk_mac or negedge rst_n)
             {fifo_ra_o, fifo_ra_sync1} <= {fifo_ra_sync1, fifo_ra_tmp};
     end
     
-
-
-always @ (posedge clk_mac or negedge rst_n)     
-    if (!rst_n)  
-        pkt_sub_apply_tmp   <=0;
-    else if (current_state_mac==MAC_PKT_SUB)
-        pkt_sub_apply_tmp   <=1;
-    else
-        pkt_sub_apply_tmp   <=0;
-        
+    always @(posedge clk_mac or negedge rst_n) begin
+        if(!rst_n)  
+            pkt_sub_apply_tmp <= 0;
+        else if(current_state_mac == MAC_PKT_SUB)
+            pkt_sub_apply_tmp <= 1;
+        else
+            pkt_sub_apply_tmp <= 0;
+    end
     
     always @(*)  begin
         if((current_state_mac == MAC_PKT_SUB) || pkt_sub_apply_tmp)
@@ -607,28 +613,22 @@ always @ (posedge clk_mac or negedge rst_n)
             pkt_sub_apply <= 0;
     end
 
-//always @ (posedge clk_mac or negedge rst_n) 
-//    if (!rst_n)
-//        pkt_sub_apply   <=0;
-//    else if ((current_state_mac==MAC_PKT_SUB)||pkt_sub_apply_tmp)
-//        pkt_sub_apply   <=1;
-//    else                
-//        pkt_sub_apply   <=0;
+    //reg add_rd for collison retry
+    always @(posedge clk_mac or negedge rst_n) begin
+        if(!rst_n)
+            add_rd_reg <= 0;
+        else if (fifo_rd_finish_i)
+            add_rd_reg  <= add_rd;
+    end
 
-//reg add_rd for collison retry
-always @ (posedge clk_mac or negedge rst_n)
-    if (!rst_n)
-        add_rd_reg      <=0;
-    else if (fifo_rd_finish_i)
-        add_rd_reg      <=add_rd;
-
-always @ (posedge clk_mac or negedge rst_n)
-    if (!rst_n)
-        add_rd_reg_rdy_tmp      <=0;
-    else if (fifo_rd_finish_i)
-        add_rd_reg_rdy_tmp      <=1;
-    else
-        add_rd_reg_rdy_tmp      <=0;
+    always @(posedge clk_mac or negedge rst_n) begin
+        if (!rst_n)
+            add_rd_reg_rdy_tmp <= 0;
+        else if(fifo_rd_finish_i)
+            add_rd_reg_rdy_tmp <= 1;
+        else
+            add_rd_reg_rdy_tmp <= 0;
+    end
         
     always @(*) begin
         if(fifo_rd_finish_i || add_rd_reg_rdy_tmp)
@@ -636,46 +636,42 @@ always @ (posedge clk_mac or negedge rst_n)
         else
             add_rd_reg_rdy = 0;         
     end
- 
-//always @ (posedge clk_mac or negedge rst_n)
-//    if (!rst_n)
-//        add_rd_reg_rdy      <=0;
-//    else if (fifo_rd_finish_i||add_rd_reg_rdy_tmp)
-//        add_rd_reg_rdy      <=1;
-//    else
-//        add_rd_reg_rdy      <=0;         
 
-reg add_rd_add /* synthesis syn_keep=1 */;
-
-always @ (current_state_mac or next_state_mac)
-    if ((current_state_mac==MAC_IDLE||current_state_mac==MAC_BYTE0)&&next_state_mac==MAC_BYTE3)
-        add_rd_add  =1;
-    else
-        add_rd_add  =0;
-        
-        
-always @ (posedge clk_mac or negedge rst_n)
-    if (!rst_n)
-        add_rd          <=0;
-    else if (current_state_mac==MAC_RETRY)
-        add_rd          <= add_rd_reg;
-    else if (add_rd_add)
-        add_rd          <= add_rd + 1;  
+    reg add_rd_add /* synthesis syn_keep=1 */;
+    
+    always @(*) begin
+        if ((current_state_mac == MAC_IDLE || current_state_mac == MAC_BYTE3) && next_state_ma c== MAC_BYTE0)
+            add_rd_add = 1;
+        else
+            add_rd_add = 0;
+    end
+            
+    always @(posedge clk_mac or negedge rst_n) begin
+        if(!rst_n)
+            add_rd <= 0;
+        else if(current_state_mac == MAC_RETRY)
+            add_rd <= add_rd_reg;
+        else if(add_rd_add)
+            add_rd <= add_rd + 1;  
+    end
                     
-always @ (posedge clk_mac or negedge rst_n)
-    if (!rst_n)
-        add_rd_jump_tmp <=0;
-    else if (current_state_mac==MAC_RETRY)
-        add_rd_jump_tmp <=1;
-    else
-        add_rd_jump_tmp <=0;
+    //FIFO read address jump backoff
+    always @(posedge clk_mac or negedge rst_n) begin
+        if(!rst_n)
+            add_rd_jump_tmp <= 0;
+        else if(current_state_mac == MAC_RETRY)
+            add_rd_jump_tmp <= 1;
+        else
+            add_rd_jump_tmp <= 0;
+    end
 
-always @ (posedge clk_mac or negedge rst_n)
-    if (!rst_n)
-        add_rd_jump_tmp_d1 <=0;
-    else
-        add_rd_jump_tmp_d1 <=add_rd_jump_tmp;    
-        
+    always @(posedge clk_mac or negedge rst_n) begin
+        if(!rst_n)
+            add_rd_jump_tmp_d1 <= 0;
+        else
+            add_rd_jump_tmp_d1 <= add_rd_jump_tmp;   
+    end 
+            
     reg   add_rd_jump_reg;
 
     always @(posedge clk_mac or negedge rst_n) begin
@@ -689,96 +685,85 @@ always @ (posedge clk_mac or negedge rst_n)
         add_rd_jump = add_rd_jump_reg;
         if(current_state_mac == MAC_RETRY)
             add_rd_jump = 1;
-        else if (add_rd_jump_tmp_d1)
+        else if(add_rd_jump_tmp_d1)
             add_rd_jump = 0;    
     end
 
+    //generate fifo data output 
+    always @(*)
+        case(current_state_mac)
+            MAC_BYTE3:
+                fifo_data_o = dout_data[31:24];
+            MAC_BYTE2:
+                fifo_data_o = dout_data[23:16];
+            MAC_BYTE1:
+                fifo_data_o = dout_data[15:8];
+            MAC_BYTE0:
+                fifo_data_o = dout_data[7:0];
+            default:
+                fifo_data_o = 0;     
+        endcase
+    end
 
-    
-//always @ (posedge clk_mac or negedge rst_n)
-//    if (!rst_n)
-//        add_rd_jump <=0;
-//    else if (current_state_mac==MAC_RETRY)
-//        add_rd_jump <=1;
-//    else if (add_rd_jump_tmp_d1)
-//        add_rd_jump <=0;    
-                            
-//gen fifo data output 
+    //generate fifo_da_o           
+    always @(posedge clk_mac or negedge rst_n) begin
+        if(!rst_n)
+            fifo_da_o <= 0;
+        else if((current_state_mac == MAC_BYTE3 || current_state_mac == MAC_BYTE2 ||
+                  current_state_mac == MAC_BYTE1 || current_state_mac == MAC_BYTE0) && fifo_rd_i && !fifo_eop_o)
+            fifo_da_o <= 1;
+        else
+            fifo_da_o <= 0;
+    end
 
+    //gen fifo_data_err_full_o
+    assign  fifo_data_err_full_o = dout_err;
+
+    //gen fifo_data_err_empty_o
+    always @(posedge clk_mac or negedge rst_n) begin
+        if(!rst_n)
+            current_state_mac_d1   <= 0;
+        else
+            current_state_mac_d1   <= current_state_mac;
+    end
         
-always @ (dout_data or current_state_mac)
-    case (current_state_mac)
-        MAC_BYTE3:
-            fifo_data_o   =dout_data[31:24];
-        MAC_BYTE2:
-            fifo_data_o   =dout_data[23:16];
-        MAC_BYTE1:
-            fifo_data_o   =dout_data[15:8];
-        MAC_BYTE0:
-            fifo_data_o   =dout_data[7:0];
-        default:
-            fifo_data_o   =0;     
-    endcase
-//gen fifo_da_o           
-always @ (posedge clk_mac or negedge rst_n)
-    if (!rst_n)
-        fifo_rd_d1     <=0;
-    else
-        fifo_rd_d1     <=fifo_rd_i;
-        
-always @ (posedge clk_mac or negedge rst_n)
-    if (!rst_n)
-        fifo_da_o         <=0;
-    else if ((current_state_mac==MAC_BYTE0||current_state_mac==MAC_BYTE1||
-              current_state_mac==MAC_BYTE2||current_state_mac==MAC_BYTE3)&&fifo_rd_i&&!fifo_eop_o)
-        fifo_da_o         <=1;
-    else
-        fifo_da_o         <=0;
+    always @(posedge clk_mac or negedge rst_n) begin
+        if (!rst_n)
+            fifo_data_err_empty_o <= 0;
+        else if (current_state_mac_d1 == MAC_FFEMPTY)
+            fifo_data_err_empty_o <= 1;
+        else
+            fifo_data_err_empty_o <= 0;
+    end
 
-//gen fifo_data_err_empty_o
-assign  fifo_data_err_full_o=dout_err;
-//gen fifo_data_err_empty_o
-always @ (posedge clk_mac or negedge rst_n)
-    if (!rst_n)
-        current_state_mac_d1   <=0;
-    else
-        current_state_mac_d1   <=current_state_mac;
-        
-always @ (posedge clk_mac or negedge rst_n)
-    if (!rst_n)
-        fifo_data_err_empty_o     <=0;
-    else if (current_state_mac_d1==MAC_FFEMPTY)
-        fifo_data_err_empty_o     <=1;
-    else
-        fifo_data_err_empty_o     <=0;
-    
-always @ (posedge clk_mac)
-    if (current_state_mac_d1==MAC_FF_ERR)  
-        begin
-        $finish(2); 
-        $display("mac_tx_FF meet error status at time :%t",$time);
-        end
+    //gen fifo_eop_o aligned to last valid data byte。            
+    always @(*) begin
+        if ((current_state_mac == MAC_BYTE3 && dout_be == 2'b00 ||
+             current_state_mac == MAC_BYTE2 && dout_be == 2'b11 ||
+             current_state_mac == MAC_BYTE1 && dout_be == 2'b10 ||
+             current_state_mac == MAC_BYTE0 && dout_be == 2'b01) && dout_eop)
+            fifo_eop_o = 1; 
+        else
+            fifo_eop_o = 0;         
+    end
 
-//gen fifo_eop_o aligned to last valid data byte。            
-always @ (current_state_mac or dout_eop)
-    if (((current_state_mac==MAC_BYTE0&&dout_be==2'b00||
-        current_state_mac==MAC_BYTE1&&dout_be==2'b11||
-        current_state_mac==MAC_BYTE2&&dout_be==2'b10||
-        current_state_mac==MAC_BYTE3&&dout_be==2'b01)&&dout_eop))
-        fifo_eop_o        =1; 
-    else
-        fifo_eop_o        =0;         
-//******************************************************************************
-//******************************************************************************
+    //++
+    //instantiate dual port block ram
+    //--
+    dpram u_dpram #(36, `EMAC_TXFF_AWIDTH, 2**EMAC_TXFF_AWIDTH)  
+    (
+        .data_a         (din        ), 
+        .wren_a         (wr_en      ), 
+        .address_a      (add_wr     ), 
+        .clock_a        (clk_sys    ), 
+        .q_a            (           ),
 
-duram #(36,`MAC_TX_FF_DEPTH,"M4K") U_duram(           
-.data_a         (din        ), 
-.wren_a         (wr_en      ), 
-.address_a      (add_wr     ), 
-.address_b      (add_rd     ), 
-.clock_a        (clk_sys    ), 
-.clock_b        (clk_mac    ), 
-.q_b            (dout       ));
+        .data_b         (36'b0      ),
+        .wren_b         (1'b0       ),
+        .address_b      (add_rd     ), 
+        .clock_b        (clk_mac    ), 
+        .q_b            (dout       )
+    );   
 
 endmodule
 
