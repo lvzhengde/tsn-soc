@@ -61,16 +61,17 @@ module emac_tx (
     // host interface 
     input   [4:0]       r_txHwMark_i           , //TX FIFO high water mark
     input   [4:0]       r_txLwMark_i           , //TX FIFO low water mark 
+    input               r_CrcEn_i              , //Enable Tx MAC appends the CRC to every frame
     input               r_pause_frame_send_en_i, //enable transmit logic to send pause frame               
-    input   [15:0]      r_pause_quanta_set_i   , //quanta value in sending pause frame
+    input               r_TxPauseRq_i          , //Write 1 to start Tx pause frame sending, automatically cleared to zero.
+    input   [15:0]      r_TxPauseTV_i          , //Tx pause timer value that is sent in the pause control frame
+    output              RstTxPauseRq_o         , //signal to clear r_TxPauseRq to zero
     input               r_FullDuplex_i         , //full duplex mode
     input   [3:0]       r_MaxRetry_i           , //Maximum retry times when collision occurred
     input   [5:0]       r_IFGSet_i             , //Minimum IFG value
     input               r_txMacAddr_en_i       , //enable to replace source MAC address of transmitting packet            
     input   [47:0]      r_txMacAddr_i          , //mac address which will replace the source mac address of transmit packet.
     input               r_tx_pause_en_i        , //respond to received pause frame enable
-    input               r_xmtPause_off_i       , //transmit pause frame with zero quanta
-    input               r_xmtPause_on_i        , //transmit pause frame with setting quanta value
     // from MAC rx flow control       
     input   [15:0]      pause_quanta_i         ,   
     input               pause_quanta_val_i       
@@ -89,16 +90,14 @@ module emac_tx (
 
     //random generator interface
     wire            random_init         ;
-    wire[3:0]       retry_cnt            ;
+    wire[3:0]       retry_cnt           ;
     wire            random_time_meet    ;//levle hight indicate random time passed away
 
     //flow control
     wire            pause_apply         ;
     wire            pause_quanta_sub    ;
-    wire            xoff_gen            ;
-    wire            xoff_gen_complete   ;
-    wire            xon_gen             ;
-    wire            xon_gen_complete    ;               
+    wire            TxPauseRq_gen          ;
+    wire            TxPauseRq_gen_complete ;
 
     //MAC TX FIFO 
     wire[7:0]       fifo_data           ;
@@ -131,10 +130,8 @@ module emac_tx (
         //flow control
         .pause_apply_i            (pause_apply            ),            
         .pause_quanta_sub_o       (pause_quanta_sub       ),        
-        .xoff_gen_i               (xoff_gen               ),        
-        .xoff_gen_complete_o      (xoff_gen_complete      ),            
-        .xon_gen_i                (xon_gen                ),            
-        .xon_gen_complete_o       (xon_gen_complete       ),        
+        .TxPauseRq_gen_i          (TxPauseRq_gen_i         ),
+        .TxPauseRq_gen_complete_o (TxPauseRq_gen_complete_o),
         //MAC TX FIFO interface
         .fifo_data_i              (fifo_data              ),            
         .fifo_rd_o                (fifo_rd                ),            
@@ -156,8 +153,9 @@ module emac_tx (
         .tx_apply_rmon_o          (tx_apply_rmon_o        ),            
         .tx_pkt_err_type_rmon_o   (tx_pkt_err_type_rmon_o ),           
         //Host interface
+        .r_CrcEn_i                (r_CrcEn_i              ),
         .r_pause_frame_send_en_i  (r_pause_frame_send_en_i),            
-        .r_pause_quanta_set_i     (r_pause_quanta_set_i   ),                
+        .r_TxPauseTV_i            (r_TxPauseTV_i          ),                
         .r_txMacAddr_en_i         (r_txMacAddr_en_i       ),            
         .r_txMacAddr_i            (r_txMacAddr_i          ),
         .r_FullDuplex_i           (r_FullDuplex_i         ),            
@@ -165,8 +163,10 @@ module emac_tx (
         .r_IFGSet_i               (r_IFGSet_i             )            
     );
 
+    assign RstTxPauseRq_o = TxPauseRq_gen_complete_o;
+
     // Connecting emac_crc_gen
-    crc_gen U_crc_gen 
+    emac_crc_gen emac_crc_gen 
     (
         .rst_n                    (rst_n      ),
         .clk                      (clk        ),
@@ -185,54 +185,55 @@ module emac_tx (
         .clk                      (clk                    ),
         //host interface    
         .r_tx_pause_en_i          (r_tx_pause_en_i        ),
-        .r_xoff_cpu_i             (r_xmtPause_off_i       ),
-        .r_xoff_cpu_i             (r_xmtPause_on_i        ),
+        .r_TxPauseRq_i            (r_TxPauseRq_i          ),
         //from MAC RX flow control       
-        .pause_quanta_i           (pause_quanta_i        ),
-        .pause_quanta_val_i       (pause_quanta_val_i    ),
+        .pause_quanta_i           (pause_quanta_i         ),
+        .pause_quanta_val_i       (pause_quanta_val_i     ),
         //MAC TX flow control     
         .pause_apply_o            (pause_apply            ),
         .pause_quanta_sub_i       (pause_quanta_sub       ),
-        .xoff_gen_o               (xoff_gen               ),
-        .xoff_gen_complete_i      (xoff_gen_complete      ),
-        .xon_gen_o                (xon_gen                ),
-        .xon_gen_complete_i       (xon_gen_complete       )
+        .TxPauseRq_gen_o          (TxPauseRq_gen          ), 
+        .TxPauseRq_gen_complete_i (TxPauseRq_gen_complete ) 
     );
 
-MAC_tx_FF U_MAC_tx_FF(
-.rst_n                    (rst_n                  ),
-.clk_MAC                  (clk                    ),
-.clk_SYS                  (clk_user               ),
- //MAC_rx_ctrl interf     (//MAC_rx_ctrl interf   ),
-.fifo_data                (fifo_data              ),
-.fifo_rd                  (fifo_rd                ),
-.fifo_rd_finish           (fifo_rd_finish         ),
-.fifo_rd_retry            (fifo_rd_retry          ),
-.fifo_eop                 (fifo_eop               ),
-.fifo_da                  (fifo_da                ),
-.fifo_ra                  (fifo_ra                ),
-.fifo_data_err_empty      (fifo_data_err_empty    ),
-.fifo_data_err_full       (fifo_data_err_full     ),
- //user interface         (//user interface       ),
-.tx_mac_wa_o                (tx_mac_wa_o              ),
-.tx_mac_wr_i                (tx_mac_wr_i              ),
-.tx_mac_data_i              (tx_mac_data_i            ),
-.tx_mac_be_i                (tx_mac_be_i              ),
-.tx_mac_sop_i               (tx_mac_sop_i             ),
-.tx_mac_eop_i               (tx_mac_eop_i             ),
- //host interface         (//host interface       ),
-.r_FullDuplex_i               (r_FullDuplex_i             ),
-.r_txHwMark_i                (r_txHwMark_i              ),
-.r_txLwMark_i                (r_txLwMark_i              )
-);
+    // Connecting EMAC TX FIFO
+    emac_tx_fifo emac_tx_fifo
+    (
+        .rst_n                      (rst_n                  ),
+        .clk_mac                    (clk                    ),
+        .clk_sys                    (clk_user               ),
+        //emac_tx_ctrl interface
+        .fifo_data_o                (fifo_data              ),
+        .fifo_rd_i                  (fifo_rd                ),
+        .fifo_rd_finish_i           (fifo_rd_finish         ),
+        .fifo_rd_retry_i            (fifo_rd_retry          ),
+        .fifo_eop_o                 (fifo_eop               ),
+        .fifo_da_o                  (fifo_da                ),
+        .fifo_ra_o                  (fifo_ra                ),
+        .fifo_data_err_empty_o      (fifo_data_err_empty    ),
+        .fifo_data_err_full_o       (fifo_data_err_full     ),
+        //user interface 
+        .tx_mac_wa_o                (tx_mac_wa_o            ),
+        .tx_mac_wr_i                (tx_mac_wr_i            ),
+        .tx_mac_data_i              (tx_mac_data_i          ),
+        .tx_mac_be_i                (tx_mac_be_i            ),
+        .tx_mac_sop_i               (tx_mac_sop_i           ),
+        .tx_mac_eop_i               (tx_mac_eop_i           ),
+        //host interface 
+        .r_FullDuplex_i             (r_FullDuplex_i         ),
+        .r_txHwMark_i               (r_txHwMark_i           ),
+        .r_txLwMark_i               (r_txLwMark_i           )
+    );
 
-random_gen U_random_gen(
-.rst_n                    (rst_n                  ),
-.clk                      (clk                    ),
-.Init                     (random_init            ),
-.retry_cnt                 (retry_cnt               ),
-.random_time_meet         (random_time_meet       ) 
-);
+    // Connecting EMAC random generator
+    emac_random_gen emac_random_gen
+    (
+        .rst_n                      (rst_n                  ),
+        .clk                        (clk                    ),
+        .init_i                     (random_init            ),
+        .retry_cnt_i                (retry_cnt              ),
+        .random_time_meet_o         (random_time_meet       ) 
+    );
 
 endmodule
 

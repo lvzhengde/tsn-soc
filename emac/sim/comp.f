@@ -3,6 +3,7 @@
 ../rtl/emac_phy_intf.v
 ../rtl/emac_registers.v
 ../rtl/emac_top.v
+../rtl/emac_tx.v
 ../rtl/eth_miim.v
 ../rtl/eth_register.v
 ../rtl/miim/eth_clockgen.v
@@ -11,6 +12,11 @@
 ../rtl/tech/clk_div2.v
 ../rtl/tech/clk_switch.v
 ../rtl/tech/dpram.v
+../rtl/tx/emac_crc_gen.v
+../rtl/tx/emac_flow_ctrl.v
+../rtl/tx/emac_random_gen.v
+../rtl/tx/emac_tx_ctrl.v
+../rtl/tx/emac_tx_fifo.v
 
 //testbench files
 ../tb/bus_master.v

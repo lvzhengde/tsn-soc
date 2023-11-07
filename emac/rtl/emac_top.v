@@ -107,9 +107,26 @@ module emac_top (
     wire            RStatStart;
     wire            UpdateMIIRX_DATAReg;
 
-    //signals for connections
+    //registers for host interface
     wire  [2:0]     r_speed;
     wire            r_line_loop_en;
+
+    wire            r_TxEn               ; //Transmit enable
+    wire  [4:0]     r_txHwMark           ; //TX FIFO high water mark
+    wire  [4:0]     r_txLwMark           ; //TX FIFO low water mark 
+    wire            r_CrcEn              ; //Enable Tx MAC appends the CRC to every frame
+    wire            r_pause_frame_send_en; //enable transmit logic to send pause frame               
+    wire            r_TxPauseRq          ; //Write 1 to start Tx pause frame sending, automatically cleared to zero.
+    wire  [15:0]    r_TxPauseTV          ; //Tx pause timer value that is sent in the pause control frame
+    wire            RstTxPauseRq         ; //signal to clear r_TxPauseRq to zero
+    wire            r_FullDuplex         ; //full duplex mode
+    wire  [3:0]     r_MaxRetry           ; //Maximum retry times when collision occurred
+    wire  [5:0]     r_IFGSet             ; //Minimum IFG value
+    wire            r_txMacAddr_en       ; //enable to replace source MAC address of transmitting packet            
+    wire  [47:0]    r_txMacAddr          ; //mac address which will replace the source mac address of transmit packet.
+    wire            r_tx_pause_en        ; //respond to received pause frame enable
+
+    //clock signals
     wire            mac_tx_clk    ;
     wire            mac_rx_clk    ;
     wire            mac_tx_clk_div;
@@ -124,6 +141,61 @@ module emac_top (
     wire  [7:0]     MTxD  ;
     wire            MTxEn ;   
     wire            MTxErr;
+
+    // Connecting EMAC TX module
+    wire  [2:0]     tx_pkt_type_rmon    ;
+    wire  [15:0]    tx_pkt_length_rmon  ;
+    wire            tx_apply_rmon       ;
+    wire  [2:0]     tx_pkt_err_type_rmon;
+
+    wire  [15:0]    pause_quanta        ;
+    wire            pause_quanta_val    ;       
+
+    wire    xmt_en = (~dl_xmt_i) & r_TxEn;
+
+    emac_tx emac_tx 
+    (
+        .rst_n                  (sys_rst_n            ),
+        .clk                    (mac_tx_clk_div       ),
+        .clk_user               (clk_user             ),
+        .xmt_en_i               (xmt_en               ), 
+        // PHY interface
+        .TxD_o                  (MTxD                 ),
+        .TxEn_o                 (MTxEn                ),   
+        .TxErr_o                (MTxErr               ),
+        .CRS_i                  (mcrs                 ), 
+        .COL_i                  (mcol                 ),
+        // RMON
+        .tx_pkt_type_rmon_o     (tx_pkt_type_rmon     ),
+        .tx_pkt_length_rmon_o   (tx_pkt_length_rmon   ),
+        .tx_apply_rmon_o        (tx_apply_rmon        ),
+        .tx_pkt_err_type_rmon_o (tx_pkt_err_type_rmon ),
+        // user interface 
+        .tx_mac_wa_o            (tx_mac_wa_o          ),
+        .tx_mac_wr_i            (tx_mac_wr_i          ),
+        .tx_mac_data_i          (tx_mac_data_i        ),
+        .tx_mac_be_i            (tx_mac_be_i          ),
+        .tx_mac_sop_i           (tx_mac_sop_i         ),
+        .tx_mac_eop_i           (tx_mac_eop_i         ),
+        // host interface 
+        .r_txHwMark_i           (r_txHwMark           ), 
+        .r_txLwMark_i           (r_txLwMark           ), 
+        .r_CrcEn_i              (r_CrcEn              ),
+        .r_pause_frame_send_en_i(r_pause_frame_send_en),
+        .r_TxPauseRq_i          (r_TxPauseRq          ),
+        .r_TxPauseTV_i          (r_TxPauseTV          ),
+        .RstTxPauseRq_o         (RstTxPauseRq         ), 
+        .r_FullDuplex_i         (r_FullDuplex         ), 
+        .r_MaxRetry_i           (r_MaxRetry           ),
+        .r_IFGSet_i             (r_IFGSet             ), 
+        .r_txMacAddr_en_i       (r_txMacAddr_en       ),
+        .r_txMacAddr_i          (r_txMacAddr          ),
+        .r_tx_pause_en_i        (r_tx_pause_en        ), 
+        // from MAC rx flow control       
+        .pause_quanta_i         (pause_quanta         ),   
+        .pause_quanta_val_i     (pause_quanta_val     )  
+    );
+
 
     // Connecting EMAC clock control module
     emac_clk_ctrl u_clk_ctrl
@@ -147,7 +219,8 @@ module emac_top (
     );
 
     // Connecting PHY interface
-    emac_phy_intf u_phy_intf (
+    emac_phy_intf u_phy_intf 
+    (
         .rst_n                 (sys_rst_n ),
         .mac_rx_clk            (mac_rx_clk),
         .mac_tx_clk            (mac_tx_clk),

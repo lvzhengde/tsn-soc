@@ -42,7 +42,7 @@ module emac_tx_ctrl (
     //CRC generator Interface 
     output reg          crc_init_o            ,
     output [7:0]        frame_data_o          ,
-    output              data_en_o             ,
+    output reg          data_en_o             ,
     output reg          crc_rd_o              ,
     input               crc_end_i             ,
     input  [7:0]        crc_out_i             ,
@@ -53,10 +53,8 @@ module emac_tx_ctrl (
     //flow control
     input               pause_apply_i         ,
     output reg          pause_quanta_sub_o    ,
-    input               xoff_gen_i            ,
-    output reg          xoff_gen_complete_o   ,
-    input               xon_gen_i             ,
-    output reg          xon_gen_complete_o    ,               
+    input               TxPauseRq_gen_i         ,
+    output reg          TxPauseRq_gen_complete_o,
     //MAC TX FIFO interface
     input  [7:0]        fifo_data_i           ,
     output reg          fifo_rd_o             ,
@@ -78,8 +76,9 @@ module emac_tx_ctrl (
     output reg          tx_apply_rmon_o       ,
     output reg [2:0]    tx_pkt_err_type_rmon_o,   
     //Host interface
+    input               r_CrcEn_i              , //Enable Tx MAC appends the CRC to every frame
     input               r_pause_frame_send_en_i,               
-    input  [15:0]       r_pause_quanta_set_i   ,
+    input   [15:0]      r_TxPauseTV_i          , //Tx pause timer value that is sent in the pause control frame
     input               r_txMacAddr_en_i       ,               
     input   [47:0]      r_txMacAddr_i          , 
     input               r_FullDuplex_i         ,
@@ -191,13 +190,13 @@ module emac_tx_ctrl (
                 else
                     next_state = current_state;           
 
-            StateIdle:
+            StateIdle:   //if no data to be sent, normally in IDLE state
                 if(!r_FullDuplex_i && carrier_sense)
                     next_state = StateDefer;
                 else if(pause_apply_i)
                     next_state = StatePause;          
                 else if((r_FullDuplex_i && fifo_ra_i) || (!r_FullDuplex_i && !carrier_sense && fifo_ra_i) 
-                    ||(r_pause_frame_send_en_i && (xoff_gen_i || xon_gen_i)))
+                    ||(r_pause_frame_send_en_i && TxPauseRq_gen_i))
                     next_state = StatePreamble;
                 else
                     next_state = current_state;   
@@ -219,7 +218,7 @@ module emac_tx_ctrl (
             StateSFD:
                 if(!r_FullDuplex_i && collision)
                     next_state = StateJam;
-                else if(r_pause_frame_send_en_i && (xoff_gen_i || xon_gen_i))
+                else if(r_pause_frame_send_en_i && TxPauseRq_gen_i)
                     next_state = StateSendPauseFrame;
                 else 
                     next_state = StateData;
@@ -235,12 +234,14 @@ module emac_tx_ctrl (
                     next_state = StateJam;
                 else if(fifo_data_err_empty_i)
                     next_state = StateFFEmptyDrop;                
+                else if((!r_CrcEn_i) && fifo_eop_i)  //do not append CRC
+                    next_state = StateSwitchNext;
                 else if(fifo_eop_i && FrameLengthCounter >= 59) //IP+MAC+TYPE=60 ,start from 0
                     next_state = StateFCS;
                 else if (fifo_eop_i)
                     next_state = StatePAD;
                 else 
-                    next_state = StateData;       
+                    next_state = current_state;       
 
             StatePAD:
                 if (!r_FullDuplex_i && collision)
@@ -326,6 +327,7 @@ module emac_tx_ctrl (
             preamble_counter <= 0;
         else
             preamble_counter <= preamble_counter + 1;
+    end
         
     always @(posedge clk or negedge rst_n) begin
         if(!rst_n)      
@@ -374,7 +376,7 @@ module emac_tx_ctrl (
     //data have one cycle delay after fifo read signals  
     always @(*) begin
         if(current_state == StateData ||
-            current_state == StateSFD && !(r_pause_frame_send_en_i && (xoff_gen_i || xon_gen_i)) ||
+            current_state == StateSFD && !(r_pause_frame_send_en_i && TxPauseRq_gen_i) ||
             current_state == StateJamDrop && PktDrpEvenPtr ||
             current_state == StateFFEmptyDrop && PktDrpEvenPtr)
             fifo_rd_o = 1;
@@ -445,8 +447,8 @@ module emac_tx_ctrl (
                         7'd13:  TxD_tmp = 8'h08;//
                         7'd14:  TxD_tmp = 8'h00;//opcode
                         7'd15:  TxD_tmp = 8'h01;
-                        7'd16:  TxD_tmp = xon_gen?8'b0:r_pause_quanta_set_i[15:8];
-                        7'd17:  TxD_tmp = xon_gen?8'b0:r_pause_quanta_set_i[7:0];
+                        7'd16:  TxD_tmp = r_TxPauseTV_i[15:8];
+                        7'd17:  TxD_tmp = r_TxPauseTV_i[7:0];
                         default:TxD_tmp = 0;
                     endcase
             
@@ -590,21 +592,12 @@ module emac_tx_ctrl (
  
     always @(posedge clk or negedge rst_n) begin
         if(!rst_n) 
-            xoff_gen_complete_o   <=0;
-        else if(current_state == StateDefer && xoff_gen_i)
-            xoff_gen_complete_o   <=1;
+            TxPauseRq_gen_complete_o <=0;
+        else if(current_state == StateDefer && TxPauseRq_gen_i)
+            TxPauseRq_gen_complete_o <=1;
         else
-            xoff_gen_complete_o   <=0;
+            TxPauseRq_gen_complete_o <=0;
     end
-    
-    always @(posedge clk or negedge rst_n) begin
-        if(!rst_n) 
-            xon_gen_complete_o <= 0;
-        else if(current_state == StateDefer && xon_gen_i)
-            xon_gen_complete_o <= 1;
-        else
-            xon_gen_complete_o <= 0;
-    end
-    
+
 endmodule
 

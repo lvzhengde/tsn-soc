@@ -34,7 +34,7 @@
  * EMAC random number generator for half duplex backoff 
 -*/
 
-module random_gen ( 
+module emac_random_gen ( 
     input               rst_n             ,
     input               clk               ,
     input               init_i            ,

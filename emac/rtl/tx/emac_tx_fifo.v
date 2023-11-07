@@ -431,9 +431,9 @@ module emac_tx_fifo (
     always @(posedge clk_sys or negedge rst_n) begin
         if(!rst_n)
             tx_mac_wa_o <= 0;  
-        else if (fifo_data_count >= txHwMark_i)
+        else if (fifo_data_count >= r_txHwMark_i)
             tx_mac_wa_o <= 0;
-        else if (fifo_data_count < txLwMark_i)
+        else if (fifo_data_count < r_txLwMark_i)
             tx_mac_wa_o <= 1;
     end
 
@@ -464,6 +464,7 @@ module emac_tx_fifo (
             dout_reg <= 0;
         else if(dout_reg_en)
             dout_reg <= dout_d1;     
+    end
         
     assign {dout_eop, dout_err, dout_be, dout_data} = dout_reg;
 
@@ -640,7 +641,7 @@ module emac_tx_fifo (
     reg add_rd_add /* synthesis syn_keep=1 */;
     
     always @(*) begin
-        if ((current_state_mac == MAC_IDLE || current_state_mac == MAC_BYTE3) && next_state_ma c== MAC_BYTE0)
+        if((current_state_mac == MAC_IDLE || current_state_mac == MAC_BYTE3) && next_state_mac== MAC_BYTE0)
             add_rd_add = 1;
         else
             add_rd_add = 0;
@@ -690,7 +691,7 @@ module emac_tx_fifo (
     end
 
     //generate fifo data output 
-    always @(*)
+    always @(*) begin
         case(current_state_mac)
             MAC_BYTE3:
                 fifo_data_o = dout_data[31:24];
@@ -750,7 +751,7 @@ module emac_tx_fifo (
     //++
     //instantiate dual port block ram
     //--
-    dpram u_dpram #(36, `EMAC_TXFF_AWIDTH, 2**EMAC_TXFF_AWIDTH)  
+    dpram #(36, `EMAC_TXFF_AWIDTH, 2**(`EMAC_TXFF_AWIDTH)) u_dpram
     (
         .data_a         (din        ), 
         .wren_a         (wr_en      ), 
