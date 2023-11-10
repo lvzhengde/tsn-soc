@@ -258,10 +258,10 @@ module emac_tx_fifo (
     always @(*) begin : GRAY_WRITE
         integer i;
 
-        add_wr_gray[`EMAC_TXFF_AWIDTH-1] <= add_wr[`EMAC_TXFF_AWIDTH-1];
+        add_wr_gray[`EMAC_TXFF_AWIDTH-1] = add_wr[`EMAC_TXFF_AWIDTH-1];
 
         for(i = `EMAC_TXFF_AWIDTH-2; i >= 0; i = i-1)
-            add_wr_gray[i] <= add_wr[i+1] ^ add_wr[i];
+            add_wr_gray[i] = add_wr[i+1] ^ add_wr[i];
     end
 
     //synchronize read Gray address to clk_sys domain

@@ -97,48 +97,49 @@ module emac_rx (
     wire            fifo_data_err   ;
     wire            fifo_data_end   ;
 
-//******************************************************************************
-//instantiation                                                            
-//******************************************************************************
+    //++
+    //instantiation                                                            
+    //--
 
-
-MAC_rx_ctrl U_MAC_rx_ctrl(
-.rst_n                       (rst_n                     ),                                              
-.clk                         (clk                       ),                                                 
-  //RMII interface           ( //RMII interface         ),                                                    
-.MRxDv_i                     (MRxDv_i                   ),                             
-.MRxD_i                        (MRxD_i                      ),                         
-.MRxErr_i                      (MRxErr_i                    ),                             
- //CRC_chk interface         (//CRC_chk interface       ),                                                   
-.crc_en                      (crc_en                    ),                                          
-.crc_init                    (crc_init                  ),                           
-.crc_err                     (crc_err                   ),                              
- //MAC_rx_add_chk interface  (//MAC_rx_add_chk interface),                                                   
-.mac_add_en                  (mac_add_en                ),                                             
-.mac_rx_add_chk_err          (mac_rx_add_chk_err        ),                             
- //broadcast_filter          (//broadcast_filter        ),                           
-.broadcast_ptr               (broadcast_ptr             ),                         
-.broadcast_drop              (broadcast_drop            ),                             
- //flow_control signals      (//flow_control signals    ),                           
-.pause_quanta_o                (pause_quanta_o              ),                         
-.pause_quanta_val_o            (pause_quanta_val_o          ),                         
- //MAC_rx_FF interface       (//MAC_rx_FF interface     ),                                                   
-.fifo_data                   (fifo_data                 ),                                         
-.fifo_data_en                (fifo_data_en              ),                                         
-.fifo_data_err               (fifo_data_err             ),                         
-.fifo_data_end               (fifo_data_end             ),                         
-.fifo_full                   (fifo_full                 ),                                      
- //RMON interface            (//RMON interface          ),                               
-.rx_pkt_type_rmon_o            (rx_pkt_type_rmon_o          ),                                        
-.rx_pkt_length_rmon_o          (rx_pkt_length_rmon_o        ),                                             
-.rx_apply_rmon_o               (rx_apply_rmon_o             ),                                         
-.rx_pkt_err_type_rmon_o        (rx_pkt_err_type_rmon_o      ),                                         
- //CPU                       (//CPU                     ),   
-.r_RxEn_i                      (r_RxEn_i                    ),
-.r_RxIFGSet_i                  (r_RxIFGSet_i                ),                             
-.r_RxMaxLength_i               (r_RxMaxLength_i             ),                           
-.r_RxMinLength_i               (r_RxMinLength_i             )                           
-);
+    //Connecting emac_rx_ctrl
+    emac_rx_ctrl emac_rx_ctrl
+    (
+        .rst_n                       (rst_n                     ),                                              
+        .clk                         (clk                       ),                                                 
+        //GMII/MII interface  
+        .MRxDv_i                     (MRxDv_i                   ),                             
+        .MRxD_i                      (MRxD_i                    ),                         
+        .MRxErr_i                    (MRxErr_i                  ),                             
+        //receive CRC check interface
+        .crc_en_o                    (crc_en                    ),                                          
+        .crc_init_o                  (crc_init                  ),                           
+        .crc_err_i                   (crc_err                   ),                              
+        //MAC receive address check interface
+        .mac_add_en_o                (mac_add_en                ),                                             
+        .mac_rx_add_chk_err_i        (mac_rx_add_chk_err        ),                             
+        //broadcast filter
+        .broadcast_ptr_o             (broadcast_ptr             ),                         
+        .broadcast_drop_i            (broadcast_drop            ),                             
+        //flow control signals to TX MAC  
+        .pause_quanta_o              (pause_quanta_o            ),                         
+        .pause_quanta_val_o          (pause_quanta_val_o        ),                         
+        //MAC RX FIFO interface
+        .fifo_data_o                 (fifo_data                 ),                                         
+        .fifo_data_en_o              (fifo_data_en              ),                                         
+        .fifo_data_err_o             (fifo_data_err             ),                         
+        .fifo_data_end_o             (fifo_data_end             ),                         
+        .fifo_full_i                 (fifo_full                 ),                                      
+        //RMON interface
+        .rx_pkt_type_rmon_o          (rx_pkt_type_rmon_o        ),                                        
+        .rx_pkt_length_rmon_o        (rx_pkt_length_rmon_o      ),                                             
+        .rx_apply_rmon_o             (rx_apply_rmon_o           ),                                         
+        .rx_pkt_err_type_rmon_o      (rx_pkt_err_type_rmon_o    ),                                         
+        //Host interface registers
+        .r_RxEn_i                    (r_RxEn_i                  ),
+        .r_RxIFGSet_i                (r_RxIFGSet_i              ),                             
+        .r_RxMaxLength_i             (r_RxMaxLength_i           ),                           
+        .r_RxMinLength_i             (r_RxMinLength_i           )                           
+    );
 
 MAC_rx_FF  U_MAC_rx_FF (
 .rst_n                       (rst_n                     ),

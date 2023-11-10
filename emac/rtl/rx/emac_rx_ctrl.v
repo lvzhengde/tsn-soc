@@ -100,13 +100,13 @@ module emac_rx_ctrl (
     reg  [3:0]      pause_next;                             
     reg  [5:0]      IFG_counter;   
     reg             RxDv  ;      
-    reg  [7:0]      RxD ;
-    reg  [7:0]      RxD_d1 ;
-    reg             RxErr   ;
+    reg  [7:0]      RxD   ;
+    reg  [7:0]      RxD_d1;
+    reg             RxErr ;
     reg  [15:0]     frame_length_counter;
-    reg             too_long;
+    reg             too_long ;
     reg             too_short;
-    reg             rx_apply_rmon_tmp;
+    reg             rx_apply_rmon_tmp   ;
     reg             rx_apply_rmon_tmp_d1;
     reg  [7:0]      pause_quanta_h      ;
     reg             pause_quanta_val_tmp;
@@ -149,7 +149,7 @@ module emac_rx_ctrl (
     always @(*) begin                                             
         case(current_state)                            
             StateIdle:
-                if(RxDv && RxD == 8'h55)                
+                if(RxDv && RxD == 8'h55 && r_RxEn_i)                
                     next_state = StatePreamble;    
                 else                               
                     next_state = current_state;     
@@ -263,220 +263,255 @@ module emac_rx_ctrl (
             fifo_data_err_o = 0;     
     end
 
-//******************************************************************************
-//CRC_chk interface                                               
-//****************************************************************************** 
-
-always @(current_state)
-    if (current_state==StateData)
-        crc_en_o  =1;
-    else
-        crc_en_o  =0;
-        
-always @(current_state)
-    if (current_state==StateSFD)
-        crc_init_o    =1;
-    else
-        crc_init_o    =0;
-        
-//******************************************************************************
-//gen rmon signals                                         
-//******************************************************************************    
-always @ (posedge clk or negedge rst_n)
-    if (!rst_n)  
-        frame_length_counter        <=0;
-    else if (current_state==StateSFD)
-        frame_length_counter        <=1;
-    else if (current_state==StateData)
-        frame_length_counter        <=frame_length_counter+ 1'b1;
-        
-always @ (frame_length_counter or r_RxMinLength_i)
-    if (frame_length_counter<r_RxMinLength_i)
-        too_short   =1;
-    else
-        too_short   =0;
-        
-always @ (*)
-    if (frame_length_counter>r_RxMaxLength_i)
-        too_long    =1;
-    else
-        too_long    =0;
-        
-assign rx_pkt_length_rmon=frame_length_counter-1'b1;
-
-always @ (posedge clk or negedge rst_n)
-    if (!rst_n)
-        rx_apply_rmon_tmp   <=0; 
-    else if (current_state==StateOkEnd||current_state==StateErrEnd
-        ||current_state==StateCRCErrEnd||current_state==StateFFFullErrEnd)
-        rx_apply_rmon_tmp   <=1;        
-    else
-        rx_apply_rmon_tmp   <=0; 
-        
-always @ (posedge clk or negedge rst_n)
-    if (!rst_n)
-        rx_apply_rmon_tmp_d1   <=0;
-    else
-        rx_apply_rmon_tmp_d1   <=rx_apply_rmon_tmp;        
-
-always @ (posedge clk or negedge rst_n)
-    if (!rst_n)
-        rx_apply_rmon_o   <=0; 
-    else if (current_state==StateOkEnd||current_state==StateErrEnd
-        ||current_state==StateCRCErrEnd||current_state==StateFFFullErrEnd)
-        rx_apply_rmon_o   <=1;        
-    else if (rx_apply_rmon_tmp_d1)
-        rx_apply_rmon_o   <=0; 
-        
-always @ (posedge clk or negedge rst_n)
-    if (!rst_n)
-        rx_pkt_err_type_rmon_o    <=0;
-    else if (current_state==StateCRCErrEnd)
-        rx_pkt_err_type_rmon_o    <=3'b001    ;//
-    else if (current_state==StateFFFullErrEnd)
-        rx_pkt_err_type_rmon_o    <=3'b010    ;// 
-    else if (current_state==StateErrEnd)
-        rx_pkt_err_type_rmon_o    <=3'b011    ;//
-    else if(current_state==StateOkEnd)
-        rx_pkt_err_type_rmon_o    <=3'b100    ;
-
-
-        
-always @ (posedge clk or negedge rst_n)
-    if (!rst_n)
-        rx_pkt_type_rmon_o        <=0;
-    else if (current_state==StateOkEnd&&pause_frame_ptr)
-        rx_pkt_type_rmon_o        <=3'b100    ;//
-    else if(current_state==StateSFD&&next_state==StateData)
-        rx_pkt_type_rmon_o        <={1'b0,MRxD_i[7:6]};
-
-always @ (posedge clk or negedge rst_n)
-    if (!rst_n)
-        broadcast_ptr_o   <=0;
-    else if(current_state==StateIFG)
-        broadcast_ptr_o   <=0;
-    else if(current_state==StateSFD&&next_state==StateData&&MRxD_i[7:6]==2'b11)
-        broadcast_ptr_o   <=1;
-
-        
+    //++
+    //CRC check interface                                               
+    //--
     
-//******************************************************************************
-//MAC add checker signals                                                              
-//******************************************************************************
-always @ (frame_length_counter or fifo_data_en_o)
-    if(frame_length_counter>=1&&frame_length_counter<=6)
-        mac_add_en_o  <=fifo_data_en_o;
-    else
-        mac_add_en_o  <=0;
+    always @(*) begin
+        if(current_state == StateData)
+            crc_en_o = 1;
+        else
+            crc_en_o = 0;
+    end
+        
+    always @(*) begin
+        if(current_state == StateSFD)
+            crc_init_o = 1;
+        else
+            crc_init_o = 0;
+    end
+        
+    //++
+    //generate RMON signals                                         
+    //--
 
-//******************************************************************************
-//flow control signals                                                            
-//******************************************************************************
-always @ (posedge clk or negedge rst_n)
-    if (!rst_n)
-        pause_current   <=PAUSE_IDLE;
-    else
-        pause_current   <=pause_next;
+    always @(posedge clk or negedge rst_n) begin
+        if(!rst_n)  
+            frame_length_counter <= 0;
+        else if (current_state == StateSFD)
+            frame_length_counter <= 1;
+        else if (current_state == StateData) 
+            frame_length_counter <= frame_length_counter+ 1'b1;
+    end
         
-always @ (*)
-    case (pause_current)
-        PAUSE_IDLE  : 
-            if(current_state==StateSFD)
-                pause_next  =PAUSE_PRE_SYN;
-            else
-                pause_next  =pause_current;
-        PAUSE_PRE_SYN:
-            case (frame_length_counter)
-                16'd1:  if (RxD_d1==8'h01)
-                            pause_next  =pause_current;
-                        else
-                            pause_next  =PAUSE_IDLE;
-                16'd2:  if (RxD_d1==8'h80)
-                            pause_next  =pause_current;
-                        else
-                            pause_next  =PAUSE_IDLE;            
-                16'd3:  if (RxD_d1==8'hc2)
-                            pause_next  =pause_current;
-                        else
-                            pause_next  =PAUSE_IDLE;
-                16'd4:  if (RxD_d1==8'h00)
-                            pause_next  =pause_current;
-                        else
-                            pause_next  =PAUSE_IDLE;
-                16'd5:  if (RxD_d1==8'h00)
-                            pause_next  =pause_current;
-                        else
-                            pause_next  =PAUSE_IDLE;
-                16'd6:  if (RxD_d1==8'h01)
-                            pause_next  =pause_current;
-                        else
-                            pause_next  =PAUSE_IDLE;
-                16'd13: if (RxD_d1==8'h88)
-                            pause_next  =pause_current;
-                        else
-                            pause_next  =PAUSE_IDLE;
-                16'd14: if (RxD_d1==8'h08)
-                            pause_next  =pause_current;
-                        else
-                            pause_next  =PAUSE_IDLE;
-                16'd15: if (RxD_d1==8'h00)
-                            pause_next  =pause_current;
-                        else
-                            pause_next  =PAUSE_IDLE;
-                16'd16: if (RxD_d1==8'h01)
-                            pause_next  =PAUSE_QUANTA_HI;
-                        else
-                            pause_next  =PAUSE_IDLE;
-                default:    pause_next  =pause_current;
-            endcase
-        PAUSE_QUANTA_HI :
-            pause_next  =PAUSE_QUANTA_LO;
-        PAUSE_QUANTA_LO :
-            pause_next  =PAUSE_SYN; 
-        PAUSE_SYN       :
-            if (current_state==StateIFG)
-                pause_next  =PAUSE_IDLE;
-            else
-                pause_next  =pause_current;
-        default
-            pause_next  =PAUSE_IDLE;
-    endcase
+    always @(*) begin
+        if(frame_length_counter < r_RxMinLength_i)
+            too_short = 1;
+        else
+            too_short = 0;
+    end
+        
+    always @(*) begin
+        if(frame_length_counter > r_RxMaxLength_i)
+            too_long = 1;
+        else
+            too_long = 0;
+    end
+            
+    assign rx_pkt_length_rmon = frame_length_counter - 1'b1;
 
-always @ (posedge clk or negedge rst_n)
-    if (!rst_n)
-        pause_quanta_h      <=0;
-    else if(pause_current==PAUSE_QUANTA_HI)
-        pause_quanta_h      <=RxD_d1;
+    always @(posedge clk or negedge rst_n) begin
+        if(!rst_n)
+            rx_apply_rmon_tmp <= 0; 
+        else if(current_state == StateOkEnd || current_state == StateErrEnd
+             || current_state == StateCRCErrEnd || current_state == StateFFFullErrEnd)
+            rx_apply_rmon_tmp <= 1;        
+        else
+            rx_apply_rmon_tmp <= 0; 
+    end
         
-always @ (posedge clk or negedge rst_n)
-    if (!rst_n)
-        pause_quanta_o        <=0;
-    else if(pause_current==PAUSE_QUANTA_LO)
-        pause_quanta_o        <={pause_quanta_h,RxD_d1};
+    always @(posedge clk or negedge rst_n) begin
+        if(!rst_n)
+            rx_apply_rmon_tmp_d1 <= 0;
+        else
+            rx_apply_rmon_tmp_d1 <= rx_apply_rmon_tmp;        
+    end
+
+    always @(posedge clk or negedge rst_n) begin
+        if(!rst_n)
+            rx_apply_rmon_o <= 0; 
+        else if(current_state == StateOkEnd || current_state == StateErrEnd
+             || current_state == StateCRCErrEnd || current_state == StateFFFullErrEnd)
+            rx_apply_rmon_o <= 1;        
+        else if(rx_apply_rmon_tmp_d1)
+            rx_apply_rmon_o <= 0; 
+    end
         
-always @ (posedge clk or negedge rst_n)
-    if (!rst_n)      
-        pause_quanta_val_tmp    <=0;
-    else if(current_state==StateOkEnd&&pause_current==PAUSE_SYN)
-        pause_quanta_val_tmp    <=1;
-    else
-        pause_quanta_val_tmp    <=0;
+    always @(posedge clk or negedge rst_n) begin
+        if(!rst_n)
+            rx_pkt_err_type_rmon_o <= 0;
+        else if(current_state == StateCRCErrEnd)
+            rx_pkt_err_type_rmon_o <= 3'b001;//
+        else if(current_state == StateFFFullErrEnd)
+            rx_pkt_err_type_rmon_o <= 3'b010;// 
+        else if(current_state == StateErrEnd)
+            rx_pkt_err_type_rmon_o <= 3'b011;//
+        else if(current_state == StateOkEnd)
+            rx_pkt_err_type_rmon_o <= 3'b100;
+    end
         
-always @ (posedge clk or negedge rst_n)
-    if (!rst_n)      
-        pause_quanta_val    <=0;
-    else if(current_state==StateOkEnd&&pause_current==PAUSE_SYN||pause_quanta_val_tmp)
-        pause_quanta_val    <=1;
-    else
-        pause_quanta_val    <=0;        
+    always @(posedge clk or negedge rst_n) begin
+        if(!rst_n)
+            rx_pkt_type_rmon_o <= 0;
+        else if(current_state == StateOkEnd && pause_frame_ptr)
+            rx_pkt_type_rmon_o <= 3'b100;//
+        else if(current_state == StateSFD && next_state == StateData)
+            rx_pkt_type_rmon_o <= {1'b0,MRxD_i[1:0]}; //FIXME, {1'b0,MRxD_i[7:6]}??;
+    end
+
+    always @(posedge clk or negedge rst_n) begin
+        if(!rst_n)
+            broadcast_ptr_o <= 0;
+        else if(current_state==StateIFG)
+            broadcast_ptr_o <= 0;
+        else if(current_state == StateData && frame_length_counter < 6 && MRxD_i[7:0] != 8'hff)
+            broadcast_ptr_o <= 0;
+        else if(current_state == StateSFD && next_state == StateData && MRxD_i[7:0] == 8'hff) //FIXME
+            broadcast_ptr_o <= 1;
+    end
     
-always @ (posedge clk or negedge rst_n)
-    if (!rst_n)  
-        pause_frame_ptr     <=0;
-    else if(pause_current==PAUSE_SYN)
-        pause_frame_ptr     <=1;
-    else
-        pause_frame_ptr     <=0;
+    //++
+    //MAC address checker signals                                                              
+    //--
+    
+    always @(*) begin
+        if(frame_length_counter >= 1 && frame_length_counter <= 6)
+            mac_add_en_o <= fifo_data_en_o;
+        else
+            mac_add_en_o <= 0;
+    end
+
+    //++
+    //flow control signals--generated by state machine                                                            
+    //--
+    
+    always @(posedge clk or negedge rst_n) begin
+        if(!rst_n)
+            pause_current <= PAUSE_IDLE;
+        else
+            pause_current <= pause_next;
+    end
+        
+    always @(*) begin
+        case(pause_current)
+            PAUSE_IDLE  : 
+                if(current_state == StateSFD)
+                    pause_next = PAUSE_PRE_SYN;
+                else
+                    pause_next = pause_current;
+
+            PAUSE_PRE_SYN:
+                case(frame_length_counter)
+                    16'd1:  if(RxD_d1 == 8'h01)
+                                pause_next = pause_current;
+                            else
+                                pause_next = PAUSE_IDLE;
+
+                    16'd2:  if(RxD_d1 == 8'h80)
+                                pause_next = pause_current;
+                            else
+                                pause_next = PAUSE_IDLE;            
+
+                    16'd3:  if(RxD_d1 == 8'hc2)
+                                pause_next = pause_current;
+                            else
+                                pause_next = PAUSE_IDLE;
+
+                    16'd4:  if(RxD_d1 == 8'h00)
+                                pause_next = pause_current;
+                            else
+                                pause_next = PAUSE_IDLE;
+
+                    16'd5:  if(RxD_d1 == 8'h00)
+                                pause_next = pause_current;
+                            else
+                                pause_next = PAUSE_IDLE;
+
+                    16'd6:  if(RxD_d1 == 8'h01)
+                                pause_next = pause_current;
+                            else
+                                pause_next = PAUSE_IDLE;
+
+                    16'd13: if(RxD_d1 == 8'h88)
+                                pause_next = pause_current;
+                            else
+                                pause_next = PAUSE_IDLE;
+
+                    16'd14: if(RxD_d1 == 8'h08)
+                                pause_next = pause_current;
+                            else
+                                pause_next = PAUSE_IDLE;
+
+                    16'd15: if(RxD_d1==8'h00)
+                                pause_next = pause_current;
+                            else
+                                pause_next = PAUSE_IDLE;
+
+                    16'd16: if(RxD_d1 == 8'h01)
+                                pause_next = PAUSE_QUANTA_HI;
+                            else
+                                pause_next = PAUSE_IDLE;
+
+                    default:    pause_next = pause_current;
+                endcase
+
+            PAUSE_QUANTA_HI :
+                pause_next = PAUSE_QUANTA_LO;
+
+            PAUSE_QUANTA_LO :
+                pause_next = PAUSE_SYN; 
+
+            PAUSE_SYN       :
+                if (current_state == StateIFG)
+                    pause_next = PAUSE_IDLE;
+                else
+                    pause_next = pause_current;
+
+            default
+                pause_next = PAUSE_IDLE;
+        endcase
+    end
+
+    always @(posedge clk or negedge rst_n) begin
+        if(!rst_n)
+            pause_quanta_h <= 0;
+        else if(pause_current == PAUSE_QUANTA_HI)
+            pause_quanta_h <= RxD_d1;
+    end
+        
+    always @(posedge clk or negedge rst_n) begin
+        if(!rst_n)
+            pause_quanta_o <= 0;
+        else if(pause_current == PAUSE_QUANTA_LO)
+            pause_quanta_o <= {pause_quanta_h,RxD_d1};
+    end
+        
+    always @(posedge clk or negedge rst_n) begin
+        if(!rst_n)      
+            pause_quanta_val_tmp <= 0;
+        else if(current_state == StateOkEnd && pause_current == PAUSE_SYN)
+            pause_quanta_val_tmp <= 1;
+        else
+            pause_quanta_val_tmp <= 0;
+    end
+        
+    always @(posedge clk or negedge rst_n) begin
+        if(!rst_n)      
+            pause_quanta_val <= 0;
+        else if(current_state == StateOkEnd && pause_current == PAUSE_SYN || pause_quanta_val_tmp)
+            pause_quanta_val <= 1;
+        else
+            pause_quanta_val <= 0;        
+    end
+    
+    always @(posedge clk or negedge rst_n) begin
+        if(!rst_n)  
+            pause_frame_ptr <= 0;
+        else if(pause_current == PAUSE_SYN)
+            pause_frame_ptr <= 1;
+        else
+            pause_frame_ptr <= 0;
+    end
                 
 endmodule
                 
