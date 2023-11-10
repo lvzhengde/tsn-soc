@@ -89,26 +89,19 @@ module emac_rx_fifo (
     reg [`MAC_RXFF_AWIDTH-1:0]       add_rd_gray;
     reg [`MAC_RXFF_AWIDTH-1:0]       add_rd_ungray;
 
-    reg [35:0]      din;
-    reg [35:0]      din_tmp;
-    reg [35:0]      din_tmp_reg;
-    wire[35:0]      dout;
-    reg             wr_en;
-    reg             wr_en_tmp;
-    reg             wr_en_ptr;
-
+    reg  [35:0]      din;
+    reg  [35:0]      din_tmp;
+    reg  [35:0]      din_tmp_reg;
+    wire [35:0]      dout;
+    reg              wr_en;
+    reg              wr_en_tmp;
+    reg              wr_en_ptr;
 
     reg              full;
     reg              almost_full;
     reg              empty /* synthesis syn_keep=1 */;
     reg  [3:0]       current_state /* synthesis syn_keep=1 */;
     reg  [3:0]       next_state;
-    reg  [7:0]       fifo_data_byte0;
-    reg  [7:0]       fifo_data_byte1;
-    reg  [7:0]       fifo_data_byte2;
-    reg  [7:0]       fifo_data_byte3;
-    reg              fifo_data_en_d1;
-    reg  [7:0]       fifo_data_d1;
     reg              rx_mac_sop_tmp  ;
 
     reg  [2:0]       current_state_sys /* synthesis syn_keep=1 */;
@@ -312,6 +305,9 @@ module emac_rx_fifo (
             add_wr_jump <= 0;                
     end
             
+    reg              fifo_data_en_d1;
+    reg  [7:0]       fifo_data_d1;
+
     always @(posedge clk_mac or negedge rst_n) begin
         if(!rst_n)
             fifo_data_en_d1 <= 0;
@@ -326,6 +322,11 @@ module emac_rx_fifo (
             fifo_data_d1 <= fifo_data_i;
     end
         
+    reg  [7:0]       fifo_data_byte0;
+    reg  [7:0]       fifo_data_byte1;
+    reg  [7:0]       fifo_data_byte2;
+    reg  [7:0]       fifo_data_byte3;
+
     always @(posedge clk_mac or negedge rst_n) begin
         if(!rst_n)
             fifo_data_byte3 <= 0;
@@ -347,10 +348,17 @@ module emac_rx_fifo (
             fifo_data_byte1 <= fifo_data_d1;
     end
     
+    always @(posedge clk_mac or negedge rst_n) begin
+        if (!rst_n)
+            fifo_data_byte0 <= 0;
+        else if (current_state == MAC_BYTE0 && fifo_data_en_d1)
+            fifo_data_byte0 <= fifo_data_d1;
+    end
+
     always @(* ) begin
         case (current_state)
             MAC_BE0:
-                din_tmp = {4'b1000,fifo_data_byte3,fifo_data_byte2,fifo_data_byte1,fifo_data_d1};       
+                din_tmp = {4'b1000,fifo_data_byte3,fifo_data_byte2,fifo_data_byte1,fifo_data_byte0}; //FIXME      
             MAC_BE1:
                 din_tmp = {4'b1001,fifo_data_byte3,24'h0};
             MAC_BE2:
