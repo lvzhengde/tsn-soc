@@ -239,7 +239,7 @@ module emac_rx_ctrl (
     //++
     //generate fifo interface signals                                                     
     //--
-    assign fifo_data = RxD_d1;       
+    assign fifo_data_o = RxD_d1;       
 
     always @(*) begin
         if(current_state == StateData)
