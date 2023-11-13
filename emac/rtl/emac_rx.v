@@ -141,29 +141,31 @@ module emac_rx (
         .r_RxMinLength_i             (r_RxMinLength_i           )                           
     );
 
-MAC_rx_FF  U_MAC_rx_FF (
-.rst_n                       (rst_n                     ),
-.clk_mac                     (clk                       ), 
-.clk_sys                     (clk_user                  ), 
- //MAC_rx_ctrl interface     (//MAC_rx_ctrl interface   ),
-.fifo_data                   (fifo_data                 ),
-.fifo_data_en                (fifo_data_en              ),
-.fifo_full                   (fifo_full                 ),
-.fifo_data_err               (fifo_data_err             ),
-.fifo_data_end               (fifo_data_end             ),
- //CPU                       (//CPU                     ),
-.r_rxHwMark_i                   (r_rxHwMark_i                 ),
-.r_rxLwMark_i                   (r_rxLwMark_i                 ),
-.RX_APPEND_CRC               (RX_APPEND_CRC             ),
- //user interface            (//user interface          ),
-.rx_mac_ra_o                   (rx_mac_ra_o                 ),
-.rx_mac_rd_i                   (rx_mac_rd_i                 ),
-.rx_mac_data_o                 (rx_mac_data_o               ), 
-.rx_mac_be_o                   (rx_mac_be_o                 ),
-.rx_mac_sop_o                  (rx_mac_sop_o                ), 
-.rx_mac_pa_o                   (rx_mac_pa_o                 ),
-.rx_mac_eop_o                  (rx_mac_eop_o                ) 
-); 
+    //Connecting emac_rx_fifo
+    emac_rx_fifo  emac_rx_fifo 
+    (
+        .rst_n                       (rst_n                     ),
+        .clk_mac                     (clk                       ), 
+        .clk_sys                     (clk_user                  ), 
+        //emac_rx_ctrl interface 
+        .fifo_data_i                 (fifo_data                 ),
+        .fifo_data_en_i              (fifo_data_en              ),
+        .fifo_full_o                 (fifo_full                 ),
+        .fifo_data_err_i             (fifo_data_err             ),
+        .fifo_data_end_i             (fifo_data_end             ),
+        //Host interface
+        .r_rxHwMark_i                (r_rxHwMark_i              ),
+        .r_rxLwMark_i                (r_rxLwMark_i              ),
+        .r_RxAppendCrc_i             (r_RxAppendCrc_i           ),
+        //user interface 
+        .rx_mac_ra_o                 (rx_mac_ra_o               ),
+        .rx_mac_rd_i                 (rx_mac_rd_i               ),
+        .rx_mac_data_o               (rx_mac_data_o             ), 
+        .rx_mac_be_o                 (rx_mac_be_o               ),
+        .rx_mac_sop_o                (rx_mac_sop_o              ), 
+        .rx_mac_pa_o                 (rx_mac_pa_o               ),
+        .rx_mac_eop_o                (rx_mac_eop_o              ) 
+    ); 
 
 `ifdef MAC_BROADCAST_FILTER_EN
 Broadcast_filter U_Broadcast_filter(

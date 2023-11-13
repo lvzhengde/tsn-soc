@@ -50,21 +50,21 @@ module emac_rx_fifo (
     input  [4:0]        r_rxHwMark_i    , //RX FIFO high water mark
     input  [4:0]        r_rxLwMark_i    , //RX FIFO low water mark
     //user interface 
-    output reg          rx_mac_ra_o   , //
-    input               rx_mac_rd_i   ,
+    output reg          rx_mac_ra_o   ,   //RX FIFO read data available
+    input               rx_mac_rd_i   ,   //RX FIFO read enable
     output [31:0]       rx_mac_data_o ,
-    output [1:0]        rx_mac_be_o   ,
-    output reg          rx_mac_pa_o   ,
-    output reg          rx_mac_sop_o  ,
-    output              rx_mac_eop_o  
+    output [1:0]        rx_mac_be_o   ,   //Byte enable for the last word, little endian
+    output reg          rx_mac_pa_o   ,   //packet data valid
+    output reg          rx_mac_sop_o  ,   //start of packet
+    output              rx_mac_eop_o      //end of packet
 );
     //++
     //internal signals                                                              
     //--
-    parameter       MAC_BYTE3     = 4'd0;      
-    parameter       MAC_BYTE2     = 4'd1;
-    parameter       MAC_BYTE1     = 4'd2;      
-    parameter       MAC_BYTE0     = 4'd3;
+    parameter       MAC_BYTE0     = 4'd0;      
+    parameter       MAC_BYTE1     = 4'd1;
+    parameter       MAC_BYTE2     = 4'd2;      
+    parameter       MAC_BYTE3     = 4'd3;
     parameter       MAC_BE0       = 4'd4;
     parameter       MAC_BE3       = 4'd5;
     parameter       MAC_BE2       = 4'd6;
@@ -81,11 +81,9 @@ module emac_rx_fifo (
     reg [`MAC_RXFF_AWIDTH-1:0]       add_wr;
     reg [`MAC_RXFF_AWIDTH-1:0]       add_wr_ungray;
     reg [`MAC_RXFF_AWIDTH-1:0]       add_wr_gray;
-    reg [`MAC_RXFF_AWIDTH-1:0]       add_wr_gray_d1;
     reg [`MAC_RXFF_AWIDTH-1:0]       add_wr_reg;
     
     reg [`MAC_RXFF_AWIDTH-1:0]       add_rd;
-    reg [`MAC_RXFF_AWIDTH-1:0]       add_rd_pl1;
     reg [`MAC_RXFF_AWIDTH-1:0]       add_rd_gray;
     reg [`MAC_RXFF_AWIDTH-1:0]       add_rd_ungray;
 
@@ -108,13 +106,6 @@ module emac_rx_fifo (
     reg  [2:0]       next_state_sys ;
     reg  [5:0]       packet_number_in_fifo /* synthesis syn_keep=1 */;
     reg              packet_number_sub ;
-    wire             packet_number_add_edge;
-    reg              packet_number_add_d1;
-    reg              packet_number_add_d2;
-    reg              packet_number_add ;
-    reg              packet_number_add_tmp    ;
-    reg              packet_number_add_tmp_d1;
-    reg              packet_number_add_tmp_d2;
 
     reg              rx_mac_sop_tmp_d1;
     reg  [35:0]      dout_d1;
@@ -123,9 +114,6 @@ module emac_rx_fifo (
     reg              add_wr_jump_tmp     ;
     reg              add_wr_jump_tmp_d1 ;
     reg              add_wr_jump         ;
-    reg              add_wr_jump_rd  ;
-    reg  [4:0]       rx_Hwmark_pl        ;
-    reg  [4:0]       rx_Lwmark_pl        ;
     reg              addr_freshed_ptr    ;
 
     //++
@@ -144,13 +132,13 @@ module emac_rx_fifo (
         case(current_state)
             MAC_IDLE:
                     if(fifo_data_en_i)
-                        next_state = MAC_BYTE3;
+                        next_state = MAC_BYTE0;
                     else
                         next_state = current_state;                 
 
-            MAC_BYTE3:
+            MAC_BYTE0:
                     if(fifo_data_en_i)
-                        next_state = MAC_BYTE2;
+                        next_state = MAC_BYTE1;
                     else if(fifo_data_err_i)
                         next_state = MAC_ERR_END;
                     else if(fifo_data_end_i)
@@ -158,9 +146,9 @@ module emac_rx_fifo (
                     else
                         next_state = current_state;                 
 
-            MAC_BYTE2:
+            MAC_BYTE1:
                     if(fifo_data_en_i)
-                        next_state = MAC_BYTE1;
+                        next_state = MAC_BYTE2;
                     else if(fifo_data_err_i)
                         next_state = MAC_ERR_END;
                     else if(fifo_data_end_i)
@@ -168,9 +156,9 @@ module emac_rx_fifo (
                     else
                         next_state = current_state;         
 
-            MAC_BYTE1:
+            MAC_BYTE2:
                     if(fifo_data_en_i)
-                        next_state = MAC_BYTE0;
+                        next_state = MAC_BYTE3;
                     else if(fifo_data_err_i)
                         next_state = MAC_ERR_END;
                     else if(fifo_data_end_i)
@@ -178,9 +166,9 @@ module emac_rx_fifo (
                     else
                         next_state = current_state;         
 
-            MAC_BYTE0:
+            MAC_BYTE3:
                     if(fifo_data_en_i)
-                        next_state = MAC_BYTE3;
+                        next_state = MAC_BYTE0;
                     else if(fifo_data_err_i)
                         next_state = MAC_ERR_END;
                     else if(fifo_data_end_i)
@@ -217,6 +205,8 @@ module emac_rx_fifo (
             
     //binary to Gray address--write address
     always @(*) begin : GRAY_WRITE
+        integer i;
+
         add_wr_gray[`MAC_RXFF_AWIDTH-1] = add_wr[`MAC_RXFF_AWIDTH-1];
         for(i = `MAC_RXFF_AWIDTH-2; i >= 0; i = i-1)
             add_wr_gray[i] = add_wr[i+1] ^ add_wr[i];
@@ -234,10 +224,12 @@ module emac_rx_fifo (
     end
                         
     //Gray to binary address--read address
-    always @(posedge clk_mac or negedge rst_n)
+    always @(posedge clk_mac or negedge rst_n) begin : UNGRAY_READ
+        integer i;
+
         add_rd_ungray[`MAC_RXFF_AWIDTH-1] = add_rd_gray_d2[`MAC_RXFF_AWIDTH-1];   
         for(i = `MAC_RXFF_AWIDTH-2; i >= 0;i = i-1)
-            add_rd_ungray[i] = add_rd_ungray[i+1]^add_rd_gray_d2[i]; 
+            add_rd_ungray[i] = add_rd_ungray[i+1] ^ add_rd_gray_d2[i]; 
     end
 
     wire[`MAC_RXFF_AWIDTH-1:0]       add_wr_plus;
@@ -296,13 +288,21 @@ module emac_rx_fifo (
             add_wr_jump_tmp_d1 <= add_wr_jump_tmp;   
     end
             
+    reg   add_wr_jump_reg;
+
     always @(posedge clk_mac or negedge rst_n) begin
         if(!rst_n)
-            add_wr_jump <= 0;
-        else if(current_state == MAC_ERR_END)
-            add_wr_jump <= 1;
+            add_wr_jump_reg <= 0;
+        else
+            add_wr_jump_reg <= add_wr_jump;
+    end
+
+    always @(*) begin
+        add_wr_jump = add_wr_jump_reg;
+        if(current_state == MAC_ERR_END)
+            add_wr_jump = 1;
         else if(add_wr_jump_tmp_d1)
-            add_wr_jump <= 0;                
+            add_wr_jump = 0;                
     end
             
     reg              fifo_data_en_d1;
@@ -328,52 +328,52 @@ module emac_rx_fifo (
     reg  [7:0]       fifo_data_byte3;
 
     always @(posedge clk_mac or negedge rst_n) begin
-        if(!rst_n)
-            fifo_data_byte3 <= 0;
-        else if(current_state == MAC_BYTE3 && fifo_data_en_d1)
-            fifo_data_byte3 <= fifo_data_d1;
-    end
-    
-    always @(posedge clk_mac or negedge rst_n) begin
-        if (!rst_n)
-            fifo_data_byte2 <= 0;
-        else if(current_state == MAC_BYTE2 && fifo_data_en_d1)
-            fifo_data_byte2 <= fifo_data_d1;
-    end
-        
-    always @(posedge clk_mac or negedge rst_n) begin
-        if (!rst_n)
-            fifo_data_byte1 <= 0;
-        else if (current_state == MAC_BYTE1 && fifo_data_en_d1)
-            fifo_data_byte1 <= fifo_data_d1;
-    end
-    
-    always @(posedge clk_mac or negedge rst_n) begin
         if (!rst_n)
             fifo_data_byte0 <= 0;
         else if (current_state == MAC_BYTE0 && fifo_data_en_d1)
             fifo_data_byte0 <= fifo_data_d1;
     end
 
+    always @(posedge clk_mac or negedge rst_n) begin
+        if (!rst_n)
+            fifo_data_byte1 <= 0;
+        else if (current_state == MAC_BYTE1 && fifo_data_en_d1)
+            fifo_data_byte1 <= fifo_data_d1;
+    end
+
+    always @(posedge clk_mac or negedge rst_n) begin
+        if (!rst_n)
+            fifo_data_byte2 <= 0;
+        else if(current_state == MAC_BYTE2 && fifo_data_en_d1)
+            fifo_data_byte2 <= fifo_data_d1;
+    end
+
+    always @(posedge clk_mac or negedge rst_n) begin
+        if(!rst_n)
+            fifo_data_byte3 <= 0;
+        else if(current_state == MAC_BYTE3 && fifo_data_en_d1)
+            fifo_data_byte3 <= fifo_data_d1;
+    end
+
     always @(* ) begin
         case (current_state)
             MAC_BE0:
-                din_tmp = {4'b1000,fifo_data_byte3,fifo_data_byte2,fifo_data_byte1,fifo_data_byte0}; //FIXME      
+                din_tmp = {4'b1000, fifo_data_byte3, fifo_data_byte2, fifo_data_byte1, fifo_data_byte0}; //FIXME      
             MAC_BE1:
-                din_tmp = {4'b1001,fifo_data_byte3,24'h0};
+                din_tmp = {4'b1001, 24'h0, fifo_data_byte0};
             MAC_BE2:
-                din_tmp = {4'b1010,fifo_data_byte3,fifo_data_byte2,16'h0};
+                din_tmp = {4'b1010, 16'h0, fifo_data_byte1, fifo_data_byte0};
             MAC_BE3:
-                din_tmp = {4'b1011,fifo_data_byte3,fifo_data_byte2,fifo_data_byte1,8'h0};
+                din_tmp = {4'b1011, 8'h0,  fifo_data_byte2, fifo_data_byte1, fifo_data_byte0};
             default:
-                din_tmp = {4'b0000,fifo_data_byte3,fifo_data_byte2,fifo_data_byte1,fifo_data_d1};
+                din_tmp = {4'b0000, fifo_data_d1, fifo_data_byte2,fifo_data_byte1,fifo_data_byte0};
         endcase
     end
-    
+
     always @(*) begin
         if(current_state == MAC_BE0 || current_state==MAC_BE1 ||
            current_state == MAC_BE2 || current_state==MAC_BE3 ||
-          (current_state == MAC_BYTE0 && fifo_data_en_i))
+          (current_state == MAC_BYTE3 && fifo_data_en_i))
             wr_en_tmp = 1;
         else 
             wr_en_tmp = 0; 
@@ -411,7 +411,12 @@ module emac_rx_fifo (
         end                                 
     end
             
-    //this signal for read side to handle the packet number in fifo
+    //signals for read side to handle the packet number in fifo
+    reg              packet_number_add ;
+    reg              packet_number_add_tmp    ;
+    reg              packet_number_add_tmp_d1;
+    reg              packet_number_add_tmp_d2;
+
     always @(posedge clk_mac or negedge rst_n) begin
         if(!rst_n)
             packet_number_add_tmp <= 0;
@@ -434,275 +439,285 @@ module emac_rx_fifo (
     end   
         
     //packet_number_add delay to din[35] is needed to make sure the data have been wroten to ram.       
-    //expand to two cycles long almost=16 ns
-    //if the clk_sys period less than 16 ns ,this signal need to expand to 3 or more clock cycles       
+    //expand to three cycles long almost=24 ns
+    //if the clk_sys period less than 24 ns ,this signal need to expand to more clock cycles       
     always @(posedge clk_mac or negedge rst_n) begin
         if(!rst_n)
             packet_number_add <= 0;
-        else if(packet_number_add_tmp_d1 || packet_number_add_tmp_d2)
+        else if(packet_number_add_tmp || packet_number_add_tmp_d1 || packet_number_add_tmp_d2)
             packet_number_add <= 1;
         else 
             packet_number_add <= 0;
     end
      
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
-//******************************************************************************
-//domain clk_sys,read data from dprom.b-port for read
-//******************************************************************************
 
+    //++
+    //clk_sys domain,read data from dual port RAM.
+    //b-port for read
+    //
 
-always @ (posedge clk_sys or negedge rst_n)
-    if (!rst_n)
-        current_state_sys   <=SYS_IDLE;
-    else 
-        current_state_sys   <=next_state_sys;
+    always @(posedge clk_sys or negedge rst_n) begin
+        if(!rst_n)
+            current_state_sys <= SYS_IDLE;
+        else 
+            current_state_sys <= next_state_sys;
+    end
         
-always @ (current_state_sys or rx_mac_rd_i or rx_mac_ra_o or dout or empty)
-    case (current_state_sys)
-        SYS_IDLE:
-            if (rx_mac_rd_i&&rx_mac_ra_o&&!empty)
-                next_state_sys  =SYS_READ;
-            else if(rx_mac_rd_i&&rx_mac_ra_o&&empty)
-                next_state_sys  =FF_EMPTY_ERR;
-            else
-                next_state_sys  =current_state_sys;
-        SYS_READ:
-            if (dout[35])                
-                next_state_sys  =SYS_WAIT_END;
-            else if (!rx_mac_rd_i)
-                next_state_sys  =SYS_PAUSE;
-            else if (empty)
-                next_state_sys  =FF_EMPTY_ERR;
-            else
-                next_state_sys  =current_state_sys;
-        SYS_PAUSE:
-            if (rx_mac_rd_i)                            
-                next_state_sys  =SYS_READ;         
-            else                                   
-                next_state_sys  =current_state_sys;
-        FF_EMPTY_ERR:
-            if (!empty)
-                next_state_sys  =SYS_READ;
-            else
-                next_state_sys  =current_state_sys;
-        SYS_WAIT_END:
-            if (!rx_mac_rd_i)
-                next_state_sys  =SYS_IDLE;
-            else
-                next_state_sys  =current_state_sys;
-        default:
-                next_state_sys  =SYS_IDLE;
-    endcase
+    always @(*) begin
+        case(current_state_sys)
+            SYS_IDLE:
+                if(rx_mac_rd_i && rx_mac_ra_o && !empty)
+                    next_state_sys = SYS_READ;
+                else if(rx_mac_rd_i && rx_mac_ra_o && empty)
+                    next_state_sys = FF_EMPTY_ERR;
+                else
+                    next_state_sys = current_state_sys;
+
+            SYS_READ:
+                if(dout[35])                
+                    next_state_sys = SYS_WAIT_END;
+                else if(!rx_mac_rd_i)
+                    next_state_sys = SYS_PAUSE;
+                else if(empty)
+                    next_state_sys = FF_EMPTY_ERR;
+                else
+                    next_state_sys = current_state_sys;
+
+            SYS_PAUSE:
+                if(rx_mac_rd_i)                            
+                    next_state_sys = SYS_READ;         
+                else                                   
+                    next_state_sys = current_state_sys;
+
+            FF_EMPTY_ERR:
+                if(!empty)
+                    next_state_sys = SYS_READ;
+                else
+                    next_state_sys = current_state_sys;
+
+            SYS_WAIT_END:
+                if(!rx_mac_rd_i)
+                    next_state_sys = SYS_IDLE;
+                else
+                    next_state_sys = current_state_sys;
+
+            default:
+                    next_state_sys = SYS_IDLE;
+        endcase
+    end
     
-        
-//gen rx_mac_ra 
-always @ (posedge clk_sys or negedge rst_n)
-    if (!rst_n)
-        begin
-        packet_number_add_d1   <=0;
-        packet_number_add_d2   <=0;
+    //generate rx_mac_ra 
+    reg              packet_number_add_d1;
+    reg              packet_number_add_d2;
+    reg              packet_number_add_d3;
+    wire             packet_number_add_edge;
+
+    always @(posedge clk_sys or negedge rst_n) begin
+        if(!rst_n) begin
+            packet_number_add_d1 <= 0;
+            packet_number_add_d2 <= 0;
+            packet_number_add_d3 <= 0;
         end
-    else 
-        begin
-        packet_number_add_d1   <=packet_number_add;
-        packet_number_add_d2   <=packet_number_add_d1;
+        else begin
+            packet_number_add_d1 <= packet_number_add;
+            packet_number_add_d2 <= packet_number_add_d1;
+            packet_number_add_d3 <= packet_number_add_d2;
         end
-assign  packet_number_add_edge=packet_number_add_d1&!packet_number_add_d2;
+    end
 
-always @ (current_state_sys or next_state_sys)
-    if (current_state_sys==SYS_READ&&next_state_sys==SYS_WAIT_END)
-        packet_number_sub       =1;
-    else
-        packet_number_sub       =0;
+    assign  packet_number_add_edge = packet_number_add_d2 & !packet_number_add_d3;
+
+    always @(*) begin
+        if(current_state_sys == SYS_READ && next_state_sys == SYS_WAIT_END)
+            packet_number_sub = 1;
+        else
+            packet_number_sub = 0;
+    end
         
-always @ (posedge clk_sys or negedge rst_n)
-    if (!rst_n)
-        packet_number_in_fifo      <=0;
-    else if (packet_number_add_edge&&!packet_number_sub)
-        packet_number_in_fifo      <=packet_number_in_fifo + 1;
-    else if (!packet_number_add_edge&&packet_number_sub&&packet_number_in_fifo!=0)
-        packet_number_in_fifo      <=packet_number_in_fifo - 1;
+    always @(posedge clk_sys or negedge rst_n) begin
+        if(!rst_n)
+            packet_number_in_fifo <= 0;
+        else if(packet_number_add_edge && !packet_number_sub)
+            packet_number_in_fifo <= packet_number_in_fifo + 1;
+        else if(!packet_number_add_edge && packet_number_sub && packet_number_in_fifo != 0)
+            packet_number_in_fifo <= packet_number_in_fifo - 1;
+    end
 
-always @ (posedge clk_sys or negedge rst_n)                                                         
-    if (!rst_n)                                                                                      
-        fifo_data_count     <=0;                                                                    
-    else                                                                                            
-        fifo_data_count     <=add_wr_ungray[`MAC_RXFF_AWIDTH-1:`MAC_RXFF_AWIDTH-5]-add_rd[`MAC_RXFF_AWIDTH-1:`MAC_RXFF_AWIDTH-5]; 
-
-always @ (posedge clk_sys or negedge rst_n)                                                         
-    if (!rst_n) 
-        begin
-        rx_Hwmark_pl        <=0;
-        rx_Lwmark_pl        <=0;
-        end
-    else
-        begin
-        rx_Hwmark_pl        <=r_rxHwMark_i;
-        rx_Lwmark_pl        <=r_rxLwMark_i;
-        end   
+    always @(posedge clk_sys or negedge rst_n) begin
+        if(!rst_n)                                                                                      
+            fifo_data_count <= 0;                                                                    
+        else                                                                                         
+            fifo_data_count <= add_wr_ungray[`MAC_RXFF_AWIDTH-1:`MAC_RXFF_AWIDTH-5] - add_rd[`MAC_RXFF_AWIDTH-1:`MAC_RXFF_AWIDTH-5]; 
+    end
         
-always @ (posedge clk_sys or negedge rst_n)
-    if (!rst_n)  
-        rx_mac_ra_o   <=0;
-    else if (packet_number_in_fifo==0&&fifo_data_count<=rx_Lwmark_pl)
-        rx_mac_ra_o   <=0;
-    else if (packet_number_in_fifo>=1||fifo_data_count>=rx_Hwmark_pl)
-        rx_mac_ra_o   <=1;
-
+    always @(posedge clk_sys or negedge rst_n) begin
+        if(!rst_n)  
+            rx_mac_ra_o <= 0;
+        else if(packet_number_in_fifo == 0 && fifo_data_count <= r_rxLwMark_i)
+            rx_mac_ra_o <= 0;
+        else if(packet_number_in_fifo >= 1 || fifo_data_count >= r_rxHwMark_i)
+            rx_mac_ra_o <= 1;
+    end
         
-//control add_rd signal;
-always @ (posedge clk_sys or negedge rst_n)
-    if (!rst_n)
-        add_rd      <=0;
-    else if (current_state_sys==SYS_READ&&!(dout[35]&&addr_freshed_ptr))  
-        add_rd      <=add_rd + 1;
+    //control add_rd signal;
+    always @(posedge clk_sys or negedge rst_n) begin
+        if(!rst_n)
+            add_rd <= 0;
+        else if(current_state_sys == SYS_READ && !(dout[35] && addr_freshed_ptr))  
+            add_rd <= add_rd + 1;
+    end
 
-always @ (posedge clk_sys or negedge rst_n)
-    if (!rst_n)
-        add_rd_pl1  <=0;
-    else
-        add_rd_pl1  <=add_rd; 
-        
-always @ (*)
-    if (add_rd_pl1==add_rd)
-        addr_freshed_ptr      =0;
-    else
-        addr_freshed_ptr      =1;
+    reg [`MAC_RXFF_AWIDTH-1:0]       add_rd_z1;
 
-//
-always @ (posedge clk_sys or negedge rst_n)
-    if (!rst_n)
-        add_rd_gray         <=0;
-    else 
-        begin
-        add_rd_gray[`MAC_RXFF_AWIDTH-1] <=add_rd[`MAC_RXFF_AWIDTH-1];
-        for (i=`MAC_RXFF_AWIDTH-2;i>=0;i=i-1)
-        add_rd_gray[i]          <=add_rd[i+1]^add_rd[i];
-        end
-//
-
-always @ (posedge clk_sys or negedge rst_n)
-    if (!rst_n)
-        add_wr_gray_d1     <=0;
-    else
-        add_wr_gray_d1     <=add_wr_gray;
+    always @(posedge clk_sys or negedge rst_n) begin
+        if(!rst_n)
+            add_rd_z1  <= 0;
+        else
+            add_rd_z1  <= add_rd; 
+    end
             
-always @ (posedge clk_sys or negedge rst_n)
-    if (!rst_n)
-        add_wr_jump_rd  <=0;
-    else        
-        add_wr_jump_rd  <=add_wr_jump;  
+    always @(*) begin
+        if(add_rd_z1 == add_rd)
+            addr_freshed_ptr = 0;
+        else
+            addr_freshed_ptr = 1;
+    end
+
+    //binary address to Gray address--read
+    always @(posedge clk_sys or negedge rst_n) begin : GRAY_READ
+        integer i;
+
+        add_rd_gray[`MAC_RXFF_AWIDTH-1] = add_rd[`MAC_RXFF_AWIDTH-1];
+        for(i = `MAC_RXFF_AWIDTH-2; i >= 0; i = i-1)
+            add_rd_gray[i] = add_rd[i+1] ^ add_rd[i];
+    end
+
+    //write Gray address synchronized to clk_sys domain
+    reg [`MAC_RXFF_AWIDTH-1:0]       add_wr_gray_d1;
+    reg [`MAC_RXFF_AWIDTH-1:0]       add_wr_gray_d2;
+
+    always @(posedge clk_sys or negedge rst_n) begin
+        if(!rst_n) begin
+            add_wr_gray_d1 <= 0;
+            add_wr_gray_d2 <= 0;
+        end
+        else begin
+            add_wr_gray_d1 <= add_wr_gray;
+            add_wr_gray_d2 <= add_wr_gray_d1;
+        end
+    end
             
-always @ (posedge clk_sys or negedge rst_n)
-    if (!rst_n)
-        add_wr_ungray       =0;
-    else if (!add_wr_jump_rd)       
-        begin
-        add_wr_ungray[`MAC_RXFF_AWIDTH-1]   =add_wr_gray_d1[`MAC_RXFF_AWIDTH-1];   
-        for (i=`MAC_RXFF_AWIDTH-2;i>=0;i=i-1)
-            add_wr_ungray[i]    =add_wr_ungray[i+1]^add_wr_gray_d1[i]; 
-        end                    
-//empty signal gen  
-always @ (posedge clk_sys or negedge rst_n)
-    if (!rst_n)      
-        empty   <=1;
-    else if (add_rd==add_wr_ungray)
-        empty   <=1;
-    else
-        empty   <=0;
-
-
-
-always @ (posedge clk_sys or negedge rst_n)
-    if (!rst_n)
-        dout_d1    <=0;
-    else
-        dout_d1    <=dout; 
-
-assign  rx_mac_data_o     =dout_d1[31:0];
-assign  rx_mac_be_o       =dout_d1[33:32];
-assign  rx_mac_eop_o      =dout_d1[35];
-
-//aligned to addr_rd 
-always @ (posedge clk_sys or negedge rst_n) 
-    if (!rst_n)
-        rx_mac_pa_tmp   <=0;    
-    else if (current_state_sys==SYS_READ&&!(dout[35]&&addr_freshed_ptr))         
-        rx_mac_pa_tmp   <=1;
-    else
-        rx_mac_pa_tmp   <=0;
-
-
-
-always @ (posedge clk_sys or negedge rst_n) 
-    if (!rst_n)
-        rx_mac_pa_o   <=0;
-    else 
-        rx_mac_pa_o   <=rx_mac_pa_tmp;
+    reg    add_wr_jump_rd_d1  ;
+    reg    add_wr_jump_rd_d2  ;
     
+    always @(posedge clk_sys or negedge rst_n) begin
+        if (!rst_n) begin
+            add_wr_jump_rd_d1 <= 0;
+            add_wr_jump_rd_d2 <= 0;
+        end
+        else begin        
+            add_wr_jump_rd_d1 <= add_wr_jump;  
+            add_wr_jump_rd_d2 <= add_wr_jump_rd_d1;  
+        end
+    end
+            
+    reg [`MAC_RXFF_AWIDTH-1:0]       add_wr_ungray_reg;
 
+    always @(posedge clk_sys or negedge rst_n) begin
+        if(!rst_n)
+            add_wr_ungray_reg  <= 0;
+        else
+            add_wr_ungray_reg  <= add_wr_ungray; 
+    end
+
+    always @(posedge clk_sys or negedge rst_n) begin : UNGRAY_WRITE
+        integer i;
+
+        add_wr_ungray = add_wr_ungray_reg;
+        
+        if(!add_wr_jump_rd_d2) begin       
+            add_wr_ungray[`MAC_RXFF_AWIDTH-1] = add_wr_gray_d2[`MAC_RXFF_AWIDTH-1];   
+            for (i = `MAC_RXFF_AWIDTH-2; i >= 0; i = i-1)
+                add_wr_ungray[i] = add_wr_ungray[i+1] ^ add_wr_gray_d2[i]; 
+        end
+    end
+
+    //generate empty signal   
+    always @(posedge clk_sys or negedge rst_n)
+        if(!rst_n)      
+            empty <= 1;
+        else if(add_rd == add_wr_ungray)
+            empty <= 1;
+        else
+            empty <= 0;
+    end
+
+    always @(posedge clk_sys or negedge rst_n) begin
+        if(!rst_n)
+            dout_d1 <= 0;
+        else
+            dout_d1 <= dout; 
+    end
+
+    assign  rx_mac_data_o  = dout_d1[31:0];
+    assign  rx_mac_be_o    = dout_d1[33:32];
+    assign  rx_mac_eop_o   = dout_d1[35];
+
+    //aligned to addr_rd 
+    always @(posedge clk_sys or negedge rst_n) begin
+        if(!rst_n)
+            rx_mac_pa_tmp   <= 0;    
+        else if(current_state_sys == SYS_READ && !(dout[35] && addr_freshed_ptr))         
+            rx_mac_pa_tmp   <= 1;
+        else
+            rx_mac_pa_tmp   <= 0;
+    end
+
+    always @(posedge clk_sys or negedge rst_n) begin 
+        if(!rst_n)
+            rx_mac_pa_o <= 0;
+        else 
+            rx_mac_pa_o <= rx_mac_pa_tmp;
+    end
     
-always @ (posedge clk_sys or negedge rst_n)
-    if (!rst_n)
-        rx_mac_sop_tmp      <=0;
-    else if (current_state_sys==SYS_IDLE&&next_state_sys==SYS_READ)
-        rx_mac_sop_tmp      <=1;
-    else
-        rx_mac_sop_tmp      <=0;
+    always @(posedge clk_sys or negedge rst_n) begin
+        if(!rst_n)
+            rx_mac_sop_tmp  <= 0;
+        else if(current_state_sys == SYS_IDLE && next_state_sys == SYS_READ)
+            rx_mac_sop_tmp  <= 1;
+        else
+            rx_mac_sop_tmp  <= 0;
+    end
         
+    always @(posedge clk_sys or negedge rst_n) begin
+        if(!rst_n) begin
+            rx_mac_sop_tmp_d1 <= 0;
+            rx_mac_sop_o      <= 0;
+        end
+        else begin
+            rx_mac_sop_tmp_d1 <= rx_mac_sop_tmp;
+            rx_mac_sop_o      <= rx_mac_sop_tmp_d1;
+        end
+    end
 
+    //++
+    //instantiate dual port RAM
+    //--
+
+    dpram #(36, `MAC_RXFF_AWIDTH, 2**(`MAC_RXFF_AWIDTH)) u_dpram
+    (
+        .data_a         (din        ), 
+        .wren_a         (wr_en      ), 
+        .address_a      (add_wr     ), 
+        .clock_a        (clk_mac    ), 
+        .q_a            (           ),
         
-always @ (posedge clk_sys or negedge rst_n)
-    if (!rst_n)
-        begin
-        rx_mac_sop_tmp_d1  <=0;
-        rx_mac_sop_o          <=0;
-        end
-    else 
-        begin
-        rx_mac_sop_tmp_d1  <=rx_mac_sop_tmp;
-        rx_mac_sop_o          <=rx_mac_sop_tmp_d1;
-        end
-
-
-
-//******************************************************************************
-
-duram #(36,`MAC_RXFF_AWIDTH,"M4K") U_duram(          
-.data_a         (din        ), 
-.wren_a         (wr_en      ), 
-.address_a      (add_wr     ), 
-.address_b      (add_rd     ), 
-.clock_a        (clk_mac    ), 
-.clock_b        (clk_sys    ), 
-.q_b            (dout       ));
-
+        .data_b         (36'b0      ),
+        .wren_b         (1'b0       ),
+        .address_b      (add_rd     ), 
+        .clock_b        (clk_sys    ), 
+        .q_b            (dout       )
+    );
+    
 endmodule
-
-
-
-
-
 
