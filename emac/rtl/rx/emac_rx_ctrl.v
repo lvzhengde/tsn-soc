@@ -103,7 +103,7 @@ module emac_rx_ctrl (
     reg  [7:0]      RxD   ;
     reg  [7:0]      RxD_d1;
     reg             RxErr ;
-    reg  [15:0]     frame_length_counter;
+    reg  [15:0]     frame_counter;
     reg             too_long ;
     reg             too_short;
     reg             rx_apply_rmon_tmp   ;
@@ -287,28 +287,28 @@ module emac_rx_ctrl (
 
     always @(posedge clk or negedge rst_n) begin
         if(!rst_n)  
-            frame_length_counter <= 0;
+            frame_counter <= 0;
         else if (current_state == StateSFD)
-            frame_length_counter <= 1;
+            frame_counter <= 1;
         else if (current_state == StateData) 
-            frame_length_counter <= frame_length_counter+ 1'b1;
+            frame_counter <= frame_counter+ 1'b1;
     end
         
     always @(*) begin
-        if(frame_length_counter < r_RxMinLength_i)
+        if(frame_counter < r_RxMinLength_i)
             too_short = 1;
         else
             too_short = 0;
     end
         
     always @(*) begin
-        if(frame_length_counter > r_RxMaxLength_i)
+        if(frame_counter > r_RxMaxLength_i)
             too_long = 1;
         else
             too_long = 0;
     end
             
-    assign rx_pkt_length_rmon = frame_length_counter - 1'b1;
+    assign rx_pkt_length_rmon = frame_counter - 1'b1;
 
     always @(posedge clk or negedge rst_n) begin
         if(!rst_n)
@@ -364,7 +364,7 @@ module emac_rx_ctrl (
             broadcast_ptr_o <= 0;
         else if(current_state==StateIFG)
             broadcast_ptr_o <= 0;
-        else if(current_state == StateData && frame_length_counter < 6 && MRxD_i[7:0] != 8'hff)
+        else if(current_state == StateData && frame_counter < 6 && MRxD_i[7:0] != 8'hff)
             broadcast_ptr_o <= 0;
         else if(current_state == StateSFD && next_state == StateData && MRxD_i[7:0] == 8'hff) //FIXME
             broadcast_ptr_o <= 1;
@@ -375,7 +375,7 @@ module emac_rx_ctrl (
     //--
     
     always @(*) begin
-        if(frame_length_counter >= 1 && frame_length_counter <= 6)
+        if(frame_counter >= 1 && frame_counter <= 6)
             mac_add_en_o <= fifo_data_en_o;
         else
             mac_add_en_o <= 0;
@@ -401,7 +401,7 @@ module emac_rx_ctrl (
                     pause_next = pause_current;
 
             PAUSE_PRE_SYN:
-                case(frame_length_counter)
+                case(frame_counter)
                     16'd1:  if(RxD_d1 == 8'h01)
                                 pause_next = pause_current;
                             else

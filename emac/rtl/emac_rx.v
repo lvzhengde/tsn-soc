@@ -167,32 +167,34 @@ module emac_rx (
         .rx_mac_eop_o                (rx_mac_eop_o              ) 
     ); 
 
-`ifdef MAC_BROADCAST_FILTER_EN
-Broadcast_filter U_Broadcast_filter(
-.rst_n                      (rst_n                      ),
-.clk                        (clk                        ),
- //MAC_rx_ctrl              (//MAC_rx_ctrl              ),
-.broadcast_ptr              (broadcast_ptr              ),
-.broadcast_drop             (broadcast_drop             ),
- //FromCPU                  (//FromCPU                  ),
-.r_BroadcastFilterEn_i        (r_BroadcastFilterEn_i        ),
-.r_BroadcastBucketDepth_i     (r_BroadcastBucketDepth_i     ),           
-.broadcast_bucket_interval  (broadcast_bucket_interval  )
-); 
-`else
-assign broadcast_drop=0;
-`endif
+    //Connectiong emac_broadcast_filter
+    emac_broadcast_filter emac_broadcast_filter
+    (
+        .rst_n                       (rst_n                      ),
+        .clk                         (clk                        ),
+        //emac_rx_ctrl interface               
+        .broadcast_ptr_i             (broadcast_ptr              ),
+        .broadcast_drop_o            (broadcast_drop             ),
+        //Host interface
+        .r_BroadcastFilterEn_i       (r_BroadcastFilterEn_i      ),
+        .r_BroadcastBucketDepth_i    (r_BroadcastBucketDepth_i   ),           
+        .r_BroadcastBucketInterval_i (r_BroadcastBucketInterval_i)
+    ); 
 
-CRC_chk U_CRC_chk(
-.rst_n                      (rst_n                      ),
-.clk                        (clk                        ),
-.crc_data                   (fifo_data                  ),
-.crc_init                   (crc_init                   ),
-.crc_en                     (crc_en                     ),
- //From CPU                 (//From CPU                 ),
-.r_CrcChkEn_i                 (r_CrcChkEn_i                 ),
-.crc_err                    (crc_err                    )
-);   
+    wire [31:0] rx_crc;
+
+    //Connecting emac_crc_chk
+    emac_crc_chk emac_crc_chk
+    (
+        .rst_n                       (rst_n           ),
+        .clk                         (clk             ),
+        .crc_data_i                  (fifo_data       ),
+        .crc_init_i                  (crc_init        ),
+        .crc_en_i                    (crc_en          ),
+        .r_CrcChkEn_i                (r_CrcChkEn_i    ),
+        .crc_err_o                   (crc_err         ),
+        .crc_o                       (rx_crc          )
+    );   
 
 `ifdef MAC_TARGET_CHECK_EN
 MAC_rx_add_chk U_MAC_rx_add_chk(
