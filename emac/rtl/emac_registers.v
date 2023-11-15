@@ -47,7 +47,7 @@ module emac_registers (
 
     //EMAC control and status registers
     output [2:0]        r_speed_o            ,
-    output              r_line_loop_en_o     ,
+    output              r_LoopEn_o           ,
 
     //EMAC MIIM registers
     output [7:0]        r_ClkDiv_o           , 
@@ -87,8 +87,8 @@ module emac_registers (
         .data_i         (bus2ip_data_i[31:0]),
         .data_o         (emac_config[31:0]) 
     );
-    assign r_speed_o        = emac_config[2:0];  
-    assign r_line_loop_en_o = emac_config[3]  ; 
+    assign r_speed_o  = emac_config[2:0];  
+    assign r_LoopEn_o = emac_config[3]  ; 
     
     //MDIO MODE register
     wire mdio_mode_wr = emac_blk_sel & bus2ip_wr_ce_i & (bus2ip_addr_i[7:0] == `EMAC_MDIOMODE_ADR);

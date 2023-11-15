@@ -42,8 +42,9 @@ module emac_rx_addr_chk (
     input  [7:0]        data_i            ,
     input               multicast_i       , //is multicast address
     input               broadcast_i       , //is broadcast address
+    input  [31:0]       rx_crc_i          ,
     input  [15:0]       frame_counter_i   ,
-    output              rx_addr_chk_err_o ,
+    output reg          rx_addr_chk_err_o ,
 
     //Host interface
     input               r_rxAddrChkEn_i   , //check RX MAC address enable    
@@ -51,7 +52,81 @@ module emac_rx_addr_chk (
     input  [31:0]       r_Hash0_i         , //HASH table for address check, lower 4 bytes
     input  [31:0]       r_Hash1_i           //HASH table for address check, upper 4 bytes 
 );
+    //++
+    //internal signals
+    //--
 
+    reg          multicast_ok;
+    reg          unicast_ok;
+    reg  [5:0]   crc_hash;
+    reg  [31:0]  word_hash;
+    reg  [7:0]   byte_hash;
+    wire         hash_bit;
 
+    //Hash table processing
+    always @(posedge clk or negedge rst_n) begin
+        if(!rst_n)
+            crc_hash <= 6'h0;
+        else if(init_i)
+            crc_hash <= 6'h0;
+        else if(frame_counter_i == 7)
+            crc_hash <= rx_crc_i[31:26];
+    end
+    
+    assign word_hash[31:0] = (crc_hash[5]) ? r_Hash1_i : r_Hash0_i;
+
+    always @(*) begin
+        case(crc_hash[4:3])
+            2'b00:   byte_hash = word_hash[7:0];
+            2'b01:   byte_hash = word_hash[15:8];
+            2'b10:   byte_hash = word_hash[23:16];
+            2'b11:   byte_hash = word_hash[31:24];
+            default: byte_hash = 8'h0;
+        endcase
+    end
+
+    assign hash_bit = byte_hash[crc_hash[2:0]];
+
+    //Hash address check, multicast
+    always @(posedge clk or negedge rst_n) begin
+        if(!rst_n)
+            multicast_ok <= 0;
+        else if(init_i)
+            multicast_ok <= 0;
+        else if(frame_counter_i == 8 && multicast_i)
+            multicast_ok <= hash_bit;
+    end
+
+    //unicast address detection
+    always @(posedge clk or negedge rst_n) begin
+        if(!rst_n)
+            unicast_ok <= 0;
+        else if(init_i)
+            unicast_ok <= 0;
+        else if(frame_counter_i == 1)
+            unicast_ok <= (data_i[7:0] == r_rxMacAddr_i[47:40]);
+        else if(frame_counter_i == 2)
+            unicast_ok <= (data_i[7:0] == r_rxMacAddr_i[39:32]) & unicast_ok;
+        else if(frame_counter_i == 3)
+            unicast_ok <= (data_i[7:0] == r_rxMacAddr_i[31:24]) & unicast_ok;
+        else if(frame_counter_i == 4)
+            unicast_ok <= (data_i[7:0] == r_rxMacAddr_i[23:16]) & unicast_ok;
+        else if(frame_counter_i == 5)
+            unicast_ok <= (data_i[7:0] == r_rxMacAddr_i[15:8]) & unicast_ok;
+        else if(frame_counter_i == 6)
+            unicast_ok <= (data_i[7:0] == r_rxMacAddr_i[7:0]) & unicast_ok;
+    end
+
+    //output address check error signal
+    wire address_invalid = ~(broadcast_i | multicast_ok | unicast_ok);
+
+    always @(posedge clk or negedge rst_n) begin
+        if(!rst_n)
+            rx_addr_chk_err_o <= 0;
+        else if(init_i)
+            rx_addr_chk_err_o <= 0;
+        else if(r_rxAddrChkEn_i && frame_counter_i > 8)
+            rx_addr_chk_err_o <= address_invalid;
+    end
 
 endmodule

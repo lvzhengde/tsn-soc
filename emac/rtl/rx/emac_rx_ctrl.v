@@ -47,8 +47,9 @@ module emac_rx_ctrl (
     output reg          crc_init_o,       
     input               crc_err_i ,
     //MAC receive address check interface
-    output reg          mac_add_en_o         ,
+    output [15:0]       frame_counter_o      ,
     input               mac_rx_add_chk_err_i ,
+    output reg          multicast_ptr_o          ,
     //broadcast filter
     output reg          broadcast_ptr_o    ,
     input               broadcast_drop_i   ,
@@ -285,6 +286,8 @@ module emac_rx_ctrl (
     //generate RMON signals                                         
     //--
 
+    //for fifo_data_o, frame_counter=1 to frame_counter=6
+    //corresponding to MAC destination address
     always @(posedge clk or negedge rst_n) begin
         if(!rst_n)  
             frame_counter <= 0;
@@ -293,6 +296,8 @@ module emac_rx_ctrl (
         else if (current_state == StateData) 
             frame_counter <= frame_counter+ 1'b1;
     end
+
+    assign frame_counter_o = frame_counter;
         
     always @(*) begin
         if(frame_counter < r_RxMinLength_i)
@@ -356,7 +361,7 @@ module emac_rx_ctrl (
         else if(current_state == StateOkEnd && pause_frame_ptr)
             rx_pkt_type_rmon_o <= 3'b100;//
         else if(current_state == StateSFD && next_state == StateData)
-            rx_pkt_type_rmon_o <= {1'b0,MRxD_i[1:0]}; //FIXME, {1'b0,MRxD_i[7:6]}??;
+            rx_pkt_type_rmon_o <= {1'b0,RxD[1:0]}; //FIXME, {1'b0,MRxD_i[7:6]}??;
     end
 
     always @(posedge clk or negedge rst_n) begin
@@ -364,9 +369,9 @@ module emac_rx_ctrl (
             broadcast_ptr_o <= 0;
         else if(current_state==StateIFG)
             broadcast_ptr_o <= 0;
-        else if(current_state == StateData && frame_counter < 6 && MRxD_i[7:0] != 8'hff)
+        else if(current_state == StateData && frame_counter < 6 && RxD[7:0] != 8'hff)
             broadcast_ptr_o <= 0;
-        else if(current_state == StateSFD && next_state == StateData && MRxD_i[7:0] == 8'hff) //FIXME
+        else if(current_state == StateSFD && next_state == StateData && RxD[7:0] == 8'hff) //FIXME
             broadcast_ptr_o <= 1;
     end
     
@@ -374,11 +379,13 @@ module emac_rx_ctrl (
     //MAC address checker signals                                                              
     //--
     
-    always @(*) begin
-        if(frame_counter >= 1 && frame_counter <= 6)
-            mac_add_en_o <= fifo_data_en_o;
-        else
-            mac_add_en_o <= 0;
+    always @(posedge clk or negedge rst_n) begin
+        if(!rst_n)
+            multicast_ptr_o <= 0;
+        else if(current_state==StateIFG)
+            multicast_ptr_o <= 0;
+        else if(current_state == StateSFD && next_state == StateData && RxD[0] == 1'b1) //FIXME
+            multicast_ptr_o <= 1;
     end
 
     //++

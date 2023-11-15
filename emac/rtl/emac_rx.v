@@ -57,6 +57,7 @@ module emac_rx (
     //Host interface registers
     input               r_RxEn_i                    , //receive enable
     input               r_rxAddrChkEn_i             , //check RX MAC address enable    
+    input               r_AllAddrHashChkEn_i        , //All address Hash check enable, not limited to multicast
     input  [47:0]       r_rxMacAddr_i               , //MAC address used for check
     input  [31:0]       r_Hash0_i                   , //HASH table for address check, lower 4 bytes
     input  [31:0]       r_Hash1_i                   , //HASH table for address check, upper 4 bytes 
@@ -85,13 +86,14 @@ module emac_rx (
     wire            crc_init;       
     wire            crc_err ;
     //received MAC address check interface
-    wire            mac_add_en          ;
+    wire [15:0]     frame_counter       ;
     wire            mac_rx_add_chk_err  ;
+    wire            multicast_ptr       ;
     //broadcast filter interface
     wire            broadcast_ptr       ;
     wire            broadcast_drop      ;
     //MAC receive control interface 
-    wire    [7:0]   fifo_data       ;
+    wire [7:0]      fifo_data       ;
     wire            fifo_data_en    ;
     wire            fifo_full       ;
     wire            fifo_data_err   ;
@@ -115,8 +117,9 @@ module emac_rx (
         .crc_init_o                  (crc_init                  ),                           
         .crc_err_i                   (crc_err                   ),                              
         //MAC receive address check interface
-        .mac_add_en_o                (mac_add_en                ),                                             
+        .frame_counter_o             (frame_counter             ),
         .mac_rx_add_chk_err_i        (mac_rx_add_chk_err        ),                             
+        .multicast_ptr_o             (multicast_ptr             ),
         //broadcast filter
         .broadcast_ptr_o             (broadcast_ptr             ),                         
         .broadcast_drop_i            (broadcast_drop            ),                             
@@ -196,23 +199,27 @@ module emac_rx (
         .crc_o                       (rx_crc          )
     );   
 
-`ifdef MAC_TARGET_CHECK_EN
-MAC_rx_add_chk U_MAC_rx_add_chk(
-.rst_n                      (rst_n                      ),
-.clk                        (clk                        ),
-.Init                       (crc_init                   ),
-.data                       (fifo_data                  ),
-.mac_add_en                 (mac_add_en                 ),
-.mac_rx_add_chk_err         (mac_rx_add_chk_err         ),
- //From CPU                 (//From CPU                 ),
-.r_rxAddrChkEn_i          (r_rxAddrChkEn_i          ),
-.r_rxMacAddr_i            (r_rxMacAddr_i            )
-);
-`else
-assign mac_rx_add_chk_err=0;
-`endif
+    //Connecting emac_rx_addr_chk
+    wire hash_multicast = multicast_ptr | r_AllAddrHashChkEn_i;
 
-
+    emac_rx_addr_chk emac_rx_addr_chk
+    (
+        .rst_n                       (rst_n               ),
+        .clk                         (clk                 ),
+        //emac_rx_ctrl interface
+        .init_i                      (crc_init            ),
+        .data_i                      (fifo_data           ),
+        .multicast_i                 (hash_multicast      ), 
+        .broadcast_i                 (broadcast_ptr       ), 
+        .rx_crc_i                    (rx_crc              ),
+        .frame_counter_i             (frame_counter       ),
+        .rx_addr_chk_err_o           (mac_rx_add_chk_err  ),
+        //Host interface
+        .r_rxAddrChkEn_i             (r_rxAddrChkEn_i     ),
+        .r_rxMacAddr_i               (r_rxMacAddr_i       ),
+        .r_Hash0_i                   (r_Hash0_i           ), 
+        .r_Hash1_i                   (r_Hash1_i           )  
+    );
 
 endmodule
 

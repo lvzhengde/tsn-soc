@@ -109,7 +109,7 @@ module emac_top (
 
     //registers for host interface
     wire  [2:0]     r_speed;
-    wire            r_line_loop_en;
+    wire            r_LoopEn;
 
     wire            r_TxEn               ; //Transmit enable
     wire  [4:0]     r_txHwMark           ; //TX FIFO high water mark
@@ -244,8 +244,8 @@ module emac_top (
         .crs_i                 (crs_i  ),
         .col_i                 (col_i  ),
         //registers interface
-        .line_loop_en_i        (r_line_loop_en),
-        .speed_i               (r_speed       ) 
+        .r_LoopEn_i            (r_LoopEn),
+        .r_speed_i             (r_speed ) 
     );
 
     // Connecting miim module
@@ -289,7 +289,7 @@ module emac_top (
 
         //EMAC control and status registers
         .r_speed_o             (r_speed       ),
-        .r_line_loop_en_o      (r_line_loop_en),
+        .r_LoopEn_o            (r_LoopEn),
 
         // EMAC MIIM registers
         .r_ClkDiv_o            (r_ClkDiv),

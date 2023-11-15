@@ -59,8 +59,8 @@ module emac_phy_intf (
     input              crs_i          ,
     input              col_i          ,
     //registers interface
-    input              line_loop_en_i ,
-    input   [2:0]      speed_i         
+    input              r_LoopEn_i     ,
+    input   [2:0]      r_speed_i         
 );
     //internal signals                                                              
     reg     [7:0]   MTxD_d1         ;
@@ -106,7 +106,7 @@ module emac_phy_intf (
     always @ (posedge mac_tx_clk or negedge rst_n) begin
         if (!rst_n)  
             txd_o <= 0;
-        else if(speed_i[2] && MTxEn_d1)
+        else if(r_speed_i[2] && MTxEn_d1)
             txd_o <= MTxD_d1;
         else if(MTxEn_d1 && !tx_odd_data_ptr)
             txd_o <= {4'b0,MTxD_d1[3:0]};
@@ -159,7 +159,7 @@ module emac_phy_intf (
             MRxDv_o  <= 0;
             MRxErr_o <= 0;
         end
-        else if(line_loop_en_i) begin
+        else if(r_LoopEn_i) begin
             MRxDv_o  <= tx_en_o;
             MRxErr_o <= tx_er_o;
         end
@@ -181,9 +181,9 @@ module emac_phy_intf (
     always @ (posedge mac_rx_clk or negedge rst_n) begin
         if (!rst_n)  
             MRxD_o <= 0;
-        else if(line_loop_en_i)
+        else if(r_LoopEn_i)
             MRxD_o <= txd_o;
-        else if(speed_i[2] && rx_dv_d2)
+        else if(r_speed_i[2] && rx_dv_d2)
             MRxD_o <= rxd_d2;
         else if(rx_dv_d1 && rx_odd_data_ptr)
             MRxD_o <= {rxd_d1[3:0],rxd_d2[3:0]};
