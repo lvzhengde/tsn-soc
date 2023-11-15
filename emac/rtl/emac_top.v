@@ -115,7 +115,7 @@ module emac_top (
     wire  [4:0]     r_txHwMark           ; //TX FIFO high water mark
     wire  [4:0]     r_txLwMark           ; //TX FIFO low water mark 
     wire            r_CrcEn              ; //Enable Tx MAC appends the CRC to every frame
-    wire            r_pause_frame_send_en; //enable transmit logic to send pause frame               
+    wire            r_PauseFrameSendEn   ; //enable transmit logic to send pause frame               
     wire            r_TxPauseRq          ; //Write 1 to start Tx pause frame sending, automatically cleared to zero.
     wire  [15:0]    r_TxPauseTV          ; //Tx pause timer value that is sent in the pause control frame
     wire            RstTxPauseRq         ; //signal to clear r_TxPauseRq to zero
@@ -181,7 +181,7 @@ module emac_top (
         .r_txHwMark_i           (r_txHwMark           ), 
         .r_txLwMark_i           (r_txLwMark           ), 
         .r_CrcEn_i              (r_CrcEn              ),
-        .r_pause_frame_send_en_i(r_pause_frame_send_en),
+        .r_PauseFrameSendEn_i   (r_PauseFrameSendEn   ),
         .r_TxPauseRq_i          (r_TxPauseRq          ),
         .r_TxPauseTV_i          (r_TxPauseTV          ),
         .RstTxPauseRq_o         (RstTxPauseRq         ), 

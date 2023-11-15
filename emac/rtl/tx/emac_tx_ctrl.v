@@ -77,7 +77,7 @@ module emac_tx_ctrl (
     output reg [2:0]    tx_pkt_err_type_rmon_o,   
     //Host interface
     input               r_CrcEn_i              , //Enable Tx MAC appends the CRC to every frame
-    input               r_pause_frame_send_en_i,               
+    input               r_PauseFrameSendEn_i   ,               
     input   [15:0]      r_TxPauseTV_i          , //Tx pause timer value that is sent in the pause control frame
     input               r_txMacAddr_en_i       ,               
     input   [47:0]      r_txMacAddr_i          , 
@@ -196,7 +196,7 @@ module emac_tx_ctrl (
                 else if(pause_apply_i)
                     next_state = StatePause;          
                 else if((r_FullDuplex_i && fifo_ra_i) || (!r_FullDuplex_i && !carrier_sense && fifo_ra_i) 
-                    ||(r_pause_frame_send_en_i && TxPauseRq_gen_i))
+                    ||(r_PauseFrameSendEn_i && TxPauseRq_gen_i))
                     next_state = StatePreamble;
                 else
                     next_state = current_state;   
@@ -218,7 +218,7 @@ module emac_tx_ctrl (
             StateSFD:
                 if(!r_FullDuplex_i && collision)
                     next_state = StateJam;
-                else if(r_pause_frame_send_en_i && TxPauseRq_gen_i)
+                else if(r_PauseFrameSendEn_i && TxPauseRq_gen_i)
                     next_state = StateSendPauseFrame;
                 else 
                     next_state = StateData;
@@ -376,7 +376,7 @@ module emac_tx_ctrl (
     //data have one cycle delay after fifo read signals  
     always @(*) begin
         if(current_state == StateData ||
-            current_state == StateSFD && !(r_pause_frame_send_en_i && TxPauseRq_gen_i) ||
+            current_state == StateSFD && !(r_PauseFrameSendEn_i && TxPauseRq_gen_i) ||
             current_state == StateJamDrop && PktDrpEvenPtr ||
             current_state == StateFFEmptyDrop && PktDrpEvenPtr)
             fifo_rd_o = 1;

@@ -62,7 +62,7 @@ module emac_tx (
     input   [4:0]       r_txHwMark_i           , //TX FIFO high water mark
     input   [4:0]       r_txLwMark_i           , //TX FIFO low water mark 
     input               r_CrcEn_i              , //Enable Tx MAC appends the CRC to every frame
-    input               r_pause_frame_send_en_i, //enable transmit logic to send pause frame               
+    input               r_PauseFrameSendEn_i   , //enable transmit logic to send pause frame               
     input               r_TxPauseRq_i          , //Write 1 to start Tx pause frame sending, automatically cleared to zero.
     input   [15:0]      r_TxPauseTV_i          , //Tx pause timer value that is sent in the pause control frame
     output              RstTxPauseRq_o         , //signal to clear r_TxPauseRq to zero
@@ -154,7 +154,7 @@ module emac_tx (
         .tx_pkt_err_type_rmon_o   (tx_pkt_err_type_rmon_o ),           
         //Host interface
         .r_CrcEn_i                (r_CrcEn_i              ),
-        .r_pause_frame_send_en_i  (r_pause_frame_send_en_i),            
+        .r_PauseFrameSendEn_i     (r_PauseFrameSendEn_i),            
         .r_TxPauseTV_i            (r_TxPauseTV_i          ),                
         .r_txMacAddr_en_i         (r_txMacAddr_en_i       ),            
         .r_txMacAddr_i            (r_txMacAddr_i          ),
