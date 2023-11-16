@@ -59,7 +59,7 @@ module emac_rx_addr_chk (
     reg          multicast_ok;
     reg          unicast_ok;
     reg  [5:0]   crc_hash;
-    reg  [31:0]  word_hash;
+    wire [31:0]  word_hash;
     reg  [7:0]   byte_hash;
     wire         hash_bit;
 

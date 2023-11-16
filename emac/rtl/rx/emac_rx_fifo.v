@@ -78,14 +78,14 @@ module emac_rx_fifo (
     parameter       SYS_IDLE      = 3'd3;
     parameter       FF_EMPTY_ERR  = 3'd4;
 
-    reg [`MAC_RXFF_AWIDTH-1:0]       add_wr;
-    reg [`MAC_RXFF_AWIDTH-1:0]       add_wr_ungray;
-    reg [`MAC_RXFF_AWIDTH-1:0]       add_wr_gray;
-    reg [`MAC_RXFF_AWIDTH-1:0]       add_wr_reg;
+    reg [`EMAC_RXFF_AWIDTH-1:0]       add_wr;
+    reg [`EMAC_RXFF_AWIDTH-1:0]       add_wr_ungray;
+    reg [`EMAC_RXFF_AWIDTH-1:0]       add_wr_gray;
+    reg [`EMAC_RXFF_AWIDTH-1:0]       add_wr_reg;
     
-    reg [`MAC_RXFF_AWIDTH-1:0]       add_rd;
-    reg [`MAC_RXFF_AWIDTH-1:0]       add_rd_gray;
-    reg [`MAC_RXFF_AWIDTH-1:0]       add_rd_ungray;
+    reg [`EMAC_RXFF_AWIDTH-1:0]       add_rd;
+    reg [`EMAC_RXFF_AWIDTH-1:0]       add_rd_gray;
+    reg [`EMAC_RXFF_AWIDTH-1:0]       add_rd_ungray;
 
     reg  [35:0]      din;
     reg  [35:0]      din_tmp;
@@ -207,14 +207,14 @@ module emac_rx_fifo (
     always @(*) begin : GRAY_WRITE
         integer i;
 
-        add_wr_gray[`MAC_RXFF_AWIDTH-1] = add_wr[`MAC_RXFF_AWIDTH-1];
-        for(i = `MAC_RXFF_AWIDTH-2; i >= 0; i = i-1)
+        add_wr_gray[`EMAC_RXFF_AWIDTH-1] = add_wr[`EMAC_RXFF_AWIDTH-1];
+        for(i = `EMAC_RXFF_AWIDTH-2; i >= 0; i = i-1)
             add_wr_gray[i] = add_wr[i+1] ^ add_wr[i];
     end
     
     //synchronize read Gray address to clk_mac domain
-    reg [`MAC_RXFF_AWIDTH-1:0]       add_rd_gray_d1;
-    reg [`MAC_RXFF_AWIDTH-1:0]       add_rd_gray_d2;
+    reg [`EMAC_RXFF_AWIDTH-1:0]       add_rd_gray_d1;
+    reg [`EMAC_RXFF_AWIDTH-1:0]       add_rd_gray_d2;
 
     always @(posedge clk_mac or negedge rst_n) begin
         if (!rst_n)
@@ -227,15 +227,15 @@ module emac_rx_fifo (
     always @(posedge clk_mac or negedge rst_n) begin : UNGRAY_READ
         integer i;
 
-        add_rd_ungray[`MAC_RXFF_AWIDTH-1] = add_rd_gray_d2[`MAC_RXFF_AWIDTH-1];   
-        for(i = `MAC_RXFF_AWIDTH-2; i >= 0;i = i-1)
+        add_rd_ungray[`EMAC_RXFF_AWIDTH-1] = add_rd_gray_d2[`EMAC_RXFF_AWIDTH-1];   
+        for(i = `EMAC_RXFF_AWIDTH-2; i >= 0;i = i-1)
             add_rd_ungray[i] = add_rd_ungray[i+1] ^ add_rd_gray_d2[i]; 
     end
 
-    wire[`MAC_RXFF_AWIDTH-1:0]       add_wr_plus;
-    wire[`MAC_RXFF_AWIDTH-1:0]       add_wr_plus4;
-    wire[`MAC_RXFF_AWIDTH-1:0]       add_wr_plus3;
-    wire[`MAC_RXFF_AWIDTH-1:0]       add_wr_plus2;
+    wire[`EMAC_RXFF_AWIDTH-1:0]       add_wr_plus;
+    wire[`EMAC_RXFF_AWIDTH-1:0]       add_wr_plus4;
+    wire[`EMAC_RXFF_AWIDTH-1:0]       add_wr_plus3;
+    wire[`EMAC_RXFF_AWIDTH-1:0]       add_wr_plus2;
 
     assign add_wr_plus  = add_wr + 1;
     assign add_wr_plus4 = add_wr + 4;
@@ -547,7 +547,7 @@ module emac_rx_fifo (
         if(!rst_n)                                                                                      
             fifo_data_count <= 0;                                                                    
         else                                                                                         
-            fifo_data_count <= add_wr_ungray[`MAC_RXFF_AWIDTH-1:`MAC_RXFF_AWIDTH-5] - add_rd[`MAC_RXFF_AWIDTH-1:`MAC_RXFF_AWIDTH-5]; 
+            fifo_data_count <= add_wr_ungray[`EMAC_RXFF_AWIDTH-1:`EMAC_RXFF_AWIDTH-5] - add_rd[`EMAC_RXFF_AWIDTH-1:`EMAC_RXFF_AWIDTH-5]; 
     end
         
     always @(posedge clk_sys or negedge rst_n) begin
@@ -567,7 +567,7 @@ module emac_rx_fifo (
             add_rd <= add_rd + 1;
     end
 
-    reg [`MAC_RXFF_AWIDTH-1:0]       add_rd_z1;
+    reg [`EMAC_RXFF_AWIDTH-1:0]       add_rd_z1;
 
     always @(posedge clk_sys or negedge rst_n) begin
         if(!rst_n)
@@ -587,14 +587,14 @@ module emac_rx_fifo (
     always @(posedge clk_sys or negedge rst_n) begin : GRAY_READ
         integer i;
 
-        add_rd_gray[`MAC_RXFF_AWIDTH-1] = add_rd[`MAC_RXFF_AWIDTH-1];
-        for(i = `MAC_RXFF_AWIDTH-2; i >= 0; i = i-1)
+        add_rd_gray[`EMAC_RXFF_AWIDTH-1] = add_rd[`EMAC_RXFF_AWIDTH-1];
+        for(i = `EMAC_RXFF_AWIDTH-2; i >= 0; i = i-1)
             add_rd_gray[i] = add_rd[i+1] ^ add_rd[i];
     end
 
     //write Gray address synchronized to clk_sys domain
-    reg [`MAC_RXFF_AWIDTH-1:0]       add_wr_gray_d1;
-    reg [`MAC_RXFF_AWIDTH-1:0]       add_wr_gray_d2;
+    reg [`EMAC_RXFF_AWIDTH-1:0]       add_wr_gray_d1;
+    reg [`EMAC_RXFF_AWIDTH-1:0]       add_wr_gray_d2;
 
     always @(posedge clk_sys or negedge rst_n) begin
         if(!rst_n) begin
@@ -621,7 +621,7 @@ module emac_rx_fifo (
         end
     end
             
-    reg [`MAC_RXFF_AWIDTH-1:0]       add_wr_ungray_reg;
+    reg [`EMAC_RXFF_AWIDTH-1:0]       add_wr_ungray_reg;
 
     always @(posedge clk_sys or negedge rst_n) begin
         if(!rst_n)
@@ -636,14 +636,14 @@ module emac_rx_fifo (
         add_wr_ungray = add_wr_ungray_reg;
         
         if(!add_wr_jump_rd_d2) begin       
-            add_wr_ungray[`MAC_RXFF_AWIDTH-1] = add_wr_gray_d2[`MAC_RXFF_AWIDTH-1];   
-            for (i = `MAC_RXFF_AWIDTH-2; i >= 0; i = i-1)
+            add_wr_ungray[`EMAC_RXFF_AWIDTH-1] = add_wr_gray_d2[`EMAC_RXFF_AWIDTH-1];   
+            for (i = `EMAC_RXFF_AWIDTH-2; i >= 0; i = i-1)
                 add_wr_ungray[i] = add_wr_ungray[i+1] ^ add_wr_gray_d2[i]; 
         end
     end
 
     //generate empty signal   
-    always @(posedge clk_sys or negedge rst_n)
+    always @(posedge clk_sys or negedge rst_n) begin
         if(!rst_n)      
             empty <= 1;
         else if(add_rd == add_wr_ungray)
@@ -704,7 +704,7 @@ module emac_rx_fifo (
     //instantiate dual port RAM
     //--
 
-    dpram #(36, `MAC_RXFF_AWIDTH, 2**(`MAC_RXFF_AWIDTH)) u_dpram
+    dpram #(36, `EMAC_RXFF_AWIDTH, 2**(`EMAC_RXFF_AWIDTH)) u_dpram
     (
         .data_a         (din        ), 
         .wren_a         (wr_en      ), 

@@ -4,6 +4,7 @@
 ../rtl/emac_registers.v
 ../rtl/emac_top.v
 ../rtl/emac_tx.v
+../rtl/emac_rx.v
 ../rtl/eth_miim.v
 ../rtl/eth_register.v
 ../rtl/miim/eth_clockgen.v
@@ -17,6 +18,11 @@
 ../rtl/tx/emac_random_gen.v
 ../rtl/tx/emac_tx_ctrl.v
 ../rtl/tx/emac_tx_fifo.v
+../rtl/rx/emac_broadcast_filter.v
+../rtl/rx/emac_crc_chk.v
+../rtl/rx/emac_rx_addr_chk.v
+../rtl/rx/emac_rx_ctrl.v
+../rtl/rx/emac_rx_fifo.v
 
 //testbench files
 ../tb/bus_master.v

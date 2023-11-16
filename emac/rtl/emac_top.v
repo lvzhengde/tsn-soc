@@ -126,6 +126,23 @@ module emac_top (
     wire  [47:0]    r_txMacAddr          ; //mac address which will replace the source mac address of transmit packet.
     wire            r_tx_pause_en        ; //respond to received pause frame enable
 
+    wire            r_RxEn                    ; //receive enable
+    wire            r_rxAddrChkEn             ; //check RX MAC address enable    
+    wire            r_AllAddrHashChkEn        ; //All address Hash check enable, not limited to multicast
+    wire  [47:0]    r_rxMacAddr               ; //MAC address used for check
+    wire  [31:0]    r_Hash0                   ; //HASH table for address check, lower 4 bytes
+    wire  [31:0]    r_Hash1                   ; //HASH table for address check, upper 4 bytes 
+    wire            r_BroadcastFilterEn       ; //Broadcast packet filter enable
+    wire  [15:0]    r_BroadcastBucketDepth    ; //Bucket depeth of broadcast packet filter    
+    wire  [15:0]    r_BroadcastBucketInterval ; //time interval of refilling of broadcast bucket
+    wire            r_RxAppendCrc             ; //retain FCS of received ethernet frame when hand up
+    wire  [4:0]     r_rxHwMark                ; //RX FIFO high water mark
+    wire  [4:0]     r_rxLwMark                ; //RX FIFO low water mark
+    wire            r_CrcChkEn                ; //enable CRC check of received ethernet frame              
+    wire  [5:0]     r_RxIFGSet                ; //minimum gap between consecutive received frames
+    wire  [15:0]    r_RxMaxLength             ; //maximum frame length to be received (1518)
+    wire  [15:0]    r_RxMinLength             ; //minimum frame length to be received (64)
+
     //clock signals
     wire            mac_tx_clk    ;
     wire            mac_rx_clk    ;
@@ -196,6 +213,55 @@ module emac_top (
         .pause_quanta_val_i     (pause_quanta_val     )  
     );
 
+    // Connecting EMAC RX module
+    wire [15:0]  rx_pkt_length_rmon   ;  
+    wire         rx_apply_rmon        ;  
+    wire [2:0]   rx_pkt_err_type_rmon ;  
+    wire [2:0]   rx_pkt_type_rmon     ;  
+
+    emac_rx emac_rx 
+    (
+        .rst_n                  (sys_rst_n            ),
+        .clk_user               (clk_user             ),
+        .clk                    (mac_rx_clk_div       ),
+        //GMII/MII interface
+        .MRxDv_i                (MRxDv                ),       
+        .MRxD_i                 (MRxD                 ),       
+        .MRxErr_i               (MRxErr               ),       
+        //flow control signals to TX MAC 
+        .pause_quanta_o         (pause_quanta         ),   
+        .pause_quanta_val_o     (pause_quanta_val     ),   
+        //user interface 
+        .rx_mac_ra_o            (rx_mac_ra_o          ),
+        .rx_mac_rd_i            (rx_mac_rd_i          ),
+        .rx_mac_data_o          (rx_mac_data_o        ),
+        .rx_mac_be_o            (rx_mac_be_o          ),
+        .rx_mac_pa_o            (rx_mac_pa_o          ),
+        .rx_mac_sop_o           (rx_mac_sop_o         ),
+        .rx_mac_eop_o           (rx_mac_eop_o         ),
+        //Host interface registers
+        .r_RxEn_i                    (r_RxEn                   ), 
+        .r_rxAddrChkEn_i             (r_rxAddrChkEn            ), 
+        .r_AllAddrHashChkEn_i        (r_AllAddrHashChkEn       ),
+        .r_rxMacAddr_i               (r_rxMacAddr              ), 
+        .r_Hash0_i                   (r_Hash0                  ),
+        .r_Hash1_i                   (r_Hash1                  ),
+        .r_BroadcastFilterEn_i       (r_BroadcastFilterEn      ), 
+        .r_BroadcastBucketDepth_i    (r_BroadcastBucketDepth   ),    
+        .r_BroadcastBucketInterval_i (r_BroadcastBucketInterval),
+        .r_RxAppendCrc_i             (r_RxAppendCrc            ),
+        .r_rxHwMark_i                (r_rxHwMark               ), 
+        .r_rxLwMark_i                (r_rxLwMark               ), 
+        .r_CrcChkEn_i                (r_CrcChkEn               ), 
+        .r_RxIFGSet_i                (r_RxIFGSet               ),
+        .r_RxMaxLength_i             (r_RxMaxLength            ),
+        .r_RxMinLength_i             (r_RxMinLength            ), 
+        //RMON interface
+        .rx_pkt_length_rmon_o        (rx_pkt_length_rmon    ),
+        .rx_apply_rmon_o             (rx_apply_rmon         ),
+        .rx_pkt_err_type_rmon_o      (rx_pkt_err_type_rmon  ),
+        .rx_pkt_type_rmon_o          (rx_pkt_type_rmon      )
+    );
 
     // Connecting EMAC clock control module
     emac_clk_ctrl u_clk_ctrl

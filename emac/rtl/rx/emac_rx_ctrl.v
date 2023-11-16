@@ -504,11 +504,11 @@ module emac_rx_ctrl (
         
     always @(posedge clk or negedge rst_n) begin
         if(!rst_n)      
-            pause_quanta_val <= 0;
+            pause_quanta_val_o <= 0;
         else if(current_state == StateOkEnd && pause_current == PAUSE_SYN || pause_quanta_val_tmp)
-            pause_quanta_val <= 1;
+            pause_quanta_val_o <= 1;
         else
-            pause_quanta_val <= 0;        
+            pause_quanta_val_o <= 0;        
     end
     
     always @(posedge clk or negedge rst_n) begin
