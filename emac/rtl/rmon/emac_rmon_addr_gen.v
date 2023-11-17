@@ -117,125 +117,142 @@ module emac_rmon_addr_gen (
             pkt_err_type_reg <= pkt_err_type_rmon_d1 ;    
         end     
     end
-            
 
-//******************************************************************************
-//State Machine                                                             
-//******************************************************************************
-always @(posedge clk or negedge rst_n)
-    if (!rst_n)
-        current_state    <=IDLE;
-    else
-        current_state    <=next_state;
+    //++
+    //State Machine                                                             
+    //--
+
+    always @(posedge clk or negedge rst_n) begin
+        if(!rst_n)
+            current_state <= IDLE;
+        else
+            current_state <= next_state;
+    end
         
-always @(current_state or apply_rmon_pulse or reg_next_i)
-    case (current_state)
-        IDLE:
-            if (apply_rmon_pulse)
-                next_state   =PKT_LENGTH;
-            else
-                next_state   =IDLE;
-        PKT_LENGTH:
-            if (reg_next_i)
-                next_state   =PKT_NUMBER;
-            else
-                next_state   =current_state;
-        PKT_NUMBER:
-            if (reg_next_i)
-                next_state   =PKT_TYPE;
-            else
-                next_state   =current_state;
-        PKT_TYPE:
-            if (reg_next_i)
-                next_state   =PKT_RANGE;
-            else
-                next_state   =current_state;
-        PKT_RANGE:
-            if (reg_next_i)
-                next_state   =IDLE;
-            else
-                next_state   =current_state;
-        default:
-                next_state   =IDLE;
-    endcase 
-            
-//******************************************************************************
-//gen output signals                                                            
-//******************************************************************************
-//reg_apply
-always @ (current_state)
-    if (current_state==PKT_LENGTH||current_state==PKT_NUMBER||
-        current_state==PKT_TYPE||current_state==PKT_RANGE)
-        reg_apply_o   =1;
-    else
-        reg_apply_o   =0;
-        
-//reg_addr
-always @ (posedge clk or negedge rst_n)
-    if (!rst_n)
-        reg_addr_o    <=0;
-    else case (current_state)
+    always @(*) begin
+        case(current_state)
+            IDLE:
+                if(apply_rmon_pulse)
+                    next_state = PKT_LENGTH;
+                else
+                    next_state = IDLE;
+
             PKT_LENGTH:
-                reg_addr_o    <=5'd00;
+                if(reg_next_i)
+                    next_state = PKT_NUMBER;
+                else
+                    next_state = current_state;
+
             PKT_NUMBER:
-                reg_addr_o    <=5'd01;
+                if(reg_next_i)
+                    next_state = PKT_TYPE;
+                else             
+                    next_state = current_state;
+
             PKT_TYPE:
-                case(pkt_type_reg)
-                    3'b011:
-                        reg_addr_o    <=5'd02;    //broadcast
-                    3'b001:
-                        reg_addr_o    <=5'd03;    //multicast 
-                    3'b100:
-                        reg_addr_o    <=5'd16;    //pause frame   
-                    default:
-                        reg_addr_o    <=5'd04;    //unicast
-                endcase
+                if(reg_next_i)
+                    next_state = PKT_RANGE;
+                else             
+                    next_state = current_state;
+
             PKT_RANGE:
-                case(pkt_err_type_reg)
-                    3'b001:
-                        reg_addr_o    <=5'd05; 
-                    3'b010:
-                        reg_addr_o    <=5'd06;    
-                    3'b011:
-                        reg_addr_o    <=5'd07;    
-                    3'b100:
-                        if (pkt_length_reg<64)    
-                            reg_addr_o    <=5'd08; 
-                        else if (pkt_length_reg==64)
-                            reg_addr_o    <=5'd09; 
-                        else if (pkt_length_reg<128)
-                            reg_addr_o    <=5'd10; 
-                        else if (pkt_length_reg<256)
-                            reg_addr_o    <=5'd11; 
-                        else if (pkt_length_reg<512)
-                            reg_addr_o    <=5'd12; 
-                        else if (pkt_length_reg<1024)
-                            reg_addr_o    <=5'd13; 
-                        else if (pkt_length_reg<1519)
-                            reg_addr_o    <=5'd14; 
-                        else
-                            reg_addr_o    <=5'd15; 
-                    default:
-                        reg_addr_o    <=5'd05;
-                endcase
+                if(reg_next_i)
+                    next_state = IDLE;
+                else             
+                    next_state = current_state;
+
             default:
-                    reg_addr_o    <=5'd05;
-        endcase
+                    next_state = IDLE;
+        endcase 
+    end
+            
+    //++
+    //generate output signals                                                            
+    //--
+
+    //reg_apply
+    always @(*) begin
+        if(current_state == PKT_LENGTH || current_state == PKT_NUMBER ||
+            current_state == PKT_TYPE || current_state == PKT_RANGE)
+            reg_apply_o = 1;
+        else
+            reg_apply_o = 0;
+    end
+            
+    //reg_addr
+    always @(posedge clk or negedge rst_n) begin
+        if(!rst_n)
+            reg_addr_o <= 0;
+        else begin
+            case(current_state)
+                PKT_LENGTH:
+                    reg_addr_o <= 5'd00;
+
+                PKT_NUMBER:
+                    reg_addr_o <= 5'd01;
+
+                PKT_TYPE:
+                    case(pkt_type_reg)
+                        3'b011:
+                            reg_addr_o <= 5'd02;    //broadcast
+                        3'b001:
+                            reg_addr_o <= 5'd03;    //multicast 
+                        3'b100:
+                            reg_addr_o <= 5'd16;    //pause frame   
+                        default:
+                            reg_addr_o <= 5'd04;    //unicast
+                    endcase
+
+                PKT_RANGE:
+                    case(pkt_err_type_reg)
+                        3'b001:
+                            reg_addr_o <= 5'd05; 
+                        3'b010:
+                            reg_addr_o <= 5'd06;    
+                        3'b011:
+                            reg_addr_o <= 5'd07;    
+                        3'b100:
+                            if(pkt_length_reg < 64)    
+                                reg_addr_o <= 5'd08; 
+                            else if(pkt_length_reg == 64)
+                                reg_addr_o <= 5'd09; 
+                            else if(pkt_length_reg < 128)
+                                reg_addr_o <= 5'd10; 
+                            else if(pkt_length_reg < 256)
+                                reg_addr_o <= 5'd11; 
+                            else if(pkt_length_reg < 512)
+                                reg_addr_o <= 5'd12; 
+                            else if(pkt_length_reg < 1024)
+                                reg_addr_o <= 5'd13; 
+                            else if(pkt_length_reg < 1519)
+                                reg_addr_o <= 5'd14; 
+                            else
+                                reg_addr_o <= 5'd15; 
+                        default:
+                            reg_addr_o <= 5'd05;
+                    endcase
+
+                default:
+                        reg_addr_o <= 5'd05;
+            endcase
+        end
+    end
                 
-//reg_data
-always @ (current_state or pkt_length_reg)
-    case (current_state)
-        PKT_LENGTH:
-            reg_data_o    =pkt_length_reg;
-        PKT_NUMBER:
-            reg_data_o    =1;
-        PKT_TYPE:
-            reg_data_o =1;
-        PKT_RANGE:
-            reg_data_o =1;
-        default:
-            reg_data_o =0;
-    endcase
+    //reg_data
+    always @(*) begin
+        case(current_state)
+            PKT_LENGTH:
+                reg_data_o = pkt_length_reg;
+            PKT_NUMBER:
+                reg_data_o = 1;
+            PKT_TYPE:
+                reg_data_o = 1;
+            PKT_RANGE:
+                reg_data_o = 1;
+            default:
+                reg_data_o = 0;
+        endcase
+    end
     
 endmodule               
             

@@ -49,6 +49,7 @@ module emac_rmon (
     //Host interface
     input  [5:0]        r_MibRdAddr_i         ,
     input               r_MibRdApply_i        ,
+    output              RstMibRdApply_o       ,
     output              r_MibRdGrant_o        ,
     output [31:0]       r_MibRdDout_o         
 );
@@ -73,61 +74,66 @@ module emac_rmon (
     //Instantiating modules  
     //--
 
-RMON_addr_gen U_0_Rx_RMON_addr_gen(
-.clk                    (clk                        ),                                            
-.rst_n                  (rst_n                      ),                              
- //RMON                 (//RMON                     ),                                 
-.pkt_type_rmon          (rx_pkt_type_rmon_i           ),                          
-.pkt_length_rmon        (rx_pkt_length_rmon_i         ),                                  
-.apply_rmon             (rx_apply_rmon_i              ),
-.pkt_err_type_rmon      (rx_pkt_err_type_rmon_i       ),                             
- //Rmon_ctrl            (//Rron_ctrl                ),                                          
-.reg_apply              (reg_apply_0                ),                          
-.reg_addr               (reg_addr_0                 ),                              
-.reg_data               (reg_data_0                 ),                              
-.reg_next               (reg_next_0                 ),                              
- //CPU                  (//CPU                       ),                                 
-.reg_drop_apply         (                           ));
+    // Connecting RX emac_rmon_addr_gen 
+    emac_rmon_addr_gen rx_emac_rmon_addr_gen
+    (
+        .clk                      (clk                    ),                                            
+        .rst_n                    (rst_n                  ),                              
+        //RX RMON
+        .pkt_type_rmon_i          (rx_pkt_type_rmon_i     ),                          
+        .pkt_length_rmon_i        (rx_pkt_length_rmon_i   ),                                  
+        .apply_rmon_i             (rx_apply_rmon_i        ),
+        .pkt_err_type_rmon_i      (rx_pkt_err_type_rmon_i ),                             
+        //emac_rmon_ctrl interface
+        .reg_apply_o              (reg_apply_0            ),                          
+        .reg_addr_o               (reg_addr_0             ),                              
+        .reg_data_o               (reg_data_0             ),                              
+        .reg_next_i               (reg_next_0             )                              
+    );
 
-RMON_addr_gen U_0_Tx_RMON_addr_gen(
-.clk                    (clk                        ),                                            
-.rst_n                  (rst_n                      ),                              
- //RMON                 (//RMON                     ),                                 
-.pkt_type_rmon          (tx_pkt_type_rmon_i           ),                          
-.pkt_length_rmon        (tx_pkt_length_rmon_i         ),                                  
-.apply_rmon             (tx_apply_rmon_i              ),
-.pkt_err_type_rmon      (tx_pkt_err_type_rmon_i       ),                             
- //Rmon_ctrl            (//Rron_ctrl                ),                                              
-.reg_apply              (reg_apply_1                ),                          
-.reg_addr               (reg_addr_1                 ),                              
-.reg_data               (reg_data_1                 ),                              
-.reg_next               (reg_next_1                 ),                              
- //CPU                  (//CPU                       ),                                 
-.reg_drop_apply         (                           ));
+    // Connecting TX emac_rmon_addr_gen
+    emac_rmon_addr_gen tx_emac_rmon_addr_gen
+    (
+        .clk                      (clk                     ),                                            
+        .rst_n                    (rst_n                   ),                              
+        //TX RMON
+        .pkt_type_rmon_i          (tx_pkt_type_rmon_i      ),                          
+        .pkt_length_rmon_i        (tx_pkt_length_rmon_i    ),                                  
+        .apply_rmon_i             (tx_apply_rmon_i         ),
+        .pkt_err_type_rmon_i      (tx_pkt_err_type_rmon_i  ),                             
+        //emac_rmon_ctrl interface
+        .reg_apply_o              (reg_apply_1             ),                          
+        .reg_addr_o               (reg_addr_1              ),                              
+        .reg_data_o               (reg_data_1              ),                              
+        .reg_next_o               (reg_next_1              )                              
+    );
 
-RMON_CTRL U_RMON_CTRL(
-.clk                    (clk                        ),        
-.rst_n                  (rst_n                      ), 
- //RMON_CTRL            (//RMON_CTRL                ),  
-.reg_apply_0            (reg_apply_0                ),         
-.reg_addr_0             (reg_addr_0                 ), 
-.reg_data_0             (reg_data_0                 ), 
-.reg_next_0             (reg_next_0                 ), 
-.reg_apply_1            (reg_apply_1                ),         
-.reg_addr_1             (reg_addr_1                 ), 
-.reg_data_1             (reg_data_1                 ), 
-.reg_next_1             (reg_next_1                 ), 
- //dual-port ram        (//dual-port ram            ),  
-.addra                  (addra                      ), 
-.dina                   (dina                       ), 
-.douta                  (douta                      ), 
-.wea                    (wea                        ),       
- //CPU                  (//CPU                      ),    
-.r_MibRdAddr_i            (r_MibRdAddr_i                ),     
-.r_MibRdApply_i           (r_MibRdApply_i               ), 
-.r_MibRdGrant_o           (r_MibRdGrant_o               ), 
-.r_MibRdDout_o            (r_MibRdDout_o                ) 
-);
+    // Connecting emac_rmon_ctrl
+    emac_rmon_ctrl emac_rmon_ctrl
+    (
+        .clk                      (clk                      ),        
+        .rst_n                    (rst_n                    ), 
+        //interface with rmon address generator
+        .reg_apply_0_i            (reg_apply_0              ),         
+        .reg_addr_0_i             (reg_addr_0               ), 
+        .reg_data_0_i             (reg_data_0               ), 
+        .reg_next_0_o             (reg_next_0               ), 
+        .reg_apply_1_i            (reg_apply_1              ),         
+        .reg_addr_1_i             (reg_addr_1               ), 
+        .reg_data_1_i             (reg_data_1               ), 
+        .reg_next_1_o             (reg_next_1               ), 
+        //interface with dual-port ram, port-a for RMON  
+        .addra_o                  (addra                    ), 
+        .dina_o                   (dina                     ), 
+        .douta_i                  (douta                    ), 
+        .wea_o                    (wea                      ),       
+        //Host interface registers I/O
+        .r_MibRdAddr_i            (r_MibRdAddr_i            ),     
+        .r_MibRdApply_i           (r_MibRdApply_i           ), 
+        .RstMibRdApply_o          (RstMibRdApply_o          ),
+        .r_MibRdGrant_o           (r_MibRdGrant_o           ), 
+        .r_MibRdDout_o            (r_MibRdDout_o            ) 
+    );
 
 RMON_dpram U_Rx_RMON_dpram(
 .rst_n                  (rst_n                      ),       
