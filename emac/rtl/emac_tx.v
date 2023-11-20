@@ -71,7 +71,7 @@ module emac_tx (
     input   [5:0]       r_IFGSet_i             , //Minimum IFG value
     input               r_txMacAddr_en_i       , //enable to replace source MAC address of transmitting packet            
     input   [47:0]      r_txMacAddr_i          , //mac address which will replace the source mac address of transmit packet.
-    input               r_tx_pause_en_i        , //respond to received pause frame enable
+    input               r_TxPauseEn_i          , //respond to received pause frame enable
     // from MAC rx flow control       
     input   [15:0]      pause_quanta_i         ,   
     input               pause_quanta_val_i       
@@ -184,7 +184,7 @@ module emac_tx (
         .rst_n                    (rst_n                  ),
         .clk                      (clk                    ),
         //host interface    
-        .r_tx_pause_en_i          (r_tx_pause_en_i        ),
+        .r_TxPauseEn_i            (r_TxPauseEn_i          ),
         .r_TxPauseRq_i            (r_TxPauseRq_i          ),
         //from MAC RX flow control       
         .pause_quanta_i           (pause_quanta_i         ),

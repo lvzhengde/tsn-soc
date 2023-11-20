@@ -108,8 +108,8 @@ module emac_top (
     wire            UpdateMIIRX_DATAReg;
 
     //registers for host interface
-    wire  [2:0]     r_speed;
-    wire            r_LoopEn;
+    wire  [2:0]     r_speed              ; //Ethernet speed, 3'b100: 1000Mbps, 3'b010: 100Mbps, 3'b001: 10Mbps
+    wire            r_LoopEn             ; //TX to RX loop back enable          
 
     wire            r_TxEn               ; //Transmit enable
     wire  [4:0]     r_txHwMark           ; //TX FIFO high water mark
@@ -124,7 +124,7 @@ module emac_top (
     wire  [5:0]     r_IFGSet             ; //Minimum IFG value
     wire            r_txMacAddr_en       ; //enable to replace source MAC address of transmitting packet            
     wire  [47:0]    r_txMacAddr          ; //mac address which will replace the source mac address of transmit packet.
-    wire            r_tx_pause_en        ; //respond to received pause frame enable
+    wire            r_TxPauseEn          ; //respond to received pause frame enable
 
     wire            r_RxEn                    ; //receive enable
     wire            r_rxAddrChkEn             ; //check RX MAC address enable    
@@ -214,7 +214,7 @@ module emac_top (
         .r_IFGSet_i             (r_IFGSet             ), 
         .r_txMacAddr_en_i       (r_txMacAddr_en       ),
         .r_txMacAddr_i          (r_txMacAddr          ),
-        .r_tx_pause_en_i        (r_tx_pause_en        ), 
+        .r_TxPauseEn_i          (r_TxPauseEn          ), 
         // from MAC rx flow control       
         .pause_quanta_i         (pause_quanta         ),   
         .pause_quanta_val_i     (pause_quanta_val     )  

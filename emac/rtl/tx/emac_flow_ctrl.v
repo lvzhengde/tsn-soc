@@ -38,7 +38,7 @@ module emac_flow_ctrl (
     input           rst_n            ,
     input           clk              ,
     //host interface    
-    input           r_tx_pause_en_i  ,
+    input           r_TxPauseEn_i  ,
     input           r_TxPauseRq_i    , //Write 1 to start Tx pause frame sending, automatically cleared to zero.
     //from MAC RX flow control       
     input  [15:0]   pause_quanta_i          ,
@@ -60,8 +60,8 @@ module emac_flow_ctrl (
     reg             pause_quanta_val_d2    ;       
     reg             pause_quanta_val_d3    ;       
     reg [15:0]      pause_quanta_counter    ;
-    reg             tx_pause_en_d1         ;
-    reg             tx_pause_en_d2         ;
+    reg             TxPauseEn_d1         ;
+    reg             TxPauseEn_d2         ;
     
     //++
     //latch boundery signals                                                                
@@ -103,12 +103,12 @@ module emac_flow_ctrl (
         
     always @(posedge clk or negedge rst_n) begin
         if(!rst_n) begin           
-            tx_pause_en_d1 <= 0;
-            tx_pause_en_d2 <= 0; 
+            TxPauseEn_d1 <= 0;
+            TxPauseEn_d2 <= 0; 
         end
         else begin        
-            tx_pause_en_d1 <= r_tx_pause_en_i;
-            tx_pause_en_d2 <= tx_pause_en_d1; 
+            TxPauseEn_d1 <= r_TxPauseEn_i;
+            TxPauseEn_d2 <= TxPauseEn_d1; 
         end     
     end
     
@@ -138,7 +138,7 @@ module emac_flow_ctrl (
             pause_apply_o <= 0;
         else if(pause_quanta_counter == 0) //froze in 0 until next pause frame received
             pause_apply_o <= 0;
-        else if(tx_pause_en_d2)
+        else if(TxPauseEn_d2)
             pause_apply_o <= 1;
     end
         
