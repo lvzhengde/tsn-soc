@@ -69,7 +69,7 @@ module emac_tx (
     input               r_FullDuplex_i         , //full duplex mode
     input   [3:0]       r_MaxRetry_i           , //Maximum retry times when collision occurred
     input   [5:0]       r_IFGSet_i             , //Minimum IFG value
-    input               r_txMacAddr_en_i       , //enable to replace source MAC address of transmitting packet            
+    input               r_txMacAddrEn_i        , //enable to replace source MAC address of transmitting packet            
     input   [47:0]      r_txMacAddr_i          , //mac address which will replace the source mac address of transmit packet.
     input               r_TxPauseEn_i          , //respond to received pause frame enable
     // from MAC rx flow control       
@@ -156,7 +156,7 @@ module emac_tx (
         .r_CrcEn_i                (r_CrcEn_i              ),
         .r_PauseFrameSendEn_i     (r_PauseFrameSendEn_i),            
         .r_TxPauseTV_i            (r_TxPauseTV_i          ),                
-        .r_txMacAddr_en_i         (r_txMacAddr_en_i       ),            
+        .r_txMacAddrEn_i          (r_txMacAddrEn_i        ),            
         .r_txMacAddr_i            (r_txMacAddr_i          ),
         .r_FullDuplex_i           (r_FullDuplex_i         ),            
         .r_MaxRetry_i             (r_MaxRetry_i           ),        

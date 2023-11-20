@@ -49,6 +49,18 @@ module emac_registers (
     output [2:0]        r_speed_o            ,
     output              r_LoopEn_o           ,
 
+    output              r_TxEn_o             , //Transmit enable
+    output              r_CrcEn_o            , //Enable Tx MAC appends the CRC to every frame
+    output              r_FullDuplex_o       , //full duplex mode
+    output              r_txMacAddrEn_o      , //enable to replace source MAC address of transmitting packet            
+
+    output              r_RxEn_o             , //receive enable
+    output              r_rxAddrChkEn_o      , //check RX MAC address enable    
+    output              r_AllAddrHashChkEn_o , //All address Hash check enable, not limited to multicast
+    output              r_BroadcastFilterEn_o, //Broadcast packet filter enable
+    output              r_RxAppendCrc_o      , //retain FCS of received ethernet frame when hand up
+    output              r_CrcChkEn_o         , //enable CRC check of received ethernet frame              
+
     //EMAC MIIM registers
     output [7:0]        r_ClkDiv_o           , 
     output              r_MiiNoPre_o         , 
@@ -77,7 +89,7 @@ module emac_registers (
     //EMAC configuration
     wire emac_config_wr = emac_blk_sel & bus2ip_wr_ce_i & (bus2ip_addr_i[7:0] == `EMAC_CONFIG_ADR);
     wire [31:0] emac_config;
-    eth_register #(32, 0) u_emac_config
+    eth_register #(32, 32'h1e34) u_emac_config
     (
         .clk            (bus2ip_clk),
         .rst_n          (bus2ip_rst_n),  
@@ -87,8 +99,19 @@ module emac_registers (
         .data_i         (bus2ip_data_i[31:0]),
         .data_o         (emac_config[31:0]) 
     );
-    assign r_speed_o  = emac_config[2:0];  
-    assign r_LoopEn_o = emac_config[3]  ; 
+    assign r_speed_o             = emac_config[2:0]; //default to 3'b100 
+    assign r_LoopEn_o            = emac_config[3]  ; //default to 0
+    assign r_RxEn_o              = emac_config[4]  ; //default to 1
+    assign r_TxEn_o              = emac_config[5]  ; //default to 1
+    assign r_rxAddrChkEn_o       = emac_config[6]  ; //default to 0
+    assign r_AllAddrHashChkEn_o  = emac_config[7]  ; //default to 0
+    assign r_BroadcastFilterEn_o = emac_config[8]  ; //default to 0
+    assign r_RxAppendCrc_o       = emac_config[9]  ; //default to 1
+    assign r_CrcChkEn_o          = emac_config[10] ; //default to 1
+    assign r_CrcEn_o             = emac_config[11] ; //default to 1
+    assign r_FullDuplex_o        = emac_config[12] ; //default to 1
+    assign r_txMacAddrEn_o       = emac_config[13] ; //default to 0    
+    //defaul value of emac_config register 14'b01_1110_0011_0100 = 14'h1e34
     
     //MDIO MODE register
     wire mdio_mode_wr = emac_blk_sel & bus2ip_wr_ce_i & (bus2ip_addr_i[7:0] == `EMAC_MDIOMODE_ADR);

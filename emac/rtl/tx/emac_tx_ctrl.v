@@ -79,7 +79,7 @@ module emac_tx_ctrl (
     input               r_CrcEn_i              , //Enable Tx MAC appends the CRC to every frame
     input               r_PauseFrameSendEn_i   ,               
     input   [15:0]      r_TxPauseTV_i          , //Tx pause timer value that is sent in the pause control frame
-    input               r_txMacAddr_en_i       ,               
+    input               r_txMacAddrEn_i        ,               
     input   [47:0]      r_txMacAddr_i          , 
     input               r_FullDuplex_i         ,
     input  [3:0]        r_MaxRetry_i           ,
@@ -427,13 +427,13 @@ module emac_tx_ctrl (
                 TxD_tmp = 8'hd5;
 
             StateData:
-                if (src_mac_ptr && r_txMacAddr_en_i)       
+                if (src_mac_ptr && r_txMacAddrEn_i)       
                     TxD_tmp = tx_mac_src_addr;
                 else
                     TxD_tmp = fifo_data_i;
 
             StateSendPauseFrame:
-                if (src_mac_ptr && r_txMacAddr_en_i)       
+                if (src_mac_ptr && r_txMacAddrEn_i)       
                     TxD_tmp = tx_mac_src_addr;
                 else 
                     case (FrameLengthCounter)

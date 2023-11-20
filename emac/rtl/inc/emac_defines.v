@@ -34,7 +34,9 @@
 
 `define EMAC_BLK_ADR           (24'h00_0003)    //EMAC block address
 
-`define EMAC_CONFIG_ADR        (8'h00)       //EMAC configuration {LoopEn, speed[2:0]}
+`define EMAC_CONFIG_ADR        (8'h00)       //EMAC configuration {txMacAddrEn, FullDuplex, CrcEn, \
+                                             //CrcChkEn, RxAppendCrc, BroadcastFilterEn, AllAddrHashChkEn, rxAddrChkEn,\
+                                             //TxEn, RxEn, LoopEn, speed[2:0]}
 `define EMAC_INT_SOURCE_ADR    (8'h04)       //EMAC Interrupt source register
 `define EMAC_INT_MASK_ADR      (8'h08)       //EMAC Interrupt mask register
 

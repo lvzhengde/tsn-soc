@@ -110,6 +110,7 @@ module emac_top (
     //registers for host interface
     wire  [2:0]     r_speed              ; //Ethernet speed, 3'b100: 1000Mbps, 3'b010: 100Mbps, 3'b001: 10Mbps
     wire            r_LoopEn             ; //TX to RX loop back enable          
+    wire  [47:0]    r_MacAddr            ; //Local MAC address
 
     wire            r_TxEn               ; //Transmit enable
     wire  [4:0]     r_txHwMark           ; //TX FIFO high water mark
@@ -122,14 +123,14 @@ module emac_top (
     wire            r_FullDuplex         ; //full duplex mode
     wire  [3:0]     r_MaxRetry           ; //Maximum retry times when collision occurred
     wire  [5:0]     r_IFGSet             ; //Minimum IFG value
-    wire            r_txMacAddr_en       ; //enable to replace source MAC address of transmitting packet            
-    wire  [47:0]    r_txMacAddr          ; //mac address which will replace the source mac address of transmit packet.
+    wire            r_txMacAddrEn        ; //enable to replace source MAC address of transmitting packet            
+    //wire  [47:0]    r_txMacAddr          ; //mac address which will replace the source mac address of transmit packet.
     wire            r_TxPauseEn          ; //respond to received pause frame enable
 
     wire            r_RxEn                    ; //receive enable
     wire            r_rxAddrChkEn             ; //check RX MAC address enable    
     wire            r_AllAddrHashChkEn        ; //All address Hash check enable, not limited to multicast
-    wire  [47:0]    r_rxMacAddr               ; //MAC address used for check
+    //wire  [47:0]    r_rxMacAddr               ; //MAC address used for check
     wire  [31:0]    r_Hash0                   ; //HASH table for address check, lower 4 bytes
     wire  [31:0]    r_Hash1                   ; //HASH table for address check, upper 4 bytes 
     wire            r_BroadcastFilterEn       ; //Broadcast packet filter enable
@@ -212,8 +213,8 @@ module emac_top (
         .r_FullDuplex_i         (r_FullDuplex         ), 
         .r_MaxRetry_i           (r_MaxRetry           ),
         .r_IFGSet_i             (r_IFGSet             ), 
-        .r_txMacAddr_en_i       (r_txMacAddr_en       ),
-        .r_txMacAddr_i          (r_txMacAddr          ),
+        .r_txMacAddrEn_i        (r_txMacAddrEn        ),
+        .r_txMacAddr_i          (r_MacAddr            ),
         .r_TxPauseEn_i          (r_TxPauseEn          ), 
         // from MAC rx flow control       
         .pause_quanta_i         (pause_quanta         ),   
@@ -250,7 +251,7 @@ module emac_top (
         .r_RxEn_i                    (r_RxEn                   ), 
         .r_rxAddrChkEn_i             (r_rxAddrChkEn            ), 
         .r_AllAddrHashChkEn_i        (r_AllAddrHashChkEn       ),
-        .r_rxMacAddr_i               (r_rxMacAddr              ), 
+        .r_rxMacAddr_i               (r_MacAddr                ), 
         .r_Hash0_i                   (r_Hash0                  ),
         .r_Hash1_i                   (r_Hash1                  ),
         .r_BroadcastFilterEn_i       (r_BroadcastFilterEn      ), 
@@ -374,34 +375,44 @@ module emac_top (
     // Connecting Ethernet registers
     emac_registers u_emac_registers
     (
-        .bus2ip_clk            (bus2ip_clk    ),         
-        .bus2ip_rst_n          (bus2ip_rst_n  ),
-        .bus2ip_addr_i         (bus2ip_addr_i ),
-        .bus2ip_data_i         (bus2ip_data_i ),
-        .bus2ip_rd_ce_i        (bus2ip_rd_ce_i),         
-        .bus2ip_wr_ce_i        (bus2ip_wr_ce_i),        
-        .ip2bus_data_o         (ip2bus_data_o ), 
+        .bus2ip_clk            (bus2ip_clk          ),         
+        .bus2ip_rst_n          (bus2ip_rst_n        ),
+        .bus2ip_addr_i         (bus2ip_addr_i       ),
+        .bus2ip_data_i         (bus2ip_data_i       ),
+        .bus2ip_rd_ce_i        (bus2ip_rd_ce_i      ),         
+        .bus2ip_wr_ce_i        (bus2ip_wr_ce_i      ),        
+        .ip2bus_data_o         (ip2bus_data_o       ), 
 
         //EMAC control and status registers
-        .r_speed_o             (r_speed       ),
-        .r_LoopEn_o            (r_LoopEn),
+        .r_speed_o             (r_speed             ),
+        .r_LoopEn_o            (r_LoopEn            ),
+        .r_TxEn_o              (r_TxEn              ), 
+        .r_CrcEn_o             (r_CrcEn             ), 
+        .r_FullDuplex_o        (r_FullDuplex        ), 
+        .r_txMacAddrEn_o       (r_txMacAddrEn       ),             
+        .r_RxEn_o              (r_RxEn              ), 
+        .r_rxAddrChkEn_o       (r_rxAddrChkEn       ), 
+        .r_AllAddrHashChkEn_o  (r_AllAddrHashChkEn  ), 
+        .r_BroadcastFilterEn_o (r_BroadcastFilterEn ), 
+        .r_RxAppendCrc_o       (r_RxAppendCrc       ), 
+        .r_CrcChkEn_o          (r_CrcChkEn          ), 
 
         // EMAC MIIM registers
-        .r_ClkDiv_o            (r_ClkDiv),
-        .r_MiiNoPre_o          (r_MiiNoPre),
-        .r_CtrlData_o          (r_CtrlData),
-        .r_RGAD_o              (r_RGAD),
-        .r_FIAD_o              (r_FIAD),
-        .r_WCtrlData_o         (r_WCtrlData),
-        .r_RStat_o             (r_RStat),
-        .r_ScanStat_o          (r_ScanStat),
-        .Busy_stat_i           (Busy_stat),
-        .Prsd_i                (Prsd),
-        .LinkFail_i            (LinkFail),
-        .NValid_stat_i         (NValid_stat),
-        .WCtrlDataStart_i      (WCtrlDataStart),
-        .RStatStart_i          (RStatStart),
-        .UpdateMIIRX_DATAReg_i (UpdateMIIRX_DATAReg)
+        .r_ClkDiv_o            (r_ClkDiv            ),
+        .r_MiiNoPre_o          (r_MiiNoPre          ),
+        .r_CtrlData_o          (r_CtrlData          ),
+        .r_RGAD_o              (r_RGAD              ),
+        .r_FIAD_o              (r_FIAD              ),
+        .r_WCtrlData_o         (r_WCtrlData         ),
+        .r_RStat_o             (r_RStat             ),
+        .r_ScanStat_o          (r_ScanStat          ),
+        .Busy_stat_i           (Busy_stat           ),
+        .Prsd_i                (Prsd                ),
+        .LinkFail_i            (LinkFail            ),
+        .NValid_stat_i         (NValid_stat         ),
+        .WCtrlDataStart_i      (WCtrlDataStart      ),
+        .RStatStart_i          (RStatStart          ),
+        .UpdateMIIRX_DATAReg_i (UpdateMIIRX_DATAReg )
     );
     assign speed_o = r_speed;
 
