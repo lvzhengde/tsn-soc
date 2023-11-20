@@ -55,7 +55,7 @@ module emac_rmon_ctrl (
     input               r_MibRdApply_i  ,
     output reg          RstMibRdApply_o ,
     output              r_MibRdGrant_o  ,
-    output [31:0]       r_MibRdDout_o   
+    output reg [31:0]   r_MibRdDout_o   
 );
     //++
     //internal signals                                                              

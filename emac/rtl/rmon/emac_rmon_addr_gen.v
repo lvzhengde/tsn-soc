@@ -103,7 +103,7 @@ module emac_rmon_addr_gen (
         end 
     end
 
-    assign apply_rmon_pulse = (apply_rmon_d2 & !apply_rmon_d3)
+    assign apply_rmon_pulse = (apply_rmon_d2 & !apply_rmon_d3);
     
     always @(posedge clk or negedge rst_n) begin
         if(!rst_n) begin

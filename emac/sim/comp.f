@@ -4,6 +4,7 @@
 ../rtl/emac_registers.v
 ../rtl/emac_top.v
 ../rtl/emac_tx.v
+../rtl/emac_rmon.v
 ../rtl/emac_rx.v
 ../rtl/eth_miim.v
 ../rtl/eth_register.v
@@ -23,6 +24,9 @@
 ../rtl/rx/emac_rx_addr_chk.v
 ../rtl/rx/emac_rx_ctrl.v
 ../rtl/rx/emac_rx_fifo.v
+../rtl/rmon/emac_rmon_addr_gen.v
+../rtl/rmon/emac_rmon_ctrl.v
+../rtl/rmon/emac_rmon_dpram.v
 
 //testbench files
 ../tb/bus_master.v

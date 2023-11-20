@@ -143,6 +143,13 @@ module emac_top (
     wire  [15:0]    r_RxMaxLength             ; //maximum frame length to be received (1518)
     wire  [15:0]    r_RxMinLength             ; //minimum frame length to be received (64)
 
+    wire  [5:0]     r_MibRdAddr   ; //Read address for MIB RAM
+    wire            r_MibRdApply  ; //Write 1 to start MIB read operation
+    wire            RstMibRdApply ; //Clear r_MibRdApply to zero
+    wire            r_MibRdGrant  ; //MIB read data out is available
+    wire  [31:0]    r_MibRdDout   ; //MIB read data out
+
+
     //clock signals
     wire            mac_tx_clk    ;
     wire            mac_rx_clk    ;
@@ -261,6 +268,28 @@ module emac_top (
         .rx_apply_rmon_o             (rx_apply_rmon         ),
         .rx_pkt_err_type_rmon_o      (rx_pkt_err_type_rmon  ),
         .rx_pkt_type_rmon_o          (rx_pkt_type_rmon      )
+    );
+
+    // Connecting EMAC remote monitoring module
+    emac_rmon emac_rmon ( 
+        .clk                         (bus2ip_clk            ),
+        .rst_n                       (bus2ip_rst_n          ),
+        //TX RMON
+        .tx_pkt_type_rmon_i          (tx_pkt_type_rmon      ),
+        .tx_pkt_length_rmon_i        (tx_pkt_length_rmon    ),
+        .tx_apply_rmon_i             (tx_apply_rmon         ),
+        .tx_pkt_err_type_rmon_i      (tx_pkt_err_type_rmon  ),
+        //RX RMON
+        .rx_pkt_type_rmon_i          (rx_pkt_type_rmon      ),
+        .rx_pkt_length_rmon_i        (rx_pkt_length_rmon    ),
+        .rx_apply_rmon_i             (rx_apply_rmon         ),
+        .rx_pkt_err_type_rmon_i      (rx_pkt_err_type_rmon  ),
+        //Host interface
+        .r_MibRdAddr_i               (r_MibRdAddr           ),
+        .r_MibRdApply_i              (r_MibRdApply          ),
+        .RstMibRdApply_o             (RstMibRdApply         ),
+        .r_MibRdGrant_o              (r_MibRdGrant          ),
+        .r_MibRdDout_o               (r_MibRdDout           )
     );
 
     // Connecting EMAC clock control module

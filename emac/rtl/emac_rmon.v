@@ -105,7 +105,7 @@ module emac_rmon (
         .reg_apply_o              (reg_apply_1             ),                          
         .reg_addr_o               (reg_addr_1              ),                              
         .reg_data_o               (reg_data_1              ),                              
-        .reg_next_o               (reg_next_1              )                              
+        .reg_next_i               (reg_next_1              )                              
     );
 
     // Connecting emac_rmon_ctrl
@@ -135,17 +135,19 @@ module emac_rmon (
         .r_MibRdDout_o            (r_MibRdDout_o            ) 
     );
 
-RMON_dpram U_Rx_RMON_dpram(
-.rst_n                  (rst_n                      ),       
-.clk                    (clk                        ), 
-//port-a for Rmon       (//port-a for Rmon          ),
-.addra                  (addra                      ),
-.dina                   (dina                       ),
-.douta                  (                           ),
-.wea                    (wea                        ),
-//port-b for CPU        (//port-b for CPU           ),
-.addrb                  (addra                      ),
-.doutb                  (douta                      ));
-
+    // Connecting emac_rmon_dpram
+    emac_rmon_dpram emac_rmon_dpram
+    (
+        .clk                      (clk                       ), 
+        //port-a for RMON  
+        .addra                    (addra                     ),
+        .dina                     (dina                      ),
+        .douta                    (                          ),
+        .wea                      (wea                       ),
+        //port-b for HOST
+        .addrb                    (addra                     ),
+        .doutb                    (douta                     )
+    );
+    
 endmodule
 
