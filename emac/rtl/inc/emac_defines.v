@@ -32,6 +32,13 @@
 `ifndef EMAC_DEFINES
 `define EMAC_DEFINES
 
+//++
+//Note:
+//for simulation correctly 
+//If the address in file emac_defines.v changed, the corresponding address in
+//file tb_emac_defines.v should be changed also.
+//--
+
 `define EMAC_BLK_ADR           (24'h00_0003)    //EMAC block address
 
 `define EMAC_CONFIG_ADR        (8'h00)       //EMAC configuration {txMacAddrEn, FullDuplex, CrcEn, \
@@ -39,13 +46,19 @@
                                              //TxEn, RxEn, LoopEn, speed[2:0]}
 `define EMAC_INT_SOURCE_ADR    (8'h04)       //EMAC Interrupt source register
 `define EMAC_INT_MASK_ADR      (8'h08)       //EMAC Interrupt mask register
+`define EMAC_IFGCTRL_ADR       (8'h0c)       //EMAC TX/RX Inter Frame Gap control {10'b0, RxIFGSet[5:0], 10'b0, IFGSet[5:0]}
+`define EMAC_PACKETLEN_ADR     (8'h10)       //Min/Max packet length setting {RxMinLength[15:0], RxMaxLength[15:0]}
+`define EMAC_COLLISION_ADR     (8'h14)       //Collision configuration register {28'b0, MaxRetry[3:0]}
+`define EMAC_TXWMARK_ADR       (8'h18)       //TX FIFO Water Mark register {11'b0, txLwMark[4:0], 11'b0, txHwMark[4:0]}
+`define EMAC_RXWMARK_ADR       (8'h1c)       //RX FIFO Water Mark register {11'b0, rxLwMark[4:0], 11'b0, rxHwMark[4:0]}
+`define EMAC_FLOWCTRL_ADR      (8'h20)       //Flow Control register {30'b0, PauseFrameSendEn, TxPauseEn}
 
-`define EMAC_MDIOMODE_ADR      (8'h30)       //MDIO mode {23'h0, MiiNoPre, ClkDiv[7:0]}
-`define EMAC_MDIOCOMMAND_ADR   (8'h34)       //MDIO command {29'h0, WCtrlData, RStat, ScanStat}
-`define EMAC_MDIOADDRESS_ADR   (8'h38)       //MDIO address {19'h0, RGAD[4:0], 3'b0, FIAD[4:0]}
-`define EMAC_MDIOTX_DATA_ADR   (8'h3c)       //MDIO transmit data {16'h0, CtrlData[15:0]}
-`define EMAC_MDIORX_DATA_ADR   (8'h40)       //MDIO receive data {16'h0, Prsd[15:0]}
-`define EMAC_MDIOSTATUS_ADR    (8'h44)       //MDIO status {29'b0, NValid_stat, Busy_stat, LinkFail}
+`define EMAC_MDIOMODE_ADR      (8'h90)       //MDIO mode {23'h0, MiiNoPre, ClkDiv[7:0]}
+`define EMAC_MDIOCOMMAND_ADR   (8'h94)       //MDIO command {29'h0, WCtrlData, RStat, ScanStat}
+`define EMAC_MDIOADDRESS_ADR   (8'h98)       //MDIO address {19'h0, RGAD[4:0], 3'b0, FIAD[4:0]}
+`define EMAC_MDIOTX_DATA_ADR   (8'h9c)       //MDIO transmit data {16'h0, CtrlData[15:0]}
+`define EMAC_MDIORX_DATA_ADR   (8'ha0)       //MDIO receive data {16'h0, Prsd[15:0]}
+`define EMAC_MDIOSTATUS_ADR    (8'ha4)       //MDIO status {29'b0, NValid_stat, Busy_stat, LinkFail}
 
 `define EMAC_TXFF_AWIDTH       (9)           //TX FIFO address width
 `define EMAC_RXFF_AWIDTH       (9)           //RX FIFO address width

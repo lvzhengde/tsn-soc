@@ -396,6 +396,17 @@ module emac_top (
         .r_BroadcastFilterEn_o (r_BroadcastFilterEn ), 
         .r_RxAppendCrc_o       (r_RxAppendCrc       ), 
         .r_CrcChkEn_o          (r_CrcChkEn          ), 
+        .r_IFGSet_o            (r_IFGSet            ), 
+        .r_RxIFGSet_o          (r_RxIFGSet          ),
+        .r_RxMaxLength_o       (r_RxMaxLength       ),
+        .r_RxMinLength_o       (r_RxMinLength       ),
+        .r_MaxRetry_o          (r_MaxRetry          ), 
+        .r_txHwMark_o          (r_txHwMark          ), 
+        .r_txLwMark_o          (r_txLwMark          ), 
+        .r_rxHwMark_o          (r_rxHwMark          ),
+        .r_rxLwMark_o          (r_rxLwMark          ),
+        .r_TxPauseEn_o         (r_TxPauseEn         ),
+        .r_PauseFrameSendEn_o  (r_PauseFrameSendEn  ),
 
         // EMAC MIIM registers
         .r_ClkDiv_o            (r_ClkDiv            ),

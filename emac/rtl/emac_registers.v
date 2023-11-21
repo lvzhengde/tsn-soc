@@ -53,13 +53,24 @@ module emac_registers (
     output              r_CrcEn_o            , //Enable Tx MAC appends the CRC to every frame
     output              r_FullDuplex_o       , //full duplex mode
     output              r_txMacAddrEn_o      , //enable to replace source MAC address of transmitting packet            
-
     output              r_RxEn_o             , //receive enable
     output              r_rxAddrChkEn_o      , //check RX MAC address enable    
     output              r_AllAddrHashChkEn_o , //All address Hash check enable, not limited to multicast
     output              r_BroadcastFilterEn_o, //Broadcast packet filter enable
     output              r_RxAppendCrc_o      , //retain FCS of received ethernet frame when hand up
     output              r_CrcChkEn_o         , //enable CRC check of received ethernet frame              
+
+    output [5:0]        r_IFGSet_o           , //TX Minimum IFG value
+    output [5:0]        r_RxIFGSet_o         , //minimum gap between consecutive received frames
+    output [15:0]       r_RxMaxLength_o      , //maximum frame length to be received (1518)
+    output [15:0]       r_RxMinLength_o      , //minimum frame length to be received (64)
+    output [3:0]        r_MaxRetry_o         , //Maximum retry times when collision occurred
+    output [4:0]        r_txHwMark_o         , //TX FIFO high water mark
+    output [4:0]        r_txLwMark_o         , //TX FIFO low water mark 
+    output [4:0]        r_rxHwMark_o         , //RX FIFO high water mark
+    output [4:0]        r_rxLwMark_o         , //RX FIFO low water mark
+    output              r_TxPauseEn_o        , //respond to received pause frame enable
+    output              r_PauseFrameSendEn_o , //enable transmit logic to send pause frame               
 
     //EMAC MIIM registers
     output [7:0]        r_ClkDiv_o           , 
@@ -113,6 +124,160 @@ module emac_registers (
     assign r_txMacAddrEn_o       = emac_config[13] ; //default to 0    
     //defaul value of emac_config register 14'b01_1110_0011_0100 = 14'h1e34
     
+    //Inter Frame Gap control register
+    wire ifg_ctrl_wr = emac_blk_sel & bus2ip_wr_ce_i & (bus2ip_addr_i[7:0] == `EMAC_IFGCTRL_ADR);
+    wire [31:0] ifg_ctrl;
+
+    eth_register #(6, 6'd12) u_ifg_ctrl_0
+    (
+        .clk            (bus2ip_clk),
+        .rst_n          (bus2ip_rst_n),  
+    
+        .sync_reset_i   (1'b0), 
+        .write_en_i     (ifg_ctrl_wr), 
+        .data_i         (bus2ip_data_i[5:0]),
+        .data_o         (ifg_ctrl[5:0]) 
+    );
+    assign r_IFGSet_o     = ifg_ctrl[5:0];
+    assign ifg_ctrl[15:6] = 0;
+
+    eth_register #(6, 6'd12) u_ifg_ctrl_1
+    (
+        .clk            (bus2ip_clk),
+        .rst_n          (bus2ip_rst_n),  
+    
+        .sync_reset_i   (1'b0), 
+        .write_en_i     (ifg_ctrl_wr), 
+        .data_i         (bus2ip_data_i[21:16]),
+        .data_o         (ifg_ctrl[21:16]) 
+    );
+    assign r_RxIFGSet_o    = ifg_ctrl[21:16];
+    assign ifg_ctrl[31:22] = 0;
+
+    //Packet length register
+    wire packet_len_wr = emac_blk_sel & bus2ip_wr_ce_i & (bus2ip_addr_i[7:0] == `EMAC_PACKETLEN_ADR);
+    wire [31:0] packet_len;
+
+    eth_register #(16, 16'd1518) u_packet_len_0
+    (
+        .clk            (bus2ip_clk),
+        .rst_n          (bus2ip_rst_n),  
+    
+        .sync_reset_i   (1'b0), 
+        .write_en_i     (packet_len_wr), 
+        .data_i         (bus2ip_data_i[15:0]),
+        .data_o         (packet_len[15:0]) 
+    );
+    assign r_RxMaxLength_o = packet_len[15:0];
+
+    eth_register #(16, 16'd64) u_packet_len_1
+    (
+        .clk            (bus2ip_clk),
+        .rst_n          (bus2ip_rst_n),  
+    
+        .sync_reset_i   (1'b0), 
+        .write_en_i     (packet_len_wr), 
+        .data_i         (bus2ip_data_i[31:16]),
+        .data_o         (packet_len[31:16]) 
+    );
+    assign r_RxMinLength_o = packet_len[31:16];
+
+    //Collision configuration register
+    wire collision_wr = emac_blk_sel & bus2ip_wr_ce_i & (bus2ip_addr_i[7:0] == `EMAC_COLLISION_ADR);
+    wire [31:0] collision;
+
+    eth_register #(4, 4'd2) u_collision
+    (
+        .clk            (bus2ip_clk),
+        .rst_n          (bus2ip_rst_n),  
+    
+        .sync_reset_i   (1'b0), 
+        .write_en_i     (collision_wr), 
+        .data_i         (bus2ip_data_i[3:0]),
+        .data_o         (collision[3:0]) 
+    );
+    assign r_MaxRetry_o    = collision[3:0];
+    assign collision[31:4] = 28'b0;
+
+    //TX FIFO Water Mark register
+    wire tx_water_mark_wr = emac_blk_sel & bus2ip_wr_ce_i & (bus2ip_addr_i[7:0] == `EMAC_TXWMARK_ADR);
+    wire [31:0] tx_water_mark;
+
+    eth_register #(5, 5'd9) u_tx_water_mark_0
+    (
+        .clk            (bus2ip_clk),
+        .rst_n          (bus2ip_rst_n),  
+    
+        .sync_reset_i   (1'b0), 
+        .write_en_i     (tx_water_mark_wr), 
+        .data_i         (bus2ip_data_i[4:0]),
+        .data_o         (tx_water_mark[4:0]) 
+    );
+    assign r_txHwMark_o = tx_water_mark[4:0];
+    assign tx_water_mark[15:5] = 0;
+
+    eth_register #(5, 5'd8) u_tx_water_mark_1
+    (
+        .clk            (bus2ip_clk),
+        .rst_n          (bus2ip_rst_n),  
+    
+        .sync_reset_i   (1'b0), 
+        .write_en_i     (tx_water_mark_wr), 
+        .data_i         (bus2ip_data_i[20:16]),
+        .data_o         (tx_water_mark[20:16]) 
+    );
+    assign r_txLwMark_o = tx_water_mark[20:16];
+    assign tx_water_mark[31:21] = 0;
+
+    //RX FIFO Water Mark register
+    wire rx_water_mark_wr = emac_blk_sel & bus2ip_wr_ce_i & (bus2ip_addr_i[7:0] == `EMAC_RXWMARK_ADR);
+    wire [31:0] rx_water_mark;
+
+    eth_register #(5, 5'd26) u_rx_water_mark_0
+    (
+        .clk            (bus2ip_clk),
+        .rst_n          (bus2ip_rst_n),  
+    
+        .sync_reset_i   (1'b0), 
+        .write_en_i     (rx_water_mark_wr), 
+        .data_i         (bus2ip_data_i[4:0]),
+        .data_o         (rx_water_mark[4:0]) 
+    );
+    assign r_rxHwMark_o = rx_water_mark[4:0];
+    assign rx_water_mark[15:5] = 0;
+
+    eth_register #(5, 5'd16) u_rx_water_mark_1
+    (
+        .clk            (bus2ip_clk),
+        .rst_n          (bus2ip_rst_n),  
+    
+        .sync_reset_i   (1'b0), 
+        .write_en_i     (rx_water_mark_wr), 
+        .data_i         (bus2ip_data_i[20:16]),
+        .data_o         (rx_water_mark[20:16]) 
+    );
+    assign r_rxLwMark_o = rx_water_mark[20:16];
+    assign rx_water_mark[31:21] = 0;
+
+    //Flow Control register
+    wire flow_ctrl_wr = emac_blk_sel & bus2ip_wr_ce_i & (bus2ip_addr_i[7:0] == `EMAC_FLOWCTRL_ADR);
+    wire [31:0] flow_ctrl;
+
+    eth_register #(2, 2'b11) u_flow_ctrl
+    (
+        .clk            (bus2ip_clk),
+        .rst_n          (bus2ip_rst_n),  
+    
+        .sync_reset_i   (1'b0), 
+        .write_en_i     (flow_ctrl_wr), 
+        .data_i         (bus2ip_data_i[1:0]),
+        .data_o         (flow_ctrl[1:0]) 
+    );
+    assign r_TxPauseEn_o        = flow_ctrl[0]; 
+    assign r_PauseFrameSendEn_o = flow_ctrl[1]; 
+    assign flow_ctrl[31:2]      = 0;
+
+
     //MDIO MODE register
     wire mdio_mode_wr = emac_blk_sel & bus2ip_wr_ce_i & (bus2ip_addr_i[7:0] == `EMAC_MDIOMODE_ADR);
     wire [31:0] mdio_mode;
@@ -260,6 +425,12 @@ module emac_registers (
         if(bus2ip_rd_ce_i == 1'b1 && emac_blk_sel) begin   
             case(bus2ip_addr_i[7:0])    //deal with offset address
                 `EMAC_CONFIG_ADR     :  ip2bus_data = emac_config;
+                `EMAC_IFGCTRL_ADR    :  ip2bus_data = ifg_ctrl;
+                `EMAC_PACKETLEN_ADR  :  ip2bus_data = packet_len;
+                `EMAC_COLLISION_ADR  :  ip2bus_data = collision;
+                `EMAC_TXWMARK_ADR    :  ip2bus_data = tx_water_mark;
+                `EMAC_RXWMARK_ADR    :  ip2bus_data = rx_water_mark;
+                `EMAC_FLOWCTRL_ADR   :  ip2bus_data = flow_ctrl;
                 `EMAC_MDIOMODE_ADR   :  ip2bus_data = mdio_mode;  
                 `EMAC_MDIOCOMMAND_ADR:  ip2bus_data = mdio_command;
                 `EMAC_MDIOADDRESS_ADR:  ip2bus_data = mdio_address;

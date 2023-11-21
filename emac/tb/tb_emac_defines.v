@@ -40,6 +40,13 @@
 `define BROADCAST_XFR          2
 `define UNICAST_WRONG_XFR      3
 
+//++
+//Note:
+//for simulation correctly 
+//If the address in file emac_defines.v changed, the corresponding address in
+//file tb_emac_defines.v should be changed also.
+//--
+
 `define EMAC_BASE              (32'h0000_0300)
 
 /* Register space */
@@ -47,12 +54,12 @@
 `define EMAC_INT_SOURCE  `EMAC_BASE + 32'h04 /* EMAC Interrupt source register  */
 `define EMAC_INT_MASK    `EMAC_BASE + 32'h08 /* EMAC Interrupt mask register  */
 
-`define EMAC_MDIOMODE    `EMAC_BASE + 32'h30 /* MDIO Mode Register */
-`define EMAC_MDIOCOMMAND `EMAC_BASE + 32'h34 /* MDIO Command Register */
-`define EMAC_MDIOADDRESS `EMAC_BASE + 32'h38 /* MDIO Address Register */
-`define EMAC_MDIOTX_DATA `EMAC_BASE + 32'h3C /* MDIO Transmit Data Register */
-`define EMAC_MDIORX_DATA `EMAC_BASE + 32'h40 /* MDIO Receive Data Register */
-`define EMAC_MDIOSTATUS  `EMAC_BASE + 32'h44 /* MDIO Status Register */
+`define EMAC_MDIOMODE    `EMAC_BASE + 32'h90 /* MDIO Mode Register */
+`define EMAC_MDIOCOMMAND `EMAC_BASE + 32'h94 /* MDIO Command Register */
+`define EMAC_MDIOADDRESS `EMAC_BASE + 32'h98 /* MDIO Address Register */
+`define EMAC_MDIOTX_DATA `EMAC_BASE + 32'h9C /* MDIO Transmit Data Register */
+`define EMAC_MDIORX_DATA `EMAC_BASE + 32'ha0 /* MDIO Receive Data Register */
+`define EMAC_MDIOSTATUS  `EMAC_BASE + 32'ha4 /* MDIO Status Register */
 
 /* MDIO Mode Register */
 `define EMAC_MDIOMODE_CLKDIV   32'h000000FF /* Clock Divider */
