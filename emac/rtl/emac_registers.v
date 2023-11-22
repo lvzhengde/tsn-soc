@@ -71,6 +71,14 @@ module emac_registers (
     output [4:0]        r_rxLwMark_o         , //RX FIFO low water mark
     output              r_TxPauseEn_o        , //respond to received pause frame enable
     output              r_PauseFrameSendEn_o , //enable transmit logic to send pause frame               
+    output              r_TxPauseRq_o        , //Write 1 to start Tx pause frame sending, automatically cleared to zero.
+    output [15:0]       r_TxPauseTV_o        , //Tx pause timer value that is sent in the pause control frame
+    input               RstTxPauseRq_i       , //signal to clear r_TxPauseRq to zero
+    output [15:0]       r_BroadcastBucketDepth_o    , //Bucket depeth of broadcast packet filter    
+    output [15:0]       r_BroadcastBucketInterval_o , //time interval of refilling of broadcast bucket
+    output [47:0]       r_MacAddr_o          , //Local MAC address
+    output [31:0]       r_Hash0_o            , //HASH table for address check, lower 4 bytes
+    output [31:0]       r_Hash1_o            , //HASH table for address check, upper 4 bytes 
 
     //EMAC MIIM registers
     output [7:0]        r_ClkDiv_o           , 
@@ -203,7 +211,7 @@ module emac_registers (
     wire tx_water_mark_wr = emac_blk_sel & bus2ip_wr_ce_i & (bus2ip_addr_i[7:0] == `EMAC_TXWMARK_ADR);
     wire [31:0] tx_water_mark;
 
-    eth_register #(5, 5'd9) u_tx_water_mark_0
+    eth_register #(5, 5'd30) u_tx_water_mark_0
     (
         .clk            (bus2ip_clk),
         .rst_n          (bus2ip_rst_n),  
@@ -216,7 +224,7 @@ module emac_registers (
     assign r_txHwMark_o = tx_water_mark[4:0];
     assign tx_water_mark[15:5] = 0;
 
-    eth_register #(5, 5'd8) u_tx_water_mark_1
+    eth_register #(5, 5'd2) u_tx_water_mark_1
     (
         .clk            (bus2ip_clk),
         .rst_n          (bus2ip_rst_n),  
@@ -276,6 +284,117 @@ module emac_registers (
     assign r_TxPauseEn_o        = flow_ctrl[0]; 
     assign r_PauseFrameSendEn_o = flow_ctrl[1]; 
     assign flow_ctrl[31:2]      = 0;
+
+    //TX pause frame register
+    wire tx_pause_wr = emac_blk_sel & bus2ip_wr_ce_i & (bus2ip_addr_i[7:0] == `EMAC_TXPAUSE_ADR);
+    wire [31:0] tx_pause;
+
+    eth_register #(16, 0) u_tx_pause_tv
+    (
+        .clk            (bus2ip_clk),
+        .rst_n          (bus2ip_rst_n),  
+    
+        .sync_reset_i   (1'b0), 
+        .write_en_i     (tx_pause_wr), 
+        .data_i         (bus2ip_data_i[15:0]),
+        .data_o         (tx_pause[15:0]) 
+    );
+    assign r_TxPauseTV_o = tx_pause[15:0];
+
+    eth_register #(1, 0) u_tx_pause_rq
+    (
+        .clk            (bus2ip_clk),
+        .rst_n          (bus2ip_rst_n),  
+    
+        .sync_reset_i   (RstTxPauseRq_i), 
+        .write_en_i     (tx_pause_wr), 
+        .data_i         (bus2ip_data_i[16]),
+        .data_o         (tx_pause[16]) 
+    );
+    assign r_TxPauseTV_o   = tx_pause[16];
+    assign tx_pause[31:17] = 0;
+
+    //Broadcast filter leaky bucket register
+    wire bcast_bucket_wr = emac_blk_sel & bus2ip_wr_ce_i & (bus2ip_addr_i[7:0] == `EMAC_BCASTBUCKET_ADR);
+    wire [31:0] bcast_bucket;
+
+    eth_register #(32, 0) u_bcast_bucket
+    (
+        .clk            (bus2ip_clk),
+        .rst_n          (bus2ip_rst_n),  
+    
+        .sync_reset_i   (1'b0), 
+        .write_en_i     (bcast_bucket_wr), 
+        .data_i         (bus2ip_data_i[31:0]),
+        .data_o         (bcast_bucket[31:0]) 
+    );
+    assign r_BroadcastBucketDepth_o    = bcast_bucket[15:0];
+    assign r_BroadcastBucketInterval_o = bcast_bucket[31:16];
+
+    //MAC address register 0
+    wire mac_addr0_wr = emac_blk_sel & bus2ip_wr_ce_i & (bus2ip_addr_i[7:0] == `EMAC_MACADDR0_ADR);
+    wire [31:0] mac_addr0;
+
+    eth_register #(32, 0) u_mac_addr0
+    (
+        .clk            (bus2ip_clk),
+        .rst_n          (bus2ip_rst_n),  
+    
+        .sync_reset_i   (1'b0), 
+        .write_en_i     (mac_addr0_wr), 
+        .data_i         (bus2ip_data_i[31:0]),
+        .data_o         (mac_addr0[31:0]) 
+    );
+    assign r_MacAddr_o[31:0] = mac_addr0[31:0];
+
+    //MAC address register 1
+    wire mac_addr1_wr = emac_blk_sel & bus2ip_wr_ce_i & (bus2ip_addr_i[7:0] == `EMAC_MACADDR1_ADR);
+    wire [31:0] mac_addr1;
+
+    eth_register #(16, 0) u_mac_addr1
+    (
+        .clk            (bus2ip_clk),
+        .rst_n          (bus2ip_rst_n),  
+    
+        .sync_reset_i   (1'b0), 
+        .write_en_i     (mac_addr1_wr), 
+        .data_i         (bus2ip_data_i[15:0]),
+        .data_o         (mac_addr1[15:0]) 
+    );
+    assign r_MacAddr_o[47:32] = mac_addr1[15:0];
+    assign mac_addr1[31:16]   = 0;
+
+    //Hash table register 0
+    wire hash0_wr = emac_blk_sel & bus2ip_wr_ce_i & (bus2ip_addr_i[7:0] == `EMAC_HASH0_ADR);
+    wire [31:0] hash0;
+
+    eth_register #(32, 0) u_hash0
+    (
+        .clk            (bus2ip_clk),
+        .rst_n          (bus2ip_rst_n),  
+    
+        .sync_reset_i   (1'b0), 
+        .write_en_i     (hash0_wr), 
+        .data_i         (bus2ip_data_i[31:0]),
+        .data_o         (hash0[31:0]) 
+    );
+    assign r_Hash0_o = hash0[31:0];
+
+    //Hash table register 1
+    wire hash1_wr = emac_blk_sel & bus2ip_wr_ce_i & (bus2ip_addr_i[7:0] == `EMAC_HASH1_ADR);
+    wire [31:0] hash1;
+
+    eth_register #(32, 0) u_hash1
+    (
+        .clk            (bus2ip_clk),
+        .rst_n          (bus2ip_rst_n),  
+    
+        .sync_reset_i   (1'b0), 
+        .write_en_i     (hash1_wr), 
+        .data_i         (bus2ip_data_i[31:0]),
+        .data_o         (hash1[31:0]) 
+    );
+    assign r_Hash1_o = hash1[31:0];
 
 
     //MDIO MODE register
@@ -424,20 +543,27 @@ module emac_registers (
 
         if(bus2ip_rd_ce_i == 1'b1 && emac_blk_sel) begin   
             case(bus2ip_addr_i[7:0])    //deal with offset address
-                `EMAC_CONFIG_ADR     :  ip2bus_data = emac_config;
-                `EMAC_IFGCTRL_ADR    :  ip2bus_data = ifg_ctrl;
-                `EMAC_PACKETLEN_ADR  :  ip2bus_data = packet_len;
-                `EMAC_COLLISION_ADR  :  ip2bus_data = collision;
-                `EMAC_TXWMARK_ADR    :  ip2bus_data = tx_water_mark;
-                `EMAC_RXWMARK_ADR    :  ip2bus_data = rx_water_mark;
-                `EMAC_FLOWCTRL_ADR   :  ip2bus_data = flow_ctrl;
-                `EMAC_MDIOMODE_ADR   :  ip2bus_data = mdio_mode;  
-                `EMAC_MDIOCOMMAND_ADR:  ip2bus_data = mdio_command;
-                `EMAC_MDIOADDRESS_ADR:  ip2bus_data = mdio_address;
-                `EMAC_MDIOTX_DATA_ADR:  ip2bus_data = mdio_tx_data;
-                `EMAC_MDIORX_DATA_ADR:  ip2bus_data = mdio_rx_data;
-                `EMAC_MDIOSTATUS_ADR :  ip2bus_data = {29'b0, NValid_stat_i, Busy_stat_i, LinkFail_i};
-                default:            ip2bus_data = 32'h0;
+                `EMAC_CONFIG_ADR       :  ip2bus_data = emac_config;
+                `EMAC_IFGCTRL_ADR      :  ip2bus_data = ifg_ctrl;
+                `EMAC_PACKETLEN_ADR    :  ip2bus_data = packet_len;
+                `EMAC_COLLISION_ADR    :  ip2bus_data = collision;
+                `EMAC_TXWMARK_ADR      :  ip2bus_data = tx_water_mark;
+                `EMAC_RXWMARK_ADR      :  ip2bus_data = rx_water_mark;
+                `EMAC_FLOWCTRL_ADR     :  ip2bus_data = flow_ctrl;
+                `EMAC_TXPAUSE_ADR      :  ip2bus_data = tx_pause;
+                `EMAC_BCASTBUCKET_ADR  :  ip2bus_data = bcast_bucket;
+                `EMAC_MACADDR0_ADR     :  ip2bus_data = mac_addr0;
+                `EMAC_MACADDR1_ADR     :  ip2bus_data = mac_addr1;
+                `EMAC_HASH0_ADR        :  ip2bus_data = hash0;
+                `EMAC_HASH1_ADR        :  ip2bus_data = hash1;
+
+                `EMAC_MDIOMODE_ADR     :  ip2bus_data = mdio_mode;  
+                `EMAC_MDIOCOMMAND_ADR  :  ip2bus_data = mdio_command;
+                `EMAC_MDIOADDRESS_ADR  :  ip2bus_data = mdio_address;
+                `EMAC_MDIOTX_DATA_ADR  :  ip2bus_data = mdio_tx_data;
+                `EMAC_MDIORX_DATA_ADR  :  ip2bus_data = mdio_rx_data;
+                `EMAC_MDIOSTATUS_ADR   :  ip2bus_data = {29'b0, NValid_stat_i, Busy_stat_i, LinkFail_i};
+                default                :  ip2bus_data = 32'h0;
             endcase                        
         end   
     end

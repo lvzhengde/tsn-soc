@@ -52,6 +52,12 @@
 `define EMAC_TXWMARK_ADR       (8'h18)       //TX FIFO Water Mark register {11'b0, txLwMark[4:0], 11'b0, txHwMark[4:0]}
 `define EMAC_RXWMARK_ADR       (8'h1c)       //RX FIFO Water Mark register {11'b0, rxLwMark[4:0], 11'b0, rxHwMark[4:0]}
 `define EMAC_FLOWCTRL_ADR      (8'h20)       //Flow Control register {30'b0, PauseFrameSendEn, TxPauseEn}
+`define EMAC_TXPAUSE_ADR       (8'h24)       //TX pause frame register{15'b0, TxPauseRq, TxPauseTV[15:0]}
+`define EMAC_BCASTBUCKET_ADR   (8'h28)       //Broadcast filter bucket register{BroadcastBucketInterval[15:0], BroadcastBucketDepth[15:0]}
+`define EMAC_MACADDR0_ADR      (8'h2c)       //MAC address register 0 {MacAddr[31:0]}
+`define EMAC_MACADDR1_ADR      (8'h30)       //MAC address register 1 {16'b0, MacAddr[47:32]}
+`define EMAC_HASH0_ADR         (8'h34)       //Hash table register 0 {Hash0[31:0]}
+`define EMAC_HASH1_ADR         (8'h38)       //Hash table register 1 {Hash1[31:0]}
 
 `define EMAC_MDIOMODE_ADR      (8'h90)       //MDIO mode {23'h0, MiiNoPre, ClkDiv[7:0]}
 `define EMAC_MDIOCOMMAND_ADR   (8'h94)       //MDIO command {29'h0, WCtrlData, RStat, ScanStat}
