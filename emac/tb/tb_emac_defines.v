@@ -54,6 +54,22 @@
 `define EMAC_INT_SOURCE  `EMAC_BASE + 32'h04 /* EMAC Interrupt source register  */
 `define EMAC_INT_MASK    `EMAC_BASE + 32'h08 /* EMAC Interrupt mask register  */
 
+`define EMAC_IFGCTRL     `EMAC_BASE + 32'h0c /* EMAC TX/RX Inter Frame Gap control */
+`define EMAC_PACKETLEN   `EMAC_BASE + 32'h10 /* Min/Max packet length setting */
+`define EMAC_COLLISION   `EMAC_BASE + 32'h14 /* Collision configuration register */
+`define EMAC_TXWMARK     `EMAC_BASE + 32'h18 /* TX FIFO Water Mark register */
+`define EMAC_RXWMARK     `EMAC_BASE + 32'h1c /* RX FIFO Water Mark register */
+`define EMAC_FLOWCTRL    `EMAC_BASE + 32'h20 /* Flow Control register */
+`define EMAC_TXPAUSE     `EMAC_BASE + 32'h24 /* TX pause frame register */
+`define EMAC_BCASTBUCKET `EMAC_BASE + 32'h28 /* Broadcast filter bucket register */
+`define EMAC_MACADDR0    `EMAC_BASE + 32'h2c /* MAC address register 0 */
+`define EMAC_MACADDR1    `EMAC_BASE + 32'h30 /* MAC address register 1 */
+`define EMAC_HASH0       `EMAC_BASE + 32'h34 /* Hash table register 0 */
+`define EMAC_HASH1       `EMAC_BASE + 32'h38 /* Hash table register 1 */
+`define EMAC_MIBRDOP     `EMAC_BASE + 32'h3c /* MIB read operation register */
+`define EMAC_MIBGRANT    `EMAC_BASE + 32'h40 /* MIB read grant status register */
+`define EMAC_MIBRDOUT    `EMAC_BASE + 32'h44 /* MIB read data out */
+
 `define EMAC_MDIOMODE    `EMAC_BASE + 32'h90 /* MDIO Mode Register */
 `define EMAC_MDIOCOMMAND `EMAC_BASE + 32'h94 /* MDIO Command Register */
 `define EMAC_MDIOADDRESS `EMAC_BASE + 32'h98 /* MDIO Address Register */

@@ -58,6 +58,9 @@
 `define EMAC_MACADDR1_ADR      (8'h30)       //MAC address register 1 {16'b0, MacAddr[47:32]}
 `define EMAC_HASH0_ADR         (8'h34)       //Hash table register 0 {Hash0[31:0]}
 `define EMAC_HASH1_ADR         (8'h38)       //Hash table register 1 {Hash1[31:0]}
+`define EMAC_MIBRDOP_ADR       (8'h3c)       //MIB read operation register {15'b0, MibRdApply, 10'b0, MibRdAddr[5:0]}
+`define EMAC_MIBGRANT_ADR      (8'h40)       //MIB read grant status register {31'b0, MibRdGrant}
+`define EMAC_MIBRDOUT_ADR      (8'h44)       //MIB read data out {MibRdDout[31:0]}
 
 `define EMAC_MDIOMODE_ADR      (8'h90)       //MDIO mode {23'h0, MiiNoPre, ClkDiv[7:0]}
 `define EMAC_MDIOCOMMAND_ADR   (8'h94)       //MDIO command {29'h0, WCtrlData, RStat, ScanStat}

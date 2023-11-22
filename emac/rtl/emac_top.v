@@ -37,19 +37,19 @@
 
 module emac_top (
     //System signals
-    input               sys_rst_n,               //async. reset, active low
+    input               sys_rst_n,         //async. reset, active low
     input               clk_125m ,
     input               clk_user ,
     output [2:0]        speed_o  ,
-    input               dl_xmt_i ,               //downlink(PTP) is transmitting, backpressure signal
+    input               dl_xmt_i ,         //downlink(PTP) is transmitting, backpressure signal
 
     //32 bits on chip host bus access interface
     input               bus2ip_clk     ,         //clock used for register access and mdio
     input               bus2ip_rst_n   ,
     input  [31:0]       bus2ip_addr_i  ,
     input  [31:0]       bus2ip_data_i  ,
-    input               bus2ip_rd_ce_i ,         //active high
-    input               bus2ip_wr_ce_i ,         //active high
+    input               bus2ip_rd_ce_i ,   //active high
+    input               bus2ip_wr_ce_i ,   //active high
     output [31:0]       ip2bus_data_o  , 
 
     //RX FIFO user interface
@@ -74,21 +74,21 @@ module emac_top (
     input               rx_dv_i, 
     input               rx_er_i, 
     input  [7:0]        rxd_i  , 
-    input               crs_i  ,                //carrier sense from PHY
-    input               col_i  ,                //collision from PHY
+    input               crs_i  ,           //carrier sense from PHY
+    input               col_i  ,           //collision from PHY
       
     //PHY GMII/MII tx interface
-    output              gtx_clk,                //used only in GMII mode, from MAC to PHY
-    input               tx_clk ,                //used only in MII mode, from PHY to MAc
+    output              gtx_clk,           //used only in GMII mode, from MAC to PHY
+    input               tx_clk ,           //used only in MII mode, from PHY to MAc
     output              tx_en_o,
     output              tx_er_o,
     output [7:0]        txd_o  ,
 
     //PHY mdio interface
-    output              mdc_o     ,              //mdio clock
-    output              mdo_en_o  ,              //mdio output enable
-    output              mdo_o     ,              //mdio serial data output
-    input               mdi_i                    //mdio serial data input
+    output              mdc_o     ,         //mdio clock
+    output              mdo_en_o  ,         //mdio output enable
+    output              mdo_o     ,         //mdio serial data output
+    input               mdi_i               //mdio serial data input
 );
     //miim related signals
     wire  [7:0]     r_ClkDiv;
@@ -124,13 +124,11 @@ module emac_top (
     wire  [3:0]     r_MaxRetry           ; //Maximum retry times when collision occurred
     wire  [5:0]     r_IFGSet             ; //Minimum IFG value
     wire            r_txMacAddrEn        ; //enable to replace source MAC address of transmitting packet            
-    //wire  [47:0]    r_txMacAddr          ; //mac address which will replace the source mac address of transmit packet.
     wire            r_TxPauseEn          ; //respond to received pause frame enable
 
     wire            r_RxEn                    ; //receive enable
     wire            r_rxAddrChkEn             ; //check RX MAC address enable    
     wire            r_AllAddrHashChkEn        ; //All address Hash check enable, not limited to multicast
-    //wire  [47:0]    r_rxMacAddr               ; //MAC address used for check
     wire  [31:0]    r_Hash0                   ; //HASH table for address check, lower 4 bytes
     wire  [31:0]    r_Hash1                   ; //HASH table for address check, upper 4 bytes 
     wire            r_BroadcastFilterEn       ; //Broadcast packet filter enable
@@ -149,7 +147,6 @@ module emac_top (
     wire            RstMibRdApply ; //Clear r_MibRdApply to zero
     wire            r_MibRdGrant  ; //MIB read data out is available
     wire  [31:0]    r_MibRdDout   ; //MIB read data out
-
 
     //clock signals
     wire            mac_tx_clk    ;
@@ -415,6 +412,12 @@ module emac_top (
         .r_MacAddr_o                 (r_MacAddr                ), 
         .r_Hash0_o                   (r_Hash0                  ), 
         .r_Hash1_o                   (r_Hash1                  ), 
+
+        .r_MibRdAddr_o               (r_MibRdAddr              ), 
+        .r_MibRdApply_o              (r_MibRdApply             ),
+        .RstMibRdApply_i             (RstMibRdApply            ), 
+        .r_MibRdGrant_i              (r_MibRdGrant             ), 
+        .r_MibRdDout_i               (r_MibRdDout              ), 
 
         // EMAC MIIM registers
         .r_ClkDiv_o            (r_ClkDiv            ),

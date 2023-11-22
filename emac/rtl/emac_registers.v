@@ -80,6 +80,12 @@ module emac_registers (
     output [31:0]       r_Hash0_o            , //HASH table for address check, lower 4 bytes
     output [31:0]       r_Hash1_o            , //HASH table for address check, upper 4 bytes 
 
+    output [5:0]        r_MibRdAddr_o        , //Read address for MIB RAM
+    output              r_MibRdApply_o       , //Write 1 to start MIB read operation
+    input               RstMibRdApply_i      , //Clear r_MibRdApply to zero
+    input               r_MibRdGrant_i       , //MIB read data out is available
+    input  [31:0]       r_MibRdDout_i        , //MIB read data out
+
     //EMAC MIIM registers
     output [7:0]        r_ClkDiv_o           , 
     output              r_MiiNoPre_o         , 
@@ -396,6 +402,38 @@ module emac_registers (
     );
     assign r_Hash1_o = hash1[31:0];
 
+    //MIB read operation register 
+    wire mib_read_op_wr = emac_blk_sel & bus2ip_wr_ce_i & (bus2ip_addr_i[7:0] == `EMAC_MIBRDOP_ADR);
+    wire [31:0] mib_read_op;
+
+    eth_register #(6, 0) u_mib_read_addr
+    (
+        .clk            (bus2ip_clk),
+        .rst_n          (bus2ip_rst_n),  
+    
+        .sync_reset_i   (1'b0), 
+        .write_en_i     (mib_read_op_wr), 
+        .data_i         (bus2ip_data_i[5:0]),
+        .data_o         (mib_read_op[5:0]) 
+    );
+    assign r_MibRdAddr_o     = mib_read_op[5:0];
+    assign mib_read_op[15:6] = 0;
+
+    eth_register #(1, 0) u_mib_read_apply
+    (
+        .clk            (bus2ip_clk),
+        .rst_n          (bus2ip_rst_n),  
+    
+        .sync_reset_i   (RstMibRdApply_i), 
+        .write_en_i     (mib_read_op_wr), 
+        .data_i         (bus2ip_data_i[16]),
+        .data_o         (mib_read_op[16]) 
+    );
+    assign r_MibRdApply_o     = mib_read_op[16];
+    assign mib_read_op[31:17] = 0;
+
+
+
 
     //MDIO MODE register
     wire mdio_mode_wr = emac_blk_sel & bus2ip_wr_ce_i & (bus2ip_addr_i[7:0] == `EMAC_MDIOMODE_ADR);
@@ -556,6 +594,9 @@ module emac_registers (
                 `EMAC_MACADDR1_ADR     :  ip2bus_data = mac_addr1;
                 `EMAC_HASH0_ADR        :  ip2bus_data = hash0;
                 `EMAC_HASH1_ADR        :  ip2bus_data = hash1;
+                `EMAC_MIBRDOP_ADR      :  ip2bus_data = mib_read_op;
+                `EMAC_MIBGRANT_ADR     :  ip2bus_data = {31'b0, r_MibRdGrant_i};
+                `EMAC_MIBRDOUT_ADR     :  ip2bus_data = r_MibRdDout_i;
 
                 `EMAC_MDIOMODE_ADR     :  ip2bus_data = mdio_mode;  
                 `EMAC_MDIOCOMMAND_ADR  :  ip2bus_data = mdio_command;
