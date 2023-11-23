@@ -93,7 +93,8 @@ module tb_emac();
     wire              Mdc_O;
 
     // Connecting Ethernet MAC top module
-    emac_top emac_top (
+    emac_top emac_top 
+    (
         //System signals
         .sys_rst_n            (sys_rst_n),             
         .clk_125m             (clk_125m ),
@@ -181,7 +182,8 @@ module tb_emac();
     );
 
     // Connecting Bus Master
-    bus_master bus_master (
+    bus_master bus_master 
+    (
         .bus2ip_clk           (bus2ip_clk    ),
         .bus2ip_rst_n         (bus2ip_rst_n  ),
         .bus2ip_addr_o        (bus2ip_addr   ),
@@ -191,6 +193,33 @@ module tb_emac();
         .ip2bus_data_i        (ip2bus_data   ) 
     );  
 
+    // Connecting user interface agent
+    reg  host_init_end;
+    emac_user_agent emac_user_agent 
+    (
+        .rst_n                (sys_rst_n    ),
+        .clk_user             (clk_user     ),
+        .init_end_i           (host_init_end),
+    
+        //RX FIFO user interface
+        .rx_mac_ra_i          (rx_mac_ra    ), 
+        .rx_mac_rd_o          (rx_mac_rd    ),
+        .rx_mac_data_i        (rx_mac_data  ),
+        .rx_mac_be_i          (rx_mac_be    ),
+        .rx_mac_pa_i          (rx_mac_pa    ), 
+        .rx_mac_sop_i         (rx_mac_sop   ), 
+        .rx_mac_eop_i         (rx_mac_eop   ), 
+    
+        //TX FIFO user interface 
+        .tx_mac_wa_i          (tx_mac_wa    ), 
+        .tx_mac_wr_o          (tx_mac_wr    ),
+        .tx_mac_data_o        (tx_mac_data  ),
+        .tx_mac_be_o          (tx_mac_be    ),
+        .tx_mac_sop_o         (tx_mac_sop   ),
+        .tx_mac_eop_o         (tx_mac_eop   ) 
+    );
+    
+
     reg         StartTB;
     integer     tb_log_file;
 
@@ -199,6 +228,7 @@ module tb_emac();
     initial begin
         sys_rst_n = 1;
         bus2ip_rst_n = 1;
+        host_init_end = 0;
         StartTB = 0;
 
         #55 

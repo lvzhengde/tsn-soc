@@ -32,6 +32,7 @@
 ../tb/bus_master.v
 ../tb/ephy_model.v
 ../tb/tb_emac.v
+../tb/emac_user_agent.v
 
 //simulation top level
 ../sim/sim_emac.v
