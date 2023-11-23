@@ -232,7 +232,7 @@ module ephy_model  // Simplified PHY model
     assign #1 md_io = (m_rst_n && md_io_enable) ? md_io_output : 1'bz ;
 
     // registering input
-    always@(posedge mdc_i or negedge m_rst_n) begin
+    always @(posedge mdc_i or negedge m_rst_n) begin
         if (!m_rst_n)
             md_io_reg <= #1 0;
         else
@@ -241,7 +241,7 @@ module ephy_model  // Simplified PHY model
 
     // getting (shifting) PHY address, Register address and Data in
     // putting Data out and shifting
-    always@(posedge mdc_i or negedge m_rst_n) begin
+    always @(posedge mdc_i or negedge m_rst_n) begin
         if (!m_rst_n) begin
             phy_address <= 0;
             reg_address <= 0;
@@ -276,7 +276,7 @@ module ephy_model  // Simplified PHY model
     assign #1 register_bus_in = reg_data_in; // md_put_reg_data_in - allows writing to a selected register
 
     // counter for transfer to and from MIIM
-    always@(posedge mdc_i or negedge m_rst_n) begin
+    always @(posedge mdc_i or negedge m_rst_n) begin
         if (!m_rst_n) begin
             if (no_preamble)
                 md_transfer_cnt <= 33;
@@ -618,7 +618,7 @@ module ephy_model  // Simplified PHY model
     reg    self_clear_d3;
 
     // Self clearing control
-    always@(posedge mdc_i or negedge m_rst_n) begin
+    always @(posedge mdc_i or negedge m_rst_n) begin
         if (!m_rst_n) begin
             self_clear_d0    <= #1 0;
             self_clear_d1    <= #1 0;
@@ -634,7 +634,7 @@ module ephy_model  // Simplified PHY model
     end
 
     // Writing to a selected register
-    always@(posedge mdc_i or negedge m_rst_n) begin
+    always @(posedge mdc_i or negedge m_rst_n) begin
         if ((!m_rst_n) || (control_bit15)) begin
             if (!registers_addr_data_test_operation) begin // normal operation
               control_bit15    <= #1 0;
@@ -971,18 +971,18 @@ module ephy_model  // Simplified PHY model
         frame_started = 0;
     end
 
-    always@(posedge mtx_en_i) begin
+    always @(posedge mtx_en_i) begin
         frame_started <= 1;
     end
 
-    always@(negedge mtx_en_i) begin
+    always @(negedge mtx_en_i) begin
         if (frame_started) begin
             $fdisplay(phy_log, "   (%0t)(%m) TX frame ended with tx_en reset!", $time);
             frame_started <= 0;
         end
     end
     
-    always@(posedge mrx_er_o) begin
+    always @(posedge mrx_er_o) begin
         $fdisplay(phy_log, "   (%0t)(%m) RX frame ERROR signal was set!", $time);
     end
     `endif

@@ -53,21 +53,21 @@ module emac_top (
     output [31:0]       ip2bus_data_o  , 
 
     //RX FIFO user interface
-    output              rx_mac_ra_o     ,
-    input               rx_mac_rd_i     ,
-    output [31:0]       rx_mac_data_o   ,
-    output [1:0]        rx_mac_be_o     ,
-    output              rx_mac_pa_o     ,
-    output              rx_mac_sop_o    ,
-    output              rx_mac_eop_o    ,
+    output              rx_mac_ra_o     , //RX FIFO read data available
+    input               rx_mac_rd_i     , //RX FIFO read enable
+    output [31:0]       rx_mac_data_o   , //Read data output, aligned with rx_mac_pa_o
+    output [1:0]        rx_mac_be_o     , //Byte enable for the last word, little endian
+    output              rx_mac_pa_o     , //packet data valid
+    output              rx_mac_sop_o    , //start of packet
+    output              rx_mac_eop_o    , //end of packet
 
     //TX FIFO user interface 
-    output              tx_mac_wa_o     ,
-    input               tx_mac_wr_i     ,
-    input  [31:0]       tx_mac_data_i   ,
-    input  [1:0]        tx_mac_be_i     ,
-    input               tx_mac_sop_i    ,
-    input               tx_mac_eop_i    ,
+    output              tx_mac_wa_o     , //FIFO write data available
+    input               tx_mac_wr_i     , //MAC data write enable
+    input  [31:0]       tx_mac_data_i   , //MAC data input
+    input  [1:0]        tx_mac_be_i     , //byte enable, little endian
+    input               tx_mac_sop_i    , //Start of Packet input
+    input               tx_mac_eop_i    , //End of Packet input
 
     //PHY GMII/MII rx interface
     input               rx_clk ,

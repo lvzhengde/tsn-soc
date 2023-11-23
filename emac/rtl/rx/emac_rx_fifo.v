@@ -52,7 +52,7 @@ module emac_rx_fifo (
     //user interface 
     output reg          rx_mac_ra_o   ,   //RX FIFO read data available
     input               rx_mac_rd_i   ,   //RX FIFO read enable
-    output [31:0]       rx_mac_data_o ,
+    output [31:0]       rx_mac_data_o ,   //Read data output, aligned with rx_mac_pa_o
     output [1:0]        rx_mac_be_o   ,   //Byte enable for the last word, little endian
     output reg          rx_mac_pa_o   ,   //packet data valid
     output reg          rx_mac_sop_o  ,   //start of packet
