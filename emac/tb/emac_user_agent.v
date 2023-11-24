@@ -40,11 +40,10 @@
 module emac_user_agent (
     input               rst_n           ,
     input               clk_user        ,
-    input               init_end_i      ,
 
     //RX FIFO user interface
     input               rx_mac_ra_i     , //RX FIFO read data available
-    output              rx_mac_rd_o     , //RX FIFO read enable
+    output reg          rx_mac_rd_o     , //RX FIFO read enable
     input  [31:0]       rx_mac_data_i   , //Read data output, aligned with rx_mac_pa_o
     input  [1:0]        rx_mac_be_i     , //Byte enable for the last word, little endian
     input               rx_mac_pa_i     , //packet data valid
@@ -53,12 +52,149 @@ module emac_user_agent (
 
     //TX FIFO user interface 
     input               tx_mac_wa_i     , //FIFO write data available
-    output              tx_mac_wr_o     , //MAC data write enable
-    output [31:0]       tx_mac_data_o   , //MAC data input
-    output [1:0]        tx_mac_be_o     , //byte enable, little endian
-    output              tx_mac_sop_o    , //Start of Packet input
-    output              tx_mac_eop_o      //End of Packet input
+    output reg          tx_mac_wr_o     , //MAC data write enable
+    output reg [31:0]   tx_mac_data_o   , //MAC data input
+    output reg [1:0]    tx_mac_be_o     , //byte enable, little endian
+    output reg          tx_mac_sop_o    , //Start of Packet input
+    output reg          tx_mac_eop_o      //End of Packet input
 );
-`include "emac_utils.v"
+    reg   [7:0]  tx_buf[0:16383];
+    reg   [9:0]  rx_buf[0:16383];
+    reg   [31:0] rcv_ptr;
+
+    initial begin
+        rx_mac_rd_o   = 0;  
+        tx_mac_wr_o   = 0; 
+        tx_mac_data_o = 0; 
+        tx_mac_be_o   = 0;
+        tx_mac_sop_o  = 0; 
+        tx_mac_eop_o  = 0; 
+
+        rcv_ptr       = 0; 
+    end
+
+    //++
+    //task to transmit frame
+    //--
+    task TransmitFrame(input  frameLength);
+        integer i;
+        
+        begin
+            i = 0;
+            while(i < frameLength) begin
+                @(posedge clk_user);
+                #1;
+
+                if(tx_mac_wa_i) begin
+                    if((i+4) <= frameLength) begin
+                        tx_mac_wr_o   = 1;   
+                        tx_mac_data_o = {tx_buf[i+3], tx_buf[i+2], tx_buf[i+1], tx_buf[i]};   
+                        tx_mac_be_o   = 2'b00;
+                        if(i == 0)
+                            tx_mac_sop_o = 1;
+                        else
+                            tx_mac_sop_o = 0;
+
+                        if((i+4) == frameLength)
+                            tx_mac_eop_o = 1;
+                        else 
+                            tx_mac_eop_o = 0;
+                    end
+                    else if((i+3) == frameLength) begin
+                        tx_mac_wr_o   = 1;   
+                        tx_mac_data_o = {8'b0, tx_buf[i+2], tx_buf[i+1], tx_buf[i]};   
+                        tx_mac_be_o   = 2'b11;
+                        tx_mac_sop_o = 0;
+                        tx_mac_eop_o = 1;
+                    end
+                    else if((i+2) == frameLength) begin
+                        tx_mac_wr_o   = 1;   
+                        tx_mac_data_o = {16'b0, tx_buf[i+1], tx_buf[i]};   
+                        tx_mac_be_o   = 2'b10;
+                        tx_mac_sop_o = 0;
+                        tx_mac_eop_o = 1;
+                    end
+                    else if((i+1) == frameLength) begin
+                        tx_mac_wr_o   = 1;   
+                        tx_mac_data_o = {24'b0, tx_buf[i]};   
+                        tx_mac_be_o   = 2'b01;
+                        tx_mac_sop_o = 0;
+                        tx_mac_eop_o = 1;
+                    end
+                end //tx_mac_wa_i == 1
+                else begin
+                    tx_mac_wr_o   = 0; 
+                    tx_mac_data_o = 0; 
+                    tx_mac_be_o   = 0;
+                    tx_mac_sop_o  = 0; 
+                    tx_mac_eop_o  = 0;  
+                end
+
+                i = i + 4;
+            end //while
+        end
+    endtask
+
+    //++
+    //receive data from RX FIFO and store to rx_buf
+    //--
+    always @(posedge clk_user or negedge rst_n) begin
+        if(!rst_n)
+            rx_mac_rd_o <= 0;
+        //else if(rx_mac_ra_i && rx_mac_rd_o == 0) //read-wait-read
+        else if(rx_mac_ra_i) 
+            rx_mac_rd_o <= 1;
+        else 
+            rx_mac_rd_o <= 0;
+    end
+
+    always @(posedge clk_user or negedge rst_n) begin
+        if(!rst_n) begin
+            rcv_ptr = 0;
+        end
+        else if(rx_mac_pa_i) begin
+            if(rx_mac_eop_i != 1) begin
+                rx_buf[rcv_ptr]   = {rx_mac_sop_i, 1'b0, rx_mac_data_i[7:0]};
+                rx_buf[rcv_ptr+1] = {2'b0, rx_mac_data_i[15:8]};
+                rx_buf[rcv_ptr+2] = {2'b0, rx_mac_data_i[23:16]};
+                rx_buf[rcv_ptr+3] = {2'b0, rx_mac_data_i[31:24]};
+
+                rcv_ptr = rcv_ptr + 4;
+            end
+            else begin
+                case(rx_mac_be_i)
+                    2'b00:
+                    begin
+                        rx_buf[rcv_ptr]   = {2'b0, rx_mac_data_i[7:0]};
+                        rx_buf[rcv_ptr+1] = {2'b0, rx_mac_data_i[15:8]};
+                        rx_buf[rcv_ptr+2] = {2'b0, rx_mac_data_i[23:16]};
+                        rx_buf[rcv_ptr+3] = {1'b0, rx_mac_eop_i, rx_mac_data_i[31:24]};
+                        rcv_ptr = rcv_ptr + 4;
+                    end
+
+                    2'b11:
+                    begin
+                        rx_buf[rcv_ptr]   = {2'b0, rx_mac_data_i[7:0]};
+                        rx_buf[rcv_ptr+1] = {2'b0, rx_mac_data_i[15:8]};
+                        rx_buf[rcv_ptr+2] = {1'b0, rx_mac_eop_i, rx_mac_data_i[23:16]};
+                        rcv_ptr = rcv_ptr + 3;
+                    end
+
+                    2'b10:
+                    begin
+                        rx_buf[rcv_ptr]   = {2'b0, rx_mac_data_i[7:0]};
+                        rx_buf[rcv_ptr+1] = {1'b0, rx_mac_eop_i, rx_mac_data_i[15:8]};
+                        rcv_ptr = rcv_ptr + 2;
+                    end
+
+                    2'b01:
+                    begin
+                        rx_buf[rcv_ptr]   = {1'b0, rx_mac_eop_i, rx_mac_data_i[7:0]};
+                        rcv_ptr = rcv_ptr + 1;
+                    end
+                endcase
+            end //rx_mac_eop_i
+        end //rx_mac_pa_i
+    end
 
 endmodule

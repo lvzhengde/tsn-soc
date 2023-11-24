@@ -194,12 +194,10 @@ module tb_emac();
     );  
 
     // Connecting user interface agent
-    reg  host_init_end;
     emac_user_agent emac_user_agent 
     (
         .rst_n                (sys_rst_n    ),
         .clk_user             (clk_user     ),
-        .init_end_i           (host_init_end),
     
         //RX FIFO user interface
         .rx_mac_ra_i          (rx_mac_ra    ), 
@@ -228,7 +226,6 @@ module tb_emac();
     initial begin
         sys_rst_n = 1;
         bus2ip_rst_n = 1;
-        host_init_end = 0;
         StartTB = 0;
 
         #55 
