@@ -427,7 +427,7 @@ begin
     #200;
 
     // Set MAC speed
-    tb.bus_master.write_reg(`EMAC_CONFIG, {29'b0, `EMAC_SPEED});
+    tb.bus_master.write_reg(`EMAC_CONFIG, `EMAC_CONFIG_SPEED);
 
     //////////////////////////////////////////////////////////////////////
     ////                                                              ////

@@ -77,6 +77,20 @@
 `define EMAC_MDIORX_DATA `EMAC_BASE + 32'ha0 /* MDIO Receive Data Register */
 `define EMAC_MDIOSTATUS  `EMAC_BASE + 32'ha4 /* MDIO Status Register */
 
+/* EMAC Configuration Register */
+`define EMAC_CONFIG_SPEED               (32'b100    ) /*3'b100: 1000Mbps, 3'b010: 100Mbps, 3'b001: 10Mbps*/
+`define EMAC_CONFIG_LOOPBACK            (32'b1 << 3 ) /* Loop Back */
+`define EMAC_CONFIG_RXEN                (32'b1 << 4 ) /* Receive Enable */
+`define EMAC_CONFIG_TXEN                (32'b1 << 5 ) /* Transmit Enable */
+`define EMAC_CONFIG_RXADDRCHKEN         (32'b1 << 6 ) /* Receive MAC Address Check Enable */
+`define EMAC_CONFIG_ALLADDRHASHCHKEN    (32'b1 << 7 ) /* All Receive MAC Address Checked Using Hash Table Enable */
+`define EMAC_CONFIG_BROADCASTFILTEREN   (32'b1 << 8 ) /* Receive Broadcast Packet Filter Enable */
+`define EMAC_CONFIG_RXAPPENDCRC         (32'b1 << 9 ) /* Append CRC for Received Frame */
+`define EMAC_CONFIG_CRCCHKEN            (32'b1 << 10) /* Receive Frame CRC Check Enable */
+`define EMAC_CONFIG_CRCEN               (32'b1 << 11) /* Transmit Frame CRC Enable */
+`define EMAC_CONFIG_FULLDUPLEX          (32'b1 << 12) /* Full Duplex Mode */
+`define EMAC_CONFIG_TXMACADDREN         (32'b1 << 13) /* Replace MAC Address of Transmit Frame Enable */
+
 /* MDIO Mode Register */
 `define EMAC_MDIOMODE_CLKDIV   32'h000000FF /* Clock Divider */
 `define EMAC_MDIOMODE_NOPRE    32'h00000100 /* No Preamble */
@@ -96,8 +110,6 @@
 `define EMAC_MDIOSTATUS_BUSY        1 /* MDIO Busy bit */
 `define EMAC_MDIOSTATUS_NVALID      2 /* Data in MDIO Status Register is invalid bit */
 
-/*Ethernet Speed */
-`define EMAC_SPEED                  3'b100 //3'b100: 1000Mbps, 3'b010: 100Mbps, 3'b001: 10Mbps
 
 `define TIME $display("  Time: %0t", $time)
 
