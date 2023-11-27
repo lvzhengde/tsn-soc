@@ -130,7 +130,7 @@ module emac_tx (
         //flow control
         .pause_apply_i            (pause_apply            ),            
         .pause_quanta_sub_o       (pause_quanta_sub       ),        
-        .TxPauseRq_gen_i          (TxPauseRq_gen_i         ),
+        .TxPauseRq_gen_i          (TxPauseRq_gen           ),
         .TxPauseRq_gen_complete_o (TxPauseRq_gen_complete_o),
         //MAC TX FIFO interface
         .fifo_data_i              (fifo_data              ),            

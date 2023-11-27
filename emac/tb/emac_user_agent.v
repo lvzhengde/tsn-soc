@@ -76,7 +76,7 @@ module emac_user_agent (
     //++
     //task to transmit frame
     //--
-    task TransmitFrame(input  frameLength);
+    task TransmitFrame(input integer frameLength);
         integer i;
         
         begin
@@ -132,6 +132,15 @@ module emac_user_agent (
 
                 i = i + 4;
             end //while
+
+            @(posedge clk_user);
+            #1;
+            tx_mac_wr_o   = 0; 
+            tx_mac_data_o = 0; 
+            tx_mac_be_o   = 0;
+            tx_mac_sop_o  = 0; 
+            tx_mac_eop_o  = 0;  
+
         end
     endtask
 

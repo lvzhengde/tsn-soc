@@ -80,99 +80,16 @@ initial begin
     tests_failed = 0;
     
     //  Call tests
-    //  ----------
-    //test_access_to_mac_reg(0, 4);           // 0 - 4
-    //test_miim(0, 17);                       // 0 - 17
-    test_miim(0, 2);                        
+    test_full_duplex_transmit_1000M(64, 69);                        
 
     // Finish test's logs
-    //test_summary;
+    test_summary;
     $display("\n\n END of SIMULATION");
     $fclose(tb.tb_log_file | tb.phy_log_file_desc);
   
     $stop;
 end
 
-//////////////////////////////////////////////////////////////
-// functions to assemble frame
-//////////////////////////////////////////////////////////////
-`include "emac_utils.v"
-
-reg   [7:0]  frame_buf[0:16383];
-reg   [7:0]  payload_buf[0:16366];
-
-function integer AssembleFrame(input [47:0] dstMacAddr, input [47:0] srcMacAddr, 
-                     input [15:0] lengthType, input integer payloadLen,  input crcEn);
-    integer len;
-    integer i;
-    integer m;
-    integer pad_len;
-    reg [31:0] frame_crc;
-
-    begin
-        len = 0;
-
-        //destination address
-        for(i = 0; i < 6; i = i+1) begin
-            frame_buf[len] = dstMacAddr[(47-i*8)-:8];
-            len = len + 1;
-        end
-
-        //source address
-        for(i = 0; i < 6; i = i+1) begin
-            frame_buf[len] = srcMacAddr[(47-i*8)-:8];
-            len = len + 1;
-        end
-
-        //Length/Type
-        frame_buf[len+0] = lengthType[15:8]; frame_buf[len+1] = lengthType[7:0]; 
-        len = len + 2;
-
-        //payload
-        for(i = 0; i < payloadLen; i = i+1) begin
-            frame_buf[len] = payload_buf[i];
-            len = len + 1;
-        end
-
-        //padding and calculate CRC
-        if(crcEn == 1) begin
-            pad_len = 64 - (len + 4);
-
-            if(pad_len > 0) begin
-                for(m = 0; m < pad_len; m = m+1) begin
-                    frame_buf[len] = 8'h00;
-                    len = len + 1;
-                end
-            end
-
-            //crc octets
-            frame_crc = CalculateFrameFCS(len);
-            frame_buf[len+0] = frame_crc[7:0];    frame_buf[len+1] = frame_crc[15:8];  
-            frame_buf[len+2] = frame_crc[23:16];  frame_buf[len+3] = frame_crc[31:24];
-            len = len + 4; 
-        end  //crcEn
-
-        AssembleFrame = len;
-    end
-endfunction
-
-//calculate FCS for frame_buf
-function [31:0] CalculateFrameFCS(input integer dataLen);
-    integer i;
-    reg [31:0] current_crc;
-    reg [31:0] next_crc;
-
-    begin
-        current_crc = 32'hffff_ffff;
-        for(i = 0; i < dataLen; i = i + 1) begin
-            next_crc = nextCRC32_D8(reverse_8b(frame_buf[i]), current_crc);
-            current_crc = next_crc; 
-        end
-
-        CalculateFrameFCS = ~reverse_32b(current_crc);
-    end
-endfunction
-    
 //////////////////////////////////////////////////////////////
 // Log files and memory tasks
 //////////////////////////////////////////////////////////////
@@ -303,7 +220,6 @@ begin
     $fdisplay(tb.tb_log_file, "Failed tests   :   %d", tests_failed) ;
     $fdisplay(tb.tb_log_file, "Successfull tests: %d", tests_successfull) ;
     $fdisplay(tb.tb_log_file, "**************************** Ethernet MAC test summary **********************************") ;
-    $fclose(tb.tb_log_file) ;
 end
 endtask // test_summary
 
@@ -394,274 +310,222 @@ begin
 end
 endtask // miim_scan_finish
 
+//////////////////////////////////////////////////////////////
+// functions to assemble frame
+//////////////////////////////////////////////////////////////
+`include "emac_utils.v"
+
+reg   [7:0]  frame_buf[0:16383];
+reg   [7:0]  payload_buf[0:16366];
+
+function integer AssembleFrame(input [47:0] dstMacAddr, input [47:0] srcMacAddr, 
+                     input [15:0] lengthType, input integer payloadLen,  input crcEn);
+    integer len;
+    integer i;
+    integer m;
+    integer pad_len;
+    reg [31:0] frame_crc;
+
+    begin
+        len = 0;
+
+        //destination address
+        for(i = 0; i < 6; i = i+1) begin
+            frame_buf[len] = dstMacAddr[(47-i*8)-:8];
+            len = len + 1;
+        end
+
+        //source address
+        for(i = 0; i < 6; i = i+1) begin
+            frame_buf[len] = srcMacAddr[(47-i*8)-:8];
+            len = len + 1;
+        end
+
+        //Length/Type
+        frame_buf[len+0] = lengthType[15:8]; frame_buf[len+1] = lengthType[7:0]; 
+        len = len + 2;
+
+        //payload
+        for(i = 0; i < payloadLen; i = i+1) begin
+            frame_buf[len] = payload_buf[i];
+            len = len + 1;
+        end
+
+        //padding and calculate CRC
+        if(crcEn == 1) begin
+            pad_len = 64 - (len + 4);
+
+            if(pad_len > 0) begin
+                for(m = 0; m < pad_len; m = m+1) begin
+                    frame_buf[len] = 8'h00;
+                    len = len + 1;
+                end
+            end
+
+            //crc octets
+            frame_crc = CalculateFrameFCS(len);
+            frame_buf[len+0] = frame_crc[7:0];    frame_buf[len+1] = frame_crc[15:8];  
+            frame_buf[len+2] = frame_crc[23:16];  frame_buf[len+3] = frame_crc[31:24];
+            len = len + 4; 
+        end  //crcEn
+
+        AssembleFrame = len;
+    end
+endfunction
+
+//calculate FCS for frame_buf
+function [31:0] CalculateFrameFCS(input integer dataLen);
+    integer i;
+    reg [31:0] current_crc;
+    reg [31:0] next_crc;
+
+    begin
+        current_crc = 32'hffff_ffff;
+        for(i = 0; i < dataLen; i = i + 1) begin
+            next_crc = nextCRC32_D8(reverse_8b(frame_buf[i]), current_crc);
+            current_crc = next_crc; 
+        end
+
+        CalculateFrameFCS = ~reverse_32b(current_crc);
+    end
+endfunction
 
 //////////////////////////////////////////////////////////////
 // Test tasks
 //////////////////////////////////////////////////////////////
 
-task test_miim;
-    input  [31:0]  start_task;
-    input  [31:0]  end_task;
+task test_full_duplex_transmit_1000M;
+    input  [31:0]  start_frame_len;
+    input  [31:0]  end_frame_len;
+
     integer        i;
-    integer        i1;
-    integer        i2;
-    integer        i3;
-    integer        cnt;
     integer        fail;
-    integer        test_num;
-    reg     [8:0]  clk_div; // only 8 bits are valid!
-    reg     [4:0]  phy_addr;
-    reg     [4:0]  reg_addr;
-    reg     [15:0] phy_data;
-    reg     [15:0] tmp_data;
+    integer        frame_len;
+    integer        payload_len;
+    integer        assemble_len;
+    integer        ifg_interval;           
+    integer        frame_file;
+
+    reg   [31:0]   reg_data;
+    reg   [47:0]   dst_mac_addr;
+    reg   [47:0]   src_mac_addr;
+    reg   [15:0]   length_type;
+    reg   [7:0]    frame_data;
+
+    // storage memory for TX data 
+    reg   [7:0]    tx_mem [0:4194303]; // 4194304 locations of 8-bit data width
+    integer        tx_mem_addr;        // address for storing to TX memory
 begin
-    // MIIM MODULE TEST
-    test_heading("MIIM MODULE TEST");
+    // Open file to dump frame data
+    frame_file = $fopen("./log/emac_frame.dat");
+    if (frame_file < 2)
+    begin
+        $display("*E Could not open/create frame data dump file in ./log/ directory!");
+        $finish;
+    end
+
+    // MAC FULL DUPLEX TRANSMIT TEST--1000M SPEED
+    test_heading("MAC FULL DUPLEX TRANSMIT TEST -- 1000M SPEED");
     $display(" ");
-    $display("MIIM MODULE TEST");
+    $display("MAC FULL DUPLEX TRANSMIT TEST--1000M SPEED");
     fail = 0;
-    
+
     // reset MAC registers
     tb.hard_reset;
 
     #200;
 
-    // Set MAC speed
-    tb.bus_master.write_reg(`EMAC_CONFIG, `EMAC_CONFIG_SPEED);
+    // Set MAC configuration register
+    reg_data = `EMAC_CONFIG_SPEED | `EMAC_CONFIG_RXEN | `EMAC_CONFIG_TXEN | `EMAC_CONFIG_CRCEN | `EMAC_CONFIG_FULLDUPLEX;
+    tb.bus_master.write_reg(`EMAC_CONFIG, reg_data);
 
-    //////////////////////////////////////////////////////////////////////
-    ////                                                              ////
-    ////  test_miim:                                                  ////
-    ////                                                              ////
-    ////  0:  Test clock divider of mii management module with all    ////
-    ////      possible frequences.                                    ////
-    ////  1:  Test various readings from 'real' phy registers.        ////
-    ////  2:  Test various writings to 'real' phy registers (control  ////
-    ////      and non writable registers)                             ////
-    ////  3:  Test reset phy through miim management module           ////
-    ////  4:  Test 'walking one' across phy address (with and without ////
-    ////      preamble)                                               ////
-    ////  5:  Test 'walking one' across phy's register address (with  ////
-    ////      and without preamble)                                   ////
-    ////  6:  Test 'walking one' across phy's data (with and without  ////
-    ////      preamble)                                               ////
-    ////  7:  Test reading from phy with wrong phy address (host      ////
-    ////      reading high 'z' data)                                  ////
-    ////  8:  Test writing to phy with wrong phy address and reading  ////
-    ////      from correct one                                        ////
-    ////  9:  Test sliding stop scan command immediately after read   ////
-    ////      request (with and without preamble)                     ////
-    //// 10:  Test sliding stop scan command immediately after write  ////
-    ////      request (with and without preamble)                     ////
-    //// 11:  Test busy and nvalid status durations during write      ////
-    ////      (with and without preamble)                             ////
-    //// 12:  Test busy and nvalid status durations during write      ////
-    ////      (with and without preamble)                             ////
-    //// 13:  Test busy and nvalid status durations during scan (with ////
-    ////      and without preamble)                                   ////
-    //// 14:  Test scan status from phy with detecting link-fail bit  ////
-    ////      (with and without preamble)                             ////
-    //// 15:  Test scan status from phy with sliding link-fail bit    ////
-    ////      (with and without preamble)                             ////
-    //// 16:  Test sliding stop scan command immediately after scan   ////
-    ////      request (with and without preamble)                     ////
-    //// 17:  Test sliding stop scan command after 2. scan (with and  ////
-    ////      without preamble)                                       ////
-    ////                                                              ////
-    //////////////////////////////////////////////////////////////////////
+    #200;
 
-    for (test_num = start_task; test_num <= end_task; test_num = test_num + 1) begin
-        ////////////////////////////////////////////////////////////////////
-        ////                                                            ////
-        ////  Test clock divider of mii management module with all      ////
-        ////  possible frequences.                                      ////
-        ////                                                            ////
-        ////////////////////////////////////////////////////////////////////
-        if (test_num == 0) begin //
-            // TEST 0: CLOCK DIVIDER OF MII MANAGEMENT MODULE WITH ALL POSSIBLE FREQUENCES
-            test_name   = "TEST 0: CLOCK DIVIDER OF MII MANAGEMENT MODULE WITH ALL POSSIBLE FREQUENCES";
-            `TIME; $display("  TEST 0: CLOCK DIVIDER OF MII MANAGEMENT MODULE WITH ALL POSSIBLE FREQUENCES");
-        
-            wait(tb.Mdc_O); // wait for MDIO clock to be 1
-            for(clk_div = 0; clk_div <= 255; clk_div = clk_div + 1) begin
-                i1 = 0;
-                i2 = 0;
-                #Tp miim_set_clk_div(clk_div[7:0]);
-                @(posedge tb.Mdc_O);
-                #Tp;
-                fork
-                    begin
-                        @(posedge tb.Mdc_O);
-                        #Tp;
-                        disable count_i1;
-                        disable count_i2;
-                    end
-                    begin: count_i1
-                        forever begin
-                            @(posedge tb.bus2ip_clk);
-                            i1 = i1 + 1;
-                            #Tp;
-                        end
-                    end
-                    begin: count_i2
-                        forever begin
-                            @(negedge tb.bus2ip_clk);
-                            i2 = i2 + 1;
-                            #Tp;
-                        end
-                    end
-                join
+    test_name    = "TEST: MAC FULL DUPLEX TRANSMIT TEST -- 1000M SPEED";
+    ifg_interval = 500; //ns
+    tx_mem_addr  = 0;
 
-                if((clk_div[7:0] == 0) || (clk_div[7:0] == 1) || (clk_div[7:0] == 2) || (clk_div[7:0] == 3)) begin
-                    if((i1 == i2) && (i1 == 2)) begin
-                    end
-                    else begin
-                        fail = fail + 1;
-                        test_fail("Clock divider of MII module did'nt divide frequency corectly (it should divide by 2)");
-                    end
-                end
-                else begin
-                    if((i1 == i2) && (i1 == {clk_div[7:1], 1'b0})) begin
-                    end
-                    else begin
-                        fail = fail + 1;
-                        test_fail("Clock divider of MII module did'nt divide frequency corectly");
-                    end
-                end
-            end
+    dst_mac_addr = 48'hE0_55_57_D0_00_03;
+    src_mac_addr = 48'hD0_77_82_C0_02_65;
+    length_type  = 16'h187f;   //user defined type
 
-            if(fail == 0) begin
-                test_ok;
-                `TIME; $display("  TEST 0: CLOCK DIVIDER OF MII MANAGEMENT MODULE WITH ALL POSSIBLE FREQUENCES: All Passed!");
-            end 
-            else begin
-                fail = 0;
-            end
-        end // test_num == 0
+    for(frame_len = start_frame_len; frame_len <= end_frame_len; frame_len = frame_len + 1) begin
+        `TIME; $display("   Transmitted frame length frame_len = %d", frame_len);
+        payload_len = frame_len - (12+2+4);  //subtract dst/src mac address, type/length, crc length
 
-        ////////////////////////////////////////////////////////////////////
-        ////                                                            ////
-        ////  Test various readings from 'real' phy registers.          ////
-        ////                                                            ////
-        ////////////////////////////////////////////////////////////////////
-        if (test_num == 1) begin//
-            // TEST 1: VARIOUS READINGS FROM 'REAL' PHY REGISTERS
-            test_name   = "TEST 1: VARIOUS READINGS FROM 'REAL' PHY REGISTERS";
-            `TIME; $display("  TEST 1: VARIOUS READINGS FROM 'REAL' PHY REGISTERS");
-        
-            // set the fastest possible MII
-            clk_div = 0;
-            miim_set_clk_div(clk_div[7:0]);
-            // set address
-            reg_addr = 5'h1F;
-            phy_addr = 5'h1;
-            while(reg_addr >= 5'h4) begin
-                // read request
-                #Tp miim_read_req(phy_addr, reg_addr);
-                check_miim_busy; // wait for read to finish
-                // read data
-                tb.bus_master.read_reg(`EMAC_MDIORX_DATA, phy_data);
-                if (phy_data !== 16'hDEAD) begin
-                    test_fail("Wrong data was read from PHY from 'not used' address space");
-                    fail = fail + 1;
-                end
-                if (reg_addr == 5'h4) // go out of for loop
-                    reg_addr = 5'h3;
-                else
-                    reg_addr = reg_addr - 5'h9;
-            end
-        
-            // set address
-            reg_addr = 5'h3;
-            // read request
-            #Tp miim_read_req(phy_addr, reg_addr);
-            check_miim_busy; // wait for read to finish
-            // read data
-            tb.bus_master.read_reg(`EMAC_MDIORX_DATA, phy_data);
-            if (phy_data !== {`PHY_ID2, `MAN_MODEL_NUM, `MAN_REVISION_NUM}) begin
-              test_fail("Wrong data was read from PHY from ID register 2");
-              fail = fail + 1;
-            end
-
-            if(fail == 0) begin
-                test_ok;
-                `TIME; $display("  TEST 1: VARIOUS READINGS FROM 'REAL' PHY REGISTERS: All Passed!");
-            end
-            else begin
-                fail = 0;
-            end
-        end //test_num == 1
-        
-        ////////////////////////////////////////////////////////////////////
-        ////                                                            ////
-        ////  Test various writings to 'real' phy registers (control    ////
-        ////  and non writable registers)                               ////
-        ////                                                            ////
-        ////////////////////////////////////////////////////////////////////
-        if (test_num == 2) begin// 
-            // TEST 2: VARIOUS WRITINGS TO 'REAL' PHY REGISTERS ( CONTROL AND NON WRITABLE REGISTERS )
-            test_name   = "TEST 2: VARIOUS WRITINGS TO 'REAL' PHY REGISTERS ( CONTROL AND NON WRITABLE REGISTERS )";
-            `TIME; $display("  TEST 2: VARIOUS WRITINGS TO 'REAL' PHY REGISTERS ( CONTROL AND NON WRITABLE REGISTERS )");
-        
-            // negate data and try to write into unwritable register
-            tmp_data = ~phy_data;
-            // write request
-            #Tp miim_write_req(phy_addr, reg_addr, tmp_data);
-            check_miim_busy; // wait for write to finish
-            // read request
-            #Tp miim_read_req(phy_addr, reg_addr);
-            check_miim_busy; // wait for read to finish
-            // read data
-            tb.bus_master.read_reg(`EMAC_MDIORX_DATA, tmp_data);
-            if (tmp_data !== phy_data) begin
-                test_fail("Data was written into unwritable PHY register - ID register 2");
-                fail = fail + 1;
-            end
-        
-            // set address
-            reg_addr = 5'h0; // control register
-            // read request
-            #Tp miim_read_req(phy_addr, reg_addr);
-            check_miim_busy; // wait for read to finish
-            // read data
-            tb.bus_master.read_reg(`EMAC_MDIORX_DATA, tmp_data);
-            // write request
-            phy_data = 16'h7DFF; // bit 15 (RESET bit) and bit 9 are self clearing bits
-            #Tp miim_write_req(phy_addr, reg_addr, phy_data);
-            check_miim_busy; // wait for write to finish
-            // read request
-            #Tp miim_read_req(phy_addr, reg_addr);
-            check_miim_busy; // wait for read to finish
-            // read data
-            tb.bus_master.read_reg(`EMAC_MDIORX_DATA, phy_data);
-            if (phy_data !== 16'h7DFF) begin
-                test_fail("Data was not correctly written into OR read from writable PHY register - control register");
-                fail = fail + 1;
-            end
-            // write request
-            #Tp miim_write_req(phy_addr, reg_addr, tmp_data);
-            check_miim_busy; // wait for write to finish
-            // read request
-            #Tp miim_read_req(phy_addr, reg_addr);
-            check_miim_busy; // wait for read to finish
-            // read data
-            tb.bus_master.read_reg(`EMAC_MDIORX_DATA, phy_data);
-            if (phy_data !== tmp_data) begin
-                test_fail("Data was not correctly written into OR read from writable PHY register - control register");
-                fail = fail + 1;
-            end
-
-            if(fail == 0) begin
-                test_ok;
-                `TIME; $display("  TEST 2: VARIOUS WRITINGS TO 'REAL' PHY REGISTERS ( CONTROL AND NON WRITABLE REGISTERS ): All Passed!");
-            end
-            else begin
-                fail = 0;
-            end
+        // Fill payload_buf;
+        frame_data = 0;
+        for(i = 0; i < payload_len; i = i + 1) begin
+            payload_buf[i] = frame_data;
+            frame_data = frame_data + 1;
         end
-        
-    end   //  for (test_num=start_task; test_num <= end_task; test_num=test_num+1)
-end
-endtask // test_miim
-  
 
+        // Assemble frame
+        assemble_len = AssembleFrame(dst_mac_addr, src_mac_addr, length_type, payload_len, 1'b1);
+        if(assemble_len != frame_len) begin
+            `TIME; $display("  Assemble frame error, frame_len = %h, assemble_len = %h", frame_len, assemble_len);
+            fail = fail + 1;
+            disable test_full_duplex_transmit_1000M;
+        end
+
+        // Dump frame data to file
+        for(i = 0; i < frame_len; i = i+4) begin
+            if((i+4) <= frame_len) 
+                $fdisplay(frame_file, "%h  %h %h %h %h", i, frame_buf[i], frame_buf[i+1], frame_buf[i+2], frame_buf[i+3]);  
+            else if((i+3) == frame_len)
+                $fdisplay(frame_file, "%h  %h %h %h", i, frame_buf[i], frame_buf[i+1], frame_buf[i+2]);  
+            else if((i+2) == frame_len)
+                $fdisplay(frame_file, "%h  %h %h", i, frame_buf[i], frame_buf[i+1]);  
+            else if((i+1) == frame_len)
+                $fdisplay(frame_file, "%h  %h", i, frame_buf[i]);  
+        end
+        $fdisplay(frame_file, "   ");
+
+        // Store frame data (include CRC) to tx_mem, which will be used to compare received data in PHY model
+        for(i = 0; i < frame_len; i = i+1) begin
+            tx_mem[tx_mem_addr] = frame_buf[i];
+            tx_mem_addr = tx_mem_addr + 1;
+        end 
+
+        // Write frame data (exclude CRC) to TX FIFO to start MAC frame transmit
+        for(i = 0; i < frame_len-4; i = i+1) begin
+            tb.emac_user_agent.tx_buf[i] = frame_buf[i];
+        end
+        tb.emac_user_agent.TransmitFrame(frame_len-4);
+
+        #ifg_interval;  //wait ifg_interval ns       
+    end   //for(frame_len = start_frame_len; frame_len <= end_frame_len; frame_len = frame_len + 1)
+
+    // Compare the data received in PHY model with the transmitted data
+    `TIME; 
+    $display("  Total frame data transmitted : %d", tx_mem_addr);
+    $display("  Waiting for PHY Model to complete data reception...");
+    wait_timeout(tb.ephy_model.tx_mem_addr_in == tx_mem_addr, 20000);
+
+    for(i = 0; i < tx_mem_addr; i = i+1) begin
+        if(tx_mem[i] != tb.ephy_model.tx_mem[i]) begin
+            fail = fail + 1;
+            $display("    Transmit data and receive data mismatch at mem_addr: %d, Tx data: %h, Rx data: %h",
+                          i, tx_mem[i], tb.ephy_model.tx_mem[i]);
+        end
+    end
+
+    if(fail == 0)
+        $display("\nTEST PASS!!!");
+    else
+        $display("\nTEST FAIL!!!");
+
+    $fclose(frame_file);
+end
+endtask // test_full_duplex_transmit_1000M
+  
+task wait_timeout(input ev, input integer ns_timeout);
+    integer time_elapsed;
+begin
+    time_elapsed = 0;
+    while(!ev && time_elapsed < ns_timeout) begin
+        time_elapsed = time_elapsed + 10;
+        #10;
+    end
+end
+endtask
