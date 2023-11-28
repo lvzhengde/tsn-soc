@@ -59,7 +59,7 @@ module emac_user_agent (
     output reg          tx_mac_eop_o      //End of Packet input
 );
     reg   [7:0]  tx_buf[0:16383];
-    reg   [9:0]  rx_buf[0:16383];
+    reg   [9:0]  rx_buf[0:4194303];
     reg   [31:0] rcv_ptr;
 
     initial begin

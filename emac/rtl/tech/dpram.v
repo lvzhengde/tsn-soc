@@ -68,8 +68,15 @@ module dpram #(
         .q_a            (q_a),
         .q_b            (q_b),
     );
-`else
+`else //behavioral description for simulation
     reg [DATA_WIDTH-1:0]    ram_data [DEPTH-1:0];  
+    integer i;
+
+    //initialize memory
+    initial begin
+        for(i = 0; i < DEPTH; i = i+1)
+            ram_data[i] = 0;
+    end
 
     always @(posedge clock_a) begin //port-a writing
         if(wren_a)

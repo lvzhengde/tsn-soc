@@ -1088,6 +1088,7 @@ module ephy_model  // Simplified PHY model
                 #1;
                 rx_mem_data_out = rx_mem[rx_mem_addr_in[21:0]];
                 mrxd_o = rx_mem_data_out[7:0];
+                rx_mem_addr_in = rx_mem_addr_in + 1;
                 @(posedge mrx_clk);
                 #1;
             end
