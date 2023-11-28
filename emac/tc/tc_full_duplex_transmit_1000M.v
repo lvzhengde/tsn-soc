@@ -63,6 +63,7 @@ initial begin
   `ifdef VCD
      $dumpfile("./log/ethmac.vcd");
      $dumpvars(0);
+     $dumpoff;
   `endif
 end
 integer      tests_successfull;
@@ -80,7 +81,7 @@ initial begin
     tests_failed = 0;
     
     //  Call tests
-    test_full_duplex_transmit_1000M(64, 69);                        
+    test_full_duplex_transmit_1000M(64, 1518);                        
 
     // Finish test's logs
     test_summary;
@@ -500,7 +501,7 @@ begin
     `TIME; 
     $display("  Total frame data transmitted : %d", tx_mem_addr);
     $display("  Waiting for PHY Model to complete data reception...");
-    wait_timeout(tb.ephy_model.tx_mem_addr_in == tx_mem_addr, 20000);
+    wait_timeout(tb.ephy_model.tx_mem_addr_in == tx_mem_addr, 2_000_000);
 
     for(i = 0; i < tx_mem_addr; i = i+1) begin
         if(tx_mem[i] != tb.ephy_model.tx_mem[i]) begin
@@ -512,8 +513,10 @@ begin
 
     if(fail == 0)
         $display("\nTEST PASS!!!");
-    else
-        $display("\nTEST FAIL!!!");
+    else begin
+        $display("\nTEST FAIL!!!, Mismatched Number: %d", fail);
+        test_fail("Full Duplex Transmit 1000M Speed Test Fail, Data Mismatch!");
+    end
 
     $fclose(frame_file);
 end

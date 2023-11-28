@@ -121,6 +121,8 @@ module emac_user_agent (
                         tx_mac_sop_o = 0;
                         tx_mac_eop_o = 1;
                     end
+
+                    i = i + 4;
                 end //tx_mac_wa_i == 1
                 else begin
                     tx_mac_wr_o   = 0; 
@@ -129,8 +131,6 @@ module emac_user_agent (
                     tx_mac_sop_o  = 0; 
                     tx_mac_eop_o  = 0;  
                 end
-
-                i = i + 4;
             end //while
 
             @(posedge clk_user);
