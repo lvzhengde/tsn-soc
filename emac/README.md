@@ -37,12 +37,11 @@ cd /path/to/emac/sim<br>
 <br>
 如果需要更换测试用例，执行以下命令：<br>
 <blockquote>
-.wish script/runcase.tcl<br>
+wish script/runcase.tcl<br>
 </blockquote>
 在弹出的对话框中可以选择测试用例文件，并生成仿真的顶层文件sim_emac.v。<br>
 上面产生测试顶层文件的方法需要安装Tcl/Tk。<br>
 如果没有安装Tcl/Tk，也可以直接编辑sim_emac.v文件以更换测试用例文件。<br>
-<br>
 <br>
 
 本开源项目着重于整体架构设计和开源设计流程的建立，目前情况下，保证基本功能测试通过即可。<br>
