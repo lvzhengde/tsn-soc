@@ -63,7 +63,7 @@ initial begin
   `ifdef VCD
      $dumpfile("./log/ethmac.vcd");
      $dumpvars(0);
-     //$dumpoff;
+     $dumpoff;
   `endif
 end
 integer      tests_successfull;
@@ -81,7 +81,7 @@ initial begin
     tests_failed = 0;
     
     //  Call tests
-    test_full_duplex_receive_1000M(64, 69);                        
+    test_full_duplex_receive_1000M(64, 1518);                        
 
     // Finish test's logs
     test_summary;

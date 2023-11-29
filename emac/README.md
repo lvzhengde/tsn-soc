@@ -28,6 +28,21 @@ sim: 仿真运行所在目录<br>
 doc: 参考文档<br>
 </blockquote>
 <br>
+RTL仿真基于Linux操作系统，使用Icarus Verilog完成。<br>
+执行以下命令以运行基本的RTL功能测试：<br>
+<blockquote>
+cd /path/to/emac/sim<br>
+./runsim<br>
+</blockquote>
+<br>
+如果需要更换测试用例，执行以下命令：<br>
+<blockquote>
+.wish script/runcase.tcl<br>
+</blockquote>
+在弹出的对话框中可以选择测试用例文件，并生成仿真的顶层文件sim_emac.v。<br>
+上面产生测试顶层文件的方法需要安装Tcl/Tk。<br>
+如果没有安装Tcl/Tk，也可以直接编辑sim_emac.v文件以更换测试用例文件。<br>
+
 
 本开源项目着重于整体架构设计和开源设计流程的建立，目前情况下，保证基本功能测试通过即可。<br>
 如果读者有意在此基础上进一步开发，请自行进行修改，使其功能符合特定需求并得到充分的验证和测试。<br>
