@@ -97,12 +97,12 @@ module emac_tx_fifo (
     reg  [`EMAC_TXFF_AWIDTH-1:0]       add_wr          ;
     reg  [`EMAC_TXFF_AWIDTH-1:0]       add_wr_ungray   ;
     reg  [`EMAC_TXFF_AWIDTH-1:0]       add_wr_gray     ;
-    wire [`EMAC_TXFF_AWIDTH-1:0]       add_wr_gray_tmp ;
+    reg  [`EMAC_TXFF_AWIDTH-1:0]       add_wr_gray_reg ;
 
     reg  [`EMAC_TXFF_AWIDTH-1:0]       add_rd          ;
     reg  [`EMAC_TXFF_AWIDTH-1:0]       add_rd_reg      ;
     reg  [`EMAC_TXFF_AWIDTH-1:0]       add_rd_gray     ;
-    wire [`EMAC_TXFF_AWIDTH-1:0]       add_rd_gray_tmp ;
+    reg  [`EMAC_TXFF_AWIDTH-1:0]       add_rd_gray_reg ;
     reg  [`EMAC_TXFF_AWIDTH-1:0]       add_rd_ungray   ;
 
     wire [35:0]      din     ;
@@ -264,6 +264,8 @@ module emac_tx_fifo (
             add_wr_gray[i] = add_wr[i+1] ^ add_wr[i];
     end
 
+    always @(posedge clk_sys) add_wr_gray_reg <= add_wr_gray;
+
     //synchronize read Gray address to clk_sys domain
     reg  [`EMAC_TXFF_AWIDTH-1:0]       add_rd_gray_d1  ;
     reg  [`EMAC_TXFF_AWIDTH-1:0]       add_rd_gray_d2;
@@ -272,7 +274,7 @@ module emac_tx_fifo (
         if(!rst_n)
             {add_rd_gray_d1, add_rd_gray_d2} <= 0;
         else
-            {add_rd_gray_d1, add_rd_gray_d2} <= {add_rd_gray, add_rd_gray_d1};
+            {add_rd_gray_d1, add_rd_gray_d2} <= {add_rd_gray_reg, add_rd_gray_d1};
     end
                     
     reg             add_rd_jump_wr_d1, add_rd_jump_wr_d2;
@@ -559,6 +561,8 @@ module emac_tx_fifo (
             add_rd_gray[i] = add_rd[i+1] ^ add_rd[i];
     end
 
+    always @(posedge clk_mac) add_rd_gray_reg <= add_rd_gray;
+
     //synchronize write Gray address to clk_mac domain
     reg  [`EMAC_TXFF_AWIDTH-1:0]       add_wr_gray_d1  ;
     reg  [`EMAC_TXFF_AWIDTH-1:0]       add_wr_gray_d2  ;
@@ -567,7 +571,7 @@ module emac_tx_fifo (
         if(!rst_n)
             {add_wr_gray_d1, add_wr_gray_d2} <= 0;
         else
-            {add_wr_gray_d1, add_wr_gray_d2} <= {add_wr_gray, add_wr_gray_d1};
+            {add_wr_gray_d1, add_wr_gray_d2} <= {add_wr_gray_reg, add_wr_gray_d1};
     end
             
     always @(*) begin : UNGRAY_WRITE

@@ -79,12 +79,14 @@ module emac_rx_fifo (
     parameter       FF_EMPTY_ERR  = 3'd4;
 
     reg [`EMAC_RXFF_AWIDTH-1:0]       add_wr;
+    reg [`EMAC_RXFF_AWIDTH-1:0]       add_wr_reg;
     reg [`EMAC_RXFF_AWIDTH-1:0]       add_wr_ungray;
     reg [`EMAC_RXFF_AWIDTH-1:0]       add_wr_gray;
-    reg [`EMAC_RXFF_AWIDTH-1:0]       add_wr_reg;
+    reg [`EMAC_RXFF_AWIDTH-1:0]       add_wr_gray_reg;
     
     reg [`EMAC_RXFF_AWIDTH-1:0]       add_rd;
     reg [`EMAC_RXFF_AWIDTH-1:0]       add_rd_gray;
+    reg [`EMAC_RXFF_AWIDTH-1:0]       add_rd_gray_reg;
     reg [`EMAC_RXFF_AWIDTH-1:0]       add_rd_ungray;
 
     reg  [35:0]      din;
@@ -211,6 +213,8 @@ module emac_rx_fifo (
         for(i = `EMAC_RXFF_AWIDTH-2; i >= 0; i = i-1)
             add_wr_gray[i] = add_wr[i+1] ^ add_wr[i];
     end
+
+    always @(posedge clk_mac) add_wr_gray_reg <= add_wr_gray;
     
     //synchronize read Gray address to clk_mac domain
     reg [`EMAC_RXFF_AWIDTH-1:0]       add_rd_gray_d1;
@@ -220,7 +224,7 @@ module emac_rx_fifo (
         if (!rst_n)
             {add_rd_gray_d1, add_rd_gray_d2} <= 0;
         else
-            {add_rd_gray_d1, add_rd_gray_d2} <= {add_rd_gray, add_rd_gray_d1};
+            {add_rd_gray_d1, add_rd_gray_d2} <= {add_rd_gray_reg, add_rd_gray_d1};
     end
                         
     //Gray to binary address--read address
@@ -592,6 +596,8 @@ module emac_rx_fifo (
             add_rd_gray[i] = add_rd[i+1] ^ add_rd[i];
     end
 
+    always @(posedge clk_sys) add_rd_gray_reg <= add_rd_gray;
+
     //write Gray address synchronized to clk_sys domain
     reg [`EMAC_RXFF_AWIDTH-1:0]       add_wr_gray_d1;
     reg [`EMAC_RXFF_AWIDTH-1:0]       add_wr_gray_d2;
@@ -602,7 +608,7 @@ module emac_rx_fifo (
             add_wr_gray_d2 <= 0;
         end
         else begin
-            add_wr_gray_d1 <= add_wr_gray;
+            add_wr_gray_d1 <= add_wr_gray_reg;
             add_wr_gray_d2 <= add_wr_gray_d1;
         end
     end
