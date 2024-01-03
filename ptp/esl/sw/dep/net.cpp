@@ -188,7 +188,7 @@ net::netSelect(TimeInternal * timeout, NetPath * netPath)
 {
     double wt_us = 1.0; //default to 1 us
 
-    if (timeout < 0)
+    if (timeout != NULL && timeout->nanoseconds < 0)
       return FALSE;
     
     if(timeout) {
