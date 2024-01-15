@@ -11,9 +11,9 @@ pipe:= |
 empty:=
 space:= $(empty) $(empty)
 
-export RISCV_TARGET ?= riscvOVPsim
+export RISCV_TARGET ?= exactstep
 export RISCV_DEVICE ?= rv32i
-export RISCV_PREFIX ?= riscv64-unknown-elf-
+export RISCV_PREFIX ?= riscv32-unknown-elf-
 
 RISCV_ISA_ALL = $(shell ls $(ROOTDIR)/riscv-target/$(RISCV_TARGET)/device)
 RISCV_ISA_OPT = $(subst $(space),$(pipe),$(RISCV_ISA_ALL))
