@@ -44,5 +44,8 @@
 ../../tb/core_icarus/tcm_mem_ram.v
 ../../tb/core_icarus/tcm_mem.v
 
+//testcase file
+../../tc/riscv-compliance/tc_compliance.v
+
 //include directories
 +incdir+../../rtl/core
