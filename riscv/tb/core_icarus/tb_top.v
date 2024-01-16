@@ -1,44 +1,17 @@
+`timescale 1ns/10fs
+
 module tb_top;
 
 reg clk;
 reg rst;
 
 reg [7:0] mem[131072:0];
-integer i;
-integer f;
-
-initial
-begin
-    $display("Starting bench");
-
-    if (`TRACE)
-    begin
-        $dumpfile("waveform.fst");
-        $dumpvars(0, tb_top);
-    end
-
-    // Reset
-    clk = 0;
-    rst = 1;
-    repeat (5) @(posedge clk);
-    rst = 0;
-
-    // Load TCM memory
-    for (i=0;i<131072;i=i+1)
-        mem[i] = 0;
-
-    f = $fopen("./build/tcm.bin", "r");
-    //f = $fopenr("./build/tcm.bin");
-    i = $fread(mem, f);
-    for (i=0;i<131072;i=i+1)
-        u_mem.write(i, mem[i]);
-end
 
 initial
 begin
     forever
     begin 
-        clk = #5 ~clk;
+        #5 clk = ~clk;
     end
 end
 

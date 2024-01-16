@@ -44,5 +44,8 @@
 ../../tb/core_icarus/tcm_mem_ram.v
 ../../tb/core_icarus/tcm_mem.v
 
+//testcase file
+../../tc/core_icarus/tc_basic.v
+
 //include directories
 +incdir+../../rtl/core

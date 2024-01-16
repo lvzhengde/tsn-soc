@@ -476,6 +476,11 @@ end
 `endif
 `ifdef verilog_sim
 `define HAS_SIM_CTRL
+    reg sim_finish;
+    
+    initial begin
+        sim_finish = 0;
+    end
 `endif
 
 always @ (posedge clk_i or posedge rst_i)
@@ -548,8 +553,12 @@ begin
         `CSR_SIM_CTRL_EXIT:
         begin
             //exit(csr_wdata_i[7:0]);
-            $finish;
-            $finish;
+            `ifdef verilog_sim
+                sim_finish = 1;
+            `else
+                $finish;
+                $finish;
+            `endif
         end
         `CSR_SIM_CTRL_PUTC:
         begin
