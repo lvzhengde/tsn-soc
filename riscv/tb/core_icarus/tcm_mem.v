@@ -129,5 +129,24 @@ begin
 end
 endtask
 
+//-------------------------------------------------------------
+// read: Read byte from memory
+//-------------------------------------------------------------
+task read; /*verilator public*/
+    input  [31:0] addr;
+    output [7:0]  data;
+begin
+    case (addr[2:0])
+    3'd0: data = u_ram.ram[addr/8][7:0]   ;
+    3'd1: data = u_ram.ram[addr/8][15:8]  ;
+    3'd2: data = u_ram.ram[addr/8][23:16] ;
+    3'd3: data = u_ram.ram[addr/8][31:24] ;
+    3'd4: data = u_ram.ram[addr/8][39:32] ;
+    3'd5: data = u_ram.ram[addr/8][47:40] ;
+    3'd6: data = u_ram.ram[addr/8][55:48] ;
+    3'd7: data = u_ram.ram[addr/8][63:56] ;
+    endcase
+end
+endtask
 
 endmodule
