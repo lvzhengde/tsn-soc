@@ -16,6 +16,8 @@
 #define RV_COMPLIANCE_HALT                                               \
         .globl _exit;                                                    \
         _exit_wrap:                                                      \
+        la t3, begin_signature;                                          \
+        la t4, end_signature;                                            \
         li a0, 0;                                                        \
         _exit:                                                           \
         csrw dscratch, a0;                                               \

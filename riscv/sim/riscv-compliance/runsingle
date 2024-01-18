@@ -1,0 +1,34 @@
+#!/bin/bash  
+
+trap 'kill $!; exit' INT #terminate script running when press CTRL+C 
+
+#set the number of arguments
+ARG_NUM=2
+
+#check arguments
+if [ $# -ne $ARG_NUM ]; then
+  echo -e "\nargument number error: $#"
+  echo "the number of arguments should be :$ARG_NUM"
+  echo "usage: ./runsingle isa instruction_test_name (prefix of elf file names)"
+  echo -e "for example: ./runsingle rv32i I-MISALIGN_JMP-01\n"
+  exit 1
+fi
+
+#compile and run
+make clean
+make
+
+#generate bin file for TCM
+elf_path="work/${1}/elf/${2}.elf"
+if [ ! -f "$elf_path" ]; then
+    echo "elf file does not exist, exit!"
+    exit 1
+fi
+
+riscv32-unknown-elf-objcopy ${elf_path} -O binary tcm.bin
+riscv32-unknown-elf-objdump -D ${elf_path} > ${2}.objdump
+
+#run simulation
+signature_name=${2}.signature.output
+vvp -n ./riscv_sim.out +dumpfile=${signature_name} -fst
+
