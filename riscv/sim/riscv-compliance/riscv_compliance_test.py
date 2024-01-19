@@ -42,6 +42,8 @@ def main():
     #print(isa_dirs)
 
     # FIXME. unsupported instructions.
+    # There is a bug in original I-MISALIGN_JMP-01.S file 
+    # which lead to endless loop when misalign exception occurs
     unsupported_list = ['I-MISALIGN_JMP-01']
 
     # traverse all elf files in the ISA directory
@@ -77,7 +79,9 @@ def main():
             signature_name = base_name + '.signature.output'
             signature_path = work_dir+'/'+isa+'/signature/'+signature_name
             vvp_cmd = 'vvp -n '+'./riscv_sim.out '+'+dumpfile='+signature_path+' -fst'
-            subprocess.call(vvp_cmd, shell=True)
+            #subprocess.call(vvp_cmd, shell=True)
+            process = subprocess.Popen(vvp_cmd, shell=True)
+            process.wait(timeout=5)            
 
             #compare with reference signature
             ref_name = base_name + '.reference_output'

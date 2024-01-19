@@ -82,7 +82,7 @@ $(ELFS): $(work_dir_isa)/elf/%.elf: $(src_dir)/%.S
 		-o $@; 
 
 clean:
-	rm -rf $(work_dir) *.vcd *.fst *.out *.bin *.objdump
+	rm -rf $(work_dir) *.vcd *.fst *.out *.bin *.objdump *.output
 
 help:
 	@echo "make"

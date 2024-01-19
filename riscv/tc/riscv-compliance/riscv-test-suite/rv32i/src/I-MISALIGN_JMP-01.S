@@ -280,7 +280,7 @@ RV_COMPLIANCE_CODE_BEGIN
 _trap_handler:
     # increment return address
     csrr    x30, mtval
-    addi    x30, x30, -2
+    addi    x30, x30, 10
     csrw    mepc, x30
 
     # store low bits of mbadaddr
