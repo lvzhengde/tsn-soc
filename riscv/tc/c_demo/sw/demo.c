@@ -31,7 +31,7 @@ int main()
         asm("li t3, 0x00");
 
     int t4;
-    asm volatile ("mv %0, %1" : "=r"(t4) : "I"(sum) : "t4");
+    asm volatile ("addi t4, %0, 0" :: "r"(sum));
 
     return 0;
 }
