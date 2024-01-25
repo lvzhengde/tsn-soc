@@ -18,7 +18,7 @@ RISCV_ABI := ilp32
 RISCV_MCMODEL := medlow
 
 #C program setting
-TARGET = c_demo
+TARGET = c_demo.elf
 SW_DIR = ../../tc/c_demo/sw
 
 C_SRCS := $(SW_DIR)/demo.c

@@ -13,7 +13,7 @@ module sim_riscv;
 
     initial
     begin
-        $display("Starting testbench--riscv C program demo test");
+        $display("\n\nStarting testbench--riscv C program demo test\n");
     
         if (`TRACE)
         begin
@@ -39,7 +39,7 @@ module sim_riscv;
         // Wait for finish
         wait(sim_finish == 1);
 
-        $display("t4 = %d", t4);
+        $display("t4 = %d\n", t4);
 
         if(t3 == 32'b1) 
             $display("C demo test PASS!!!");
