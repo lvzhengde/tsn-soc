@@ -20,15 +20,15 @@ void sim_print(const char *str)
 #endif
 }
 
-int mul = 3;
-int div = 3;
+int g_mul = 3;
+int g_div = 3;
 
 int main()
 {
     int i;
     int sum;
 
-    mul = 6;
+    g_mul = 6;
     sum = 0;
 
     sim_print("ADD Test");
@@ -43,11 +43,11 @@ int main()
 
     sim_print("MUL Test");
     // sum = 22650
-    sum = sum * mul;
+    sum = sum * g_mul;
 
     sim_print("DIV Test");
     // sum = 7550, i.e 0x1d7e
-    sum = sum / div;
+    sum = sum / g_div;
 
     int t4;
 
@@ -67,7 +67,13 @@ int main()
     //t4 = 0xd50, i.e. 3408
     t4 = t4 & 0xfd0;
 
+    //display result in C program
+    if (t4 == 3408)
+        sim_print("Print in C program, demo test PASS!\n");
+    else
+        sim_print("Print in C program, demo test FAIL!\n");
 
+    //display result in Verilog testbench
     if (t4 == 3408)
         asm("li t3, 0x01");
     else
