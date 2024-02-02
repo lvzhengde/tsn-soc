@@ -57,14 +57,6 @@ static void exit_override(void)
     if (tb)
         tb->abort();
 }
-//--------------------------------------------------------------------
-// vl_finish: Handling of verilog $finish
-//--------------------------------------------------------------------
-void vl_finish (const char* filename, int linenum, const char* hier)
-{ 
-    // Jump to exit handler!
-    exit(0);    
-}
 //-----------------------------------------------------------------
 // sigint_handler
 //-----------------------------------------------------------------
@@ -120,7 +112,7 @@ int sc_main(int argc, char* argv[])
         trace = 0;    
 
     sc_report_handler::set_actions("/IEEE_Std_1666/deprecated", SC_DO_NOTHING);
-    sc_set_time_resolution(SIM_TIME_RESOLUTION,SIM_TIME_SCALE);
+    //sc_set_time_resolution(SIM_TIME_RESOLUTION,SIM_TIME_SCALE);
 
     // Register custom assert handler
     sc_report_handler::set_handler(assert_handler);
@@ -143,6 +135,10 @@ int sc_main(int argc, char* argv[])
     tb = new testbench("tb");
     tb->CLK0_NAME(CLK0_NAME);
     tb->RST0_NAME(clk0_rst.rst);
+
+    // You must do one evaluation before enabling waves, in order to allow
+    // SystemC to interconnect everything for testing.
+    sc_start(SC_ZERO_TIME);
 
     // Waves
     if (trace)

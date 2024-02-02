@@ -10,15 +10,15 @@ class axi4_lite_master
 {
 public:
     // Members
-    sc_uint <1> AWVALID;
-    sc_uint <32> AWADDR;
-    sc_uint <1> WVALID;
-    sc_uint <32> WDATA;
-    sc_uint <4> WSTRB;
-    sc_uint <1> BREADY;
-    sc_uint <1> ARVALID;
-    sc_uint <32> ARADDR;
-    sc_uint <1> RREADY;
+    bool     AWVALID;
+    uint32_t AWADDR;
+    bool     WVALID;
+    uint32_t WDATA;
+    uint32_t WSTRB;
+    bool     BREADY;
+    bool     ARVALID;
+    uint32_t ARADDR;
+    bool     RREADY;
 
     // Construction
     axi4_lite_master() { init(); }
@@ -104,14 +104,14 @@ class axi4_lite_slave
 {
 public:
     // Members
-    sc_uint <1> AWREADY;
-    sc_uint <1> WREADY;
-    sc_uint <1> BVALID;
-    sc_uint <2> BRESP;
-    sc_uint <1> ARREADY;
-    sc_uint <1> RVALID;
-    sc_uint <32> RDATA;
-    sc_uint <2> RRESP;
+    bool     AWREADY;
+    bool     WREADY;
+    bool     BVALID;
+    uint32_t BRESP;
+    bool     ARREADY;
+    bool     RVALID;
+    uint32_t RDATA;
+    uint32_t RRESP;
 
     // Construction
     axi4_lite_slave() { init(); }

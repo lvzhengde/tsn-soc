@@ -143,7 +143,7 @@ public:
         m_dut->axi_i_in(axi_i_in);
         m_dut->intr_in(intr_in);
 		
-		verilator_trace_enable("verilator.vcd", m_dut);
+		//verilator_trace_enable("verilator.vcd", m_dut);
     }
     //-----------------------------------------------------------------
     // Trace
@@ -178,13 +178,14 @@ public:
     //-----------------------------------------------------------------
     void write(uint32_t addr, uint8_t data)
     {
-        m_dut->m_rtl->__VlSymsp->TOP__v__u_tcm.write(addr, data);
+        //m_dut->m_rtl->__VlSymsp->TOP__v__u_tcm.write(addr, data);
     }
     //-----------------------------------------------------------------
     // write: Read byte from memory
     //-----------------------------------------------------------------
     uint8_t read(uint32_t addr)
     {
-        return m_dut->m_rtl->__VlSymsp->TOP__v__u_tcm.read(addr);
+        //return m_dut->m_rtl->__VlSymsp->TOP__v__u_tcm.read(addr);
+        return 0;
     }
 };
