@@ -5,7 +5,7 @@
 
 #include "riscv_tcm_top_rtl.h"
 #include "Vriscv_tcm_top.h"
-#include "Vriscv_tcm_top__Syms.h"
+#include "Vriscv_tcm_top__Dpi.h"
 
 #include "verilated.h"
 #include "verilated_vcd_sc.h"
@@ -30,7 +30,7 @@ static void help_options(void)
 {
     fprintf (stderr,"Usage:\n");
     fprintf (stderr,"  --elf         | -f FILE       File to load\n");
-    fprintf (stderr,"  --cycles      | -c NUM        Max instructions to execute\n");
+    fprintf (stderr,"  --cycles      | -c NUM        Max cycles to execute\n");
     exit(-1);
 }
 
@@ -47,10 +47,13 @@ public:
 
     int                          m_argc;
     char**                       m_argv;
+
+    std::string                  m_dpi_scope;
+
     //-----------------------------------------------------------------
     // Signals
     //-----------------------------------------------------------------    
-    sc_signal <bool>            rst_cpu_in;
+    sc_signal <bool>             rst_cpu_in;
 
     sc_signal <axi4_master>      axi_t_in;
     sc_signal <axi4_slave>       axi_t_out;
@@ -142,9 +145,8 @@ public:
         m_dut->axi_i_out(axi_i_out);
         m_dut->axi_i_in(axi_i_in);
         m_dut->intr_in(intr_in);
-		
-		//verilator_trace_enable("verilator.vcd", m_dut);
     }
+
     //-----------------------------------------------------------------
     // Trace
     //-----------------------------------------------------------------
@@ -178,14 +180,24 @@ public:
     //-----------------------------------------------------------------
     void write(uint32_t addr, uint8_t data)
     {
-        //m_dut->m_rtl->__VlSymsp->TOP__v__u_tcm.write(addr, data);
+        write_ram(addr, data);
     }
     //-----------------------------------------------------------------
     // write: Read byte from memory
     //-----------------------------------------------------------------
     uint8_t read(uint32_t addr)
     {
-        //return m_dut->m_rtl->__VlSymsp->TOP__v__u_tcm.read(addr);
-        return 0;
+        return read_ram(addr);
+    }
+
+    //set DPI scope
+    void set_dpi_scope(const char* dpi_scope)
+    {
+        m_dpi_scope = dpi_scope;
+
+        //set scope for DPI functions
+        const svScope scope = svGetScopeFromName(m_dpi_scope.c_str());
+        assert(scope); // Check for nullptr if scope not found
+        svSetScope(scope);
     }
 };

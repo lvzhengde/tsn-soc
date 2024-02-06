@@ -249,12 +249,16 @@ assign ext_accept_w         = !mem_d_accept_q;
 assign ext_ack_w            = ext_ack_q;
 
 `ifdef verilator
+
+  /* verilator lint_off UNDRIVEN */
+  export "DPI-C" function write_ram;
+
 //-------------------------------------------------------------
 // write: Write byte into memory
 //-------------------------------------------------------------
-function write; /*verilator public*/
-    input [31:0] addr;
-    input [7:0]  data;
+function write_ram; 
+    input int addr;
+    input byte  data;
 begin
     case (addr[2:0])
     3'd0: u_ram.ram[addr/8][7:0]   = data;
@@ -268,26 +272,28 @@ begin
     endcase
 end
 endfunction
+
+  export "DPI-C" function read_ram;
+
 //-------------------------------------------------------------
 // read: Read byte from memory
 //-------------------------------------------------------------
-function [7:0] read; /*verilator public*/
-    input [31:0] addr;
+function byte read_ram; 
+    input int addr;
 begin
     case (addr[2:0])
-    3'd0: read = u_ram.ram[addr/8][7:0];
-    3'd1: read = u_ram.ram[addr/8][15:8];
-    3'd2: read = u_ram.ram[addr/8][23:16];
-    3'd3: read = u_ram.ram[addr/8][31:24];
-    3'd4: read = u_ram.ram[addr/8][39:32];
-    3'd5: read = u_ram.ram[addr/8][47:40];
-    3'd6: read = u_ram.ram[addr/8][55:48];
-    3'd7: read = u_ram.ram[addr/8][63:56];
+    3'd0: read_ram = u_ram.ram[addr/8][7:0];
+    3'd1: read_ram = u_ram.ram[addr/8][15:8];
+    3'd2: read_ram = u_ram.ram[addr/8][23:16];
+    3'd3: read_ram = u_ram.ram[addr/8][31:24];
+    3'd4: read_ram = u_ram.ram[addr/8][39:32];
+    3'd5: read_ram = u_ram.ram[addr/8][47:40];
+    3'd6: read_ram = u_ram.ram[addr/8][55:48];
+    3'd7: read_ram = u_ram.ram[addr/8][63:56];
     endcase
 end
 endfunction
+  /* verilator lint_on UNDRIVEN */  
 `endif
-
-
 
 endmodule

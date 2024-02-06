@@ -155,24 +155,27 @@ int sc_main(int argc, char* argv[])
     tb->CLK0_NAME(CLK0_NAME);
     tb->RST0_NAME(clk0_rst.rst);
 
+    tb->set_argcv(argc - last_argc, &argv[last_argc]);
+
     // You must do one evaluation before enabling waves, in order to allow
     // SystemC to interconnect everything for testing.
     sc_start(SC_ZERO_TIME);
 
 #if VM_TRACE
     VerilatedVcdSc* tfp = nullptr;
-
     std::cout << "Enabling waves into logs/vlt_dump.vcd...\n";
     tfp = new VerilatedVcdSc;
     tb->m_dut->m_rtl->trace(tfp, 99);  // Trace 99 levels of hierarchy
     tfp->open("logs/vlt_dump.vcd");
+
+    tb->init_trace_ptr(tfp);
 #endif
+    tb->set_dpi_scope("tb.DUT.Vriscv_tcm_top.riscv_tcm_top.u_tcm");
 
     // Waves
     if (trace)
         tb->add_trace(sc_create_vcd_trace_file(vcd_name), "");
 
-    tb->set_argcv(argc - last_argc, &argv[last_argc]);
 
     // Go!
     //sc_start();
@@ -194,7 +197,7 @@ int sc_main(int argc, char* argv[])
     if (tfp) {
         tfp->close();
         tfp = nullptr;
-    }
+    }    
 #endif
 
     return 0;
