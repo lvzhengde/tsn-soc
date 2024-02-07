@@ -66,7 +66,7 @@ static void sigint_handler(int s)
 //--------------------------------------------------------------------
 int sc_main(int argc, char* argv[])
 {
-    bool trace            = true;
+    bool trace            = false;
     int seed              = 1;
     int last_argc         = 0;
     const char * vcd_name = "logs/sysc_wave";

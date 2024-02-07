@@ -556,13 +556,14 @@ begin
             `ifdef verilog_sim
                 sim_finish = 1;
             `else
-                $finish;
+                $display("Terminated by Verilog control--$finish");
                 $finish;
             `endif
         end
         `CSR_SIM_CTRL_PUTC:
         begin
             $write("%c", csr_wdata_i[7:0]);
+            //$display("csr=%x", csr_wdata_i[7:0]);
         end
         endcase
     end

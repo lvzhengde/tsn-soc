@@ -20,7 +20,7 @@
 
 static struct option long_options[] =
 {
-    {"elf",        required_argument, 0, 'f'},
+    {"bin",        required_argument, 0, 'f'},
     {"cycles",     required_argument, 0, 'c'},
     {"help",       no_argument,       0, 'h'},
     {0, 0, 0, 0}
@@ -29,7 +29,7 @@ static struct option long_options[] =
 static void help_options(void)
 {
     fprintf (stderr,"Usage:\n");
-    fprintf (stderr,"  --elf         | -f FILE       File to load\n");
+    fprintf (stderr,"  --bin         | -f FILE       File to load\n");
     fprintf (stderr,"  --cycles      | -c NUM        Max cycles to execute\n");
     exit(-1);
 }
@@ -93,6 +93,13 @@ public:
             }
         }        
 
+        if(m_argc == 1)
+        {
+            const char test_bin[] = "./tcm.bin";
+            filename = test_bin;
+            fprintf (stderr,"BIN file used:  %s\n", filename);
+        }
+
         if (help || filename == NULL)
         {
             help_options();
@@ -105,15 +112,24 @@ public:
         
         // Load Firmware
         printf("Running: %s\n", filename);
+
+        //FIXME. can not use elf_load due to unknown bug.
+#if 0
         elf_load elf(filename, this);
         if (!elf.load())
         {
             fprintf (stderr,"Error: Could not open %s\n", filename);
             sc_stop();
         }
+#endif
+
+        if (!tcm_load(filename))
+        {
+            sc_stop();
+        }
         
         // Release CPU reset after TCM memory loaded
-        wait();
+        for(int i = 0; i < 7; i++) wait();
         rst_cpu_in.write(false);
 
         while (true)
@@ -199,5 +215,29 @@ public:
         const svScope scope = svGetScopeFromName(m_dpi_scope.c_str());
         assert(scope); // Check for nullptr if scope not found
         svSetScope(scope);
+    }
+
+    bool tcm_load(const char* filename)
+    {
+        unsigned char mem[65536];
+
+        //initial tcm memory to 0
+        for (int i = 0; i < 65536; i++)
+            this->write(i, 0);
+
+        //load tcm.bin to tcm memory
+        FILE *f = fopen(filename, "rb"); 
+        if (f == NULL) {
+            printf("Failed to open binary file %s for TCM\n", filename);
+            return false;
+        }
+
+        size_t bytesRead = fread(mem, sizeof(unsigned char), 65536, f);
+        fclose(f);
+
+        for (int i = 0; i < 65536; i++)
+            this->write(i, mem[i]);
+
+        return true;
     }
 };
