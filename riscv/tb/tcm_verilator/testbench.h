@@ -115,6 +115,8 @@ public:
 
         //FIXME. can not use elf_load due to unknown bug.
 #if 0
+        const char test_elf[] = "./c_demo.elf";
+        filename = test_elf;
         elf_load elf(filename, this);
         if (!elf.load())
         {
@@ -232,8 +234,28 @@ public:
             return false;
         }
 
-        size_t bytesRead = fread(mem, sizeof(unsigned char), 65536, f);
+        size_t bytes_read = fread(mem, sizeof(unsigned char), 65536, f);
         fclose(f);
+
+        printf("bytes read from binary file: %ld\n", bytes_read);
+        FILE *text_file = fopen("machine_code.dump", "w");
+        //output data and index addresses to text file
+        for (size_t i = 0; i < bytes_read; i += 4) {
+            //Calculate the index address (32-bit)
+            unsigned int address = (unsigned int)i;
+            //Combine four bytes of data into a 32-bit integer in little endian order 
+            unsigned int data = (mem[i]       ) |
+                                (mem[i + 1] << 8) |
+                                (mem[i + 2] << 16) |
+                                (mem[i + 3] << 24);
+
+            //Ensure we don't go out of bounds
+            if (i + 3 < bytes_read) {
+                //Print the address and data to the text file
+                fprintf(text_file, "%08X %08X\n", address, data);
+            }
+        }
+        fclose(text_file);
 
         for (int i = 0; i < 65536; i++)
             this->write(i, mem[i]);

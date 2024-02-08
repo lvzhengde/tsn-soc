@@ -64,5 +64,5 @@ $(C_OBJS): $(work_dir)/%.o: $(SW_DIR)/%.c
 
 .PHONY: clean
 clean:
-	rm -rf work build logs $(CLEAN_OBJS) *.out *.fst *.vcd
+	@rm -rf work build logs $(CLEAN_OBJS) *.dump *.out *.fst *.vcd
 
