@@ -12,13 +12,13 @@ public:
     void thread(void) 
     {
         rst.write(true);
-        wait();
+        for(int i = 0; i < 5; i++) wait();
         rst.write(false);
     }
 
     SC_HAS_PROCESS(sc_reset_gen);
     sc_reset_gen(sc_module_name name): sc_module(name)
     {
-        SC_CTHREAD(thread, clk);   
+        SC_CTHREAD(thread, clk.pos());   
     }
 };

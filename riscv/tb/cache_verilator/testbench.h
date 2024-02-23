@@ -18,7 +18,7 @@
 
 static struct option long_options[] =
 {
-    {"elf",        required_argument, 0, 'f'},
+    {"bin",        required_argument, 0, 'f'},
     {"cycles",     required_argument, 0, 'c'},
     {"help",       no_argument,       0, 'h'},
     {0, 0, 0, 0}
@@ -27,7 +27,7 @@ static struct option long_options[] =
 static void help_options(void)
 {
     fprintf (stderr,"Usage:\n");
-    fprintf (stderr,"  --elf         | -f FILE       File to load\n");
+    fprintf (stderr,"  --bin         | -f FILE       File to load\n");
     fprintf (stderr,"  --cycles      | -c NUM        Max instructions to execute\n");
     exit(-1);
 }
@@ -56,7 +56,7 @@ public:
 
     sc_signal < bool >          intr_in;
 
-    sc_signal < sc_uint <32> >  reset_vector_in;
+    sc_signal < uint32_t >  reset_vector_in;
 
     //-----------------------------------------------------------------
     // process: Main loop for CPU execution
@@ -87,6 +87,13 @@ public:
             }
         }        
 
+        if(m_argc == 1)
+        {
+            const char test_bin[] = "./cache.bin";
+            filename = test_bin;
+            fprintf (stderr,"BIN file used:  %s\n", filename);
+        }
+
         if (help || filename == NULL)
         {
             help_options();
@@ -96,10 +103,17 @@ public:
 
         // Load Firmware
         printf("Running: %s\n", filename);
+        //FIXME. can not use elf_load due to unknown bug.
+#if 0        
         elf_load elf(filename, this);
         if (!elf.load())
         {
             fprintf (stderr,"Error: Could not open %s\n", filename);
+            sc_stop();
+        }
+#endif
+        if (!cache_load(filename))
+        {
             sc_stop();
         }
 
@@ -149,9 +163,8 @@ public:
         m_dcache_mem->rst_in(rst);
         m_dcache_mem->axi_in(mem_d_out);
         m_dcache_mem->axi_out(mem_d_in);
-		
-		verilator_trace_enable("verilator.vcd", m_dut);
     }
+
     //-----------------------------------------------------------------
     // Trace
     //-----------------------------------------------------------------
@@ -188,10 +201,12 @@ public:
         memset(m_icache_mem->get_array(base), 0, size);
         return true;
     }
+
     //-----------------------------------------------------------------
     // valid_addr: Check address range
     //-----------------------------------------------------------------
     bool valid_addr(uint32_t addr) { return true; } 
+
     //-----------------------------------------------------------------
     // write: Write byte into memory
     //-----------------------------------------------------------------
@@ -199,6 +214,7 @@ public:
     {
         m_dcache_mem->write(addr, data);
     }
+
     //-----------------------------------------------------------------
     // write: Read byte from memory
     //-----------------------------------------------------------------
@@ -206,4 +222,58 @@ public:
     {
         return m_dcache_mem->read(addr);
     }
+
+    //-----------------------------------------------------------------
+    // load bin files to memory
+    //-----------------------------------------------------------------
+    bool cache_load(const char* filename)
+    {
+        unsigned char mem[65536];
+
+        //allocate memory
+        if (!create_memory(MEM_BASE, 65536))
+        {
+            fprintf(stderr, "ERROR: Cannot allocate memory region\n");
+            return false;
+        }        
+
+        //initial cache memory to 0
+        for (int i = MEM_BASE; i < MEM_BASE+65536; i++)
+            this->write(i, 0);
+
+        //load cache.bin to memory
+        FILE *f = fopen(filename, "rb"); 
+        if (f == NULL) {
+            fprintf(stderr, "Failed to open binary file %s for Cache\n", filename);
+            return false;
+        }
+
+        size_t bytes_read = fread(mem, sizeof(unsigned char), 65536, f);
+        fclose(f);
+
+        printf("bytes read from binary file: %ld\n", bytes_read);
+        FILE *text_file = fopen("machine_code.dump", "w");
+        //output data and index addresses to text file
+        for (size_t i = 0; i < bytes_read; i += 4) {
+            //Calculate the index address (32-bit)
+            unsigned int address = (unsigned int)i;
+            //Combine four bytes of data into a 32-bit integer in little endian order 
+            unsigned int data = (mem[i]       ) |
+                                (mem[i + 1] << 8) |
+                                (mem[i + 2] << 16) |
+                                (mem[i + 3] << 24);
+
+            //Ensure we don't go out of bounds
+            if (i + 3 < bytes_read) {
+                //Print the address and data to the text file
+                fprintf(text_file, "%08X %08X\n", address, data);
+            }
+        }
+        fclose(text_file);
+
+        for (int i = 0; i < 65536; i++)
+            this->write(MEM_BASE+i, mem[i]);
+
+        return true;
+    }    
 };

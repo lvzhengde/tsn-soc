@@ -150,15 +150,14 @@ void riscv_top::async_outputs(void)
     m_axi_i_awready_in.write(axi_i_i.AWREADY); 
     m_axi_i_wready_in.write(axi_i_i.WREADY); 
     m_axi_i_bvalid_in.write(axi_i_i.BVALID); 
-    m_axi_i_bresp_in.write(axi_i_i.BRESP); 
-    m_axi_i_bid_in.write(axi_i_i.BID); 
+    m_axi_i_bresp_in.write(axi_i_i.BRESP.to_uint()); 
+    m_axi_i_bid_in.write(axi_i_i.BID.to_uint()); 
     m_axi_i_arready_in.write(axi_i_i.ARREADY); 
     m_axi_i_rvalid_in.write(axi_i_i.RVALID); 
-    m_axi_i_rdata_in.write(axi_i_i.RDATA); 
-    m_axi_i_rresp_in.write(axi_i_i.RRESP); 
-    m_axi_i_rid_in.write(axi_i_i.RID); 
+    m_axi_i_rdata_in.write(axi_i_i.RDATA.to_uint()); 
+    m_axi_i_rresp_in.write(axi_i_i.RRESP.to_uint()); 
+    m_axi_i_rid_in.write(axi_i_i.RID.to_uint()); 
     m_axi_i_rlast_in.write(axi_i_i.RLAST); 
-
 
     axi4_master axi_i_o;
     axi_i_o.AWVALID = m_axi_i_awvalid_out.read(); 
@@ -178,19 +177,19 @@ void riscv_top::async_outputs(void)
     axi_i_o.ARBURST = m_axi_i_arburst_out.read(); 
     axi_i_o.RREADY = m_axi_i_rready_out.read(); 
     axi_i_out.write(axi_i_o);
+
     axi4_slave axi_d_i = axi_d_in.read();
     m_axi_d_awready_in.write(axi_d_i.AWREADY); 
     m_axi_d_wready_in.write(axi_d_i.WREADY); 
     m_axi_d_bvalid_in.write(axi_d_i.BVALID); 
-    m_axi_d_bresp_in.write(axi_d_i.BRESP); 
-    m_axi_d_bid_in.write(axi_d_i.BID); 
+    m_axi_d_bresp_in.write(axi_d_i.BRESP.to_uint()); 
+    m_axi_d_bid_in.write(axi_d_i.BID.to_uint()); 
     m_axi_d_arready_in.write(axi_d_i.ARREADY); 
     m_axi_d_rvalid_in.write(axi_d_i.RVALID); 
-    m_axi_d_rdata_in.write(axi_d_i.RDATA); 
-    m_axi_d_rresp_in.write(axi_d_i.RRESP); 
-    m_axi_d_rid_in.write(axi_d_i.RID); 
+    m_axi_d_rdata_in.write(axi_d_i.RDATA.to_uint()); 
+    m_axi_d_rresp_in.write(axi_d_i.RRESP.to_uint()); 
+    m_axi_d_rid_in.write(axi_d_i.RID.to_uint()); 
     m_axi_d_rlast_in.write(axi_d_i.RLAST); 
-
 
     axi4_master axi_d_o;
     axi_d_o.AWVALID = m_axi_d_awvalid_out.read(); 

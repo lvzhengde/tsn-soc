@@ -3,17 +3,11 @@
 #include <stdlib.h>
 #include <math.h>
 #include <signal.h>
+#include <sys/stat.h>  // mkdir
 
 //--------------------------------------------------------------------
 // Defines
 //--------------------------------------------------------------------
-#ifndef SIM_TIME_RESOLUTION
-    #define SIM_TIME_RESOLUTION 1
-#endif
-#ifndef SIM_TIME_SCALE
-    #define SIM_TIME_SCALE SC_NS
-#endif
-
 #ifndef CLK0_PERIOD
     #define CLK0_PERIOD  10
 #endif
@@ -57,14 +51,6 @@ static void exit_override(void)
     if (tb)
         tb->abort();
 }
-//--------------------------------------------------------------------
-// vl_finish: Handling of verilog $finish
-//--------------------------------------------------------------------
-void vl_finish (const char* filename, int linenum, const char* hier)
-{ 
-    // Jump to exit handler!
-    exit(0);    
-}
 //-----------------------------------------------------------------
 // sigint_handler
 //-----------------------------------------------------------------
@@ -80,10 +66,10 @@ static void sigint_handler(int s)
 //--------------------------------------------------------------------
 int sc_main(int argc, char* argv[])
 {
-    bool trace            = true;
+    bool trace            = false;
     int seed              = 1;
     int last_argc         = 0;
-    const char * vcd_name = "sysc_wave";
+    const char * vcd_name = "logs/sysc_wave";
 
     // Env variable seed override
     char *s = getenv("SEED");
@@ -120,7 +106,6 @@ int sc_main(int argc, char* argv[])
         trace = 0;    
 
     sc_report_handler::set_actions("/IEEE_Std_1666/deprecated", SC_DO_NOTHING);
-    sc_set_time_resolution(SIM_TIME_RESOLUTION,SIM_TIME_SCALE);
 
     // Register custom assert handler
     sc_report_handler::set_handler(assert_handler);
@@ -134,8 +119,34 @@ int sc_main(int argc, char* argv[])
     // Seed
     srand(seed);
 
+    // Prevent unused variable warnings
+    if (false && argc && argv) {}
+
+    // Create logs/ directory in case we have traces to put under it
+    Verilated::mkdir("logs");
+
+    // Set debug level, 0 is off, 9 is highest presently used
+    // May be overridden by commandArgs argument parsing
+    Verilated::debug(0);
+
+    // Randomization reset policy
+    // May be overridden by commandArgs argument parsing
+    Verilated::randReset(2);
+
+#if VM_TRACE
+    // Before any evaluation, need to know to calculate those signals only used for tracing
+    Verilated::traceEverOn(true);
+#endif
+
+    // Pass arguments so Verilated code can see them, e.g. $value$plusargs
+    // This needs to be called before you create any model
+    Verilated::commandArgs(argc, argv);
+
+    // General logfile
+    std::ios::sync_with_stdio();
+
     // Clocks
-    sc_clock CLK0_NAME (xstr(CLK0_NAME), CLK0_PERIOD, SIM_TIME_SCALE);
+    sc_clock CLK0_NAME (xstr(CLK0_NAME), CLK0_PERIOD, SC_NS);
     sc_reset_gen clk0_rst(xstr(RST0_NAME));
                  clk0_rst.clk(CLK0_NAME);
 
@@ -144,14 +155,48 @@ int sc_main(int argc, char* argv[])
     tb->CLK0_NAME(CLK0_NAME);
     tb->RST0_NAME(clk0_rst.rst);
 
+    tb->set_argcv(argc - last_argc, &argv[last_argc]);
+
+    // You must do one evaluation before enabling waves, in order to allow
+    // SystemC to interconnect everything for testing.
+    sc_start(SC_ZERO_TIME);
+
+#if VM_TRACE
+    VerilatedVcdSc* tfp = nullptr;
+    std::cout << "Enabling waves into logs/vlt_dump.vcd...\n";
+    tfp = new VerilatedVcdSc;
+    tb->m_dut->m_rtl->trace(tfp, 99);  // Trace 99 levels of hierarchy
+    tfp->open("logs/vlt_dump.vcd");
+
+    tb->init_trace_ptr(tfp);
+#endif
+
     // Waves
     if (trace)
         tb->add_trace(sc_create_vcd_trace_file(vcd_name), "");
 
-    tb->set_argcv(argc - last_argc, &argv[last_argc]);
-
     // Go!
-    sc_start();
+    //sc_start();
+    while (!Verilated::gotFinish()) {
+#if VM_TRACE
+        // Flush the wave files each cycle so we can immediately see the output
+        // Don't do this in "real" programs, do it in an abort() handler instead
+        if (tfp) tfp->flush();
+#endif
+        // Simulate 1ns
+        sc_start(1, SC_NS);
+    }
+
+    // Final model cleanup
+    tb->m_dut->m_rtl->final();
+
+    // Close trace if opened
+#if VM_TRACE
+    if (tfp) {
+        tfp->close();
+        tfp = nullptr;
+    }    
+#endif
 
     return 0;
 }

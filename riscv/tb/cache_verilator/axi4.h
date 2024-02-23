@@ -10,22 +10,22 @@ class axi4_master
 {
 public:
     // Members
-    sc_uint <1> AWVALID;
+    bool AWVALID;
     sc_uint <32> AWADDR;
     sc_uint <4> AWID;
     sc_uint <8> AWLEN;
     sc_uint <2> AWBURST;
-    sc_uint <1> WVALID;
+    bool WVALID;
     sc_uint <32> WDATA;
     sc_uint <4> WSTRB;
-    sc_uint <1> WLAST;
-    sc_uint <1> BREADY;
-    sc_uint <1> ARVALID;
+    bool WLAST;
+    bool BREADY;
+    bool ARVALID;
     sc_uint <32> ARADDR;
     sc_uint <4> ARID;
     sc_uint <8> ARLEN;
     sc_uint <2> ARBURST;
-    sc_uint <1> RREADY;
+    bool RREADY;
 
     // Construction
     axi4_master() { init(); }
@@ -146,17 +146,17 @@ class axi4_slave
 {
 public:
     // Members
-    sc_uint <1> AWREADY;
-    sc_uint <1> WREADY;
-    sc_uint <1> BVALID;
+    bool AWREADY;
+    bool WREADY;
+    bool BVALID;
     sc_uint <2> BRESP;
     sc_uint <4> BID;
-    sc_uint <1> ARREADY;
-    sc_uint <1> RVALID;
+    bool ARREADY;
+    bool RVALID;
     sc_uint <32> RDATA;
     sc_uint <2> RRESP;
     sc_uint <4> RID;
-    sc_uint <1> RLAST;
+    bool RLAST;
 
     // Construction
     axi4_slave() { init(); }
