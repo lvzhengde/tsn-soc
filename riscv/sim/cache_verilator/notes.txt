@@ -1,0 +1,18 @@
+1. For Verilator and CMake
+
+If error occurs like the following:
+"""
+CMake Error at CMakeLists.txt:46 (target_link_libraries):
+  The keyword signature for target_link_libraries has already been used with
+  the target "example".  All uses of target_link_libraries with a target must
+  be either all-keyword or all-plain.
+
+  The uses of the keyword signature are here:
+
+   * /usr/local/share/verilator/verilator-config.cmake:341 (target_link_libraries)
+"""
+
+You can use the following command to open the corresponding file:
+$ sudo vim /usr/local/share/verilator/verilator-config.cmake
+
+Then locate the corresponding line and comment out the related "target_link_libraries" statement.
