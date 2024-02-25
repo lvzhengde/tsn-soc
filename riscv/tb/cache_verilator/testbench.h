@@ -4,6 +4,7 @@
 #include <unistd.h>
 
 #include "riscv_top.h"
+#include "Vriscv_top.h"
 #include "tb_axi4_mem.h"
 
 #include "verilated.h"
