@@ -103,20 +103,25 @@ public:
         }
 
         // Load Firmware
-        printf("Running: %s\n", filename);
         //FIXME. can not use elf_load due to unknown bug.
 #if 0        
+        const char test_elf[] = "./c_demo.elf";
+        filename = test_elf;
+
+        printf("Running: %s\n", filename);
         elf_load elf(filename, this);
         if (!elf.load())
         {
             fprintf (stderr,"Error: Could not open %s\n", filename);
             sc_stop();
         }
-#endif
+#else
+        printf("Running: %s\n", filename);
         if (!cache_load(filename))
         {
             sc_stop();
         }
+#endif
 
         // Set reset vector
         reset_vector_in.write(MEM_BASE);
@@ -257,7 +262,7 @@ public:
         //output data and index addresses to text file
         for (size_t i = 0; i < bytes_read; i += 4) {
             //Calculate the index address (32-bit)
-            unsigned int address = (unsigned int)i;
+            unsigned int address = (unsigned int)(i + MEM_BASE);
             //Combine four bytes of data into a 32-bit integer in little endian order 
             unsigned int data = (mem[i]       ) |
                                 (mem[i + 1] << 8) |
