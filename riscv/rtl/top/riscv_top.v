@@ -33,7 +33,7 @@ module riscv_top
     ,parameter DCACHE_AXI_ID    = 0
     ,parameter SUPPORT_BRANCH_PREDICTION = 1
     ,parameter SUPPORT_MULDIV   = 1
-    ,parameter SUPPORT_SUPER    = 0
+    ,parameter SUPPORT_SUPER    = 1
     ,parameter SUPPORT_MMU      = 1
     ,parameter SUPPORT_DUAL_ISSUE = 1
     ,parameter SUPPORT_LOAD_BYPASS = 1
