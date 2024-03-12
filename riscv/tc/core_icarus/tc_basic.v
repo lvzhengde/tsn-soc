@@ -4,7 +4,7 @@ module sim_riscv;
 
     tb_top tb();
 
-    wire sim_finish = tb.u_dut.u_csr.u_csrfile.sim_finish;
+    wire sim_finish = tb.u_dut.u_riscv_core.u_csr.u_csrfile.sim_finish;
 
     integer i;
     integer f;
@@ -20,10 +20,10 @@ module sim_riscv;
         end
     
         // Reset
-        tb.clk = 0;
-        tb.rst = 1;
+        tb.clk   = 0;
+        tb.rst_n = 0;
         repeat (5) @(posedge tb.clk);
-        tb.rst = 0;
+        tb.rst_n = 1;
     
         // Load TCM memory
         for (i=0;i<131072;i=i+1)
