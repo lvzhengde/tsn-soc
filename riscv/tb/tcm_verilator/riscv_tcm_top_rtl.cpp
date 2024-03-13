@@ -12,9 +12,9 @@
 riscv_tcm_top_rtl::riscv_tcm_top_rtl(sc_module_name name): sc_module(name)
 {
     m_rtl = new Vriscv_tcm_top("Vriscv_tcm_top");
-    m_rtl->clk_i(m_clk_in);
-    m_rtl->rst_i(m_rst_in);
-    m_rtl->rst_cpu_i(m_rst_cpu_in);
+    m_rtl->clk(m_clk_in);
+    m_rtl->rst_n(m_rst_in);
+    m_rtl->rst_cpu_n(m_rst_cpu_in);
     m_rtl->axi_i_awready_i(m_axi_i_awready_in);
     m_rtl->axi_i_wready_i(m_axi_i_wready_in);
     m_rtl->axi_i_bvalid_i(m_axi_i_bvalid_in);
@@ -60,6 +60,11 @@ riscv_tcm_top_rtl::riscv_tcm_top_rtl(sc_module_name name): sc_module(name)
     m_rtl->axi_t_rresp_o(m_axi_t_rresp_out);
     m_rtl->axi_t_rid_o(m_axi_t_rid_out);
     m_rtl->axi_t_rlast_o(m_axi_t_rlast_out);
+    m_rtl->tck_i(m_tck);  
+    m_rtl->tms_i(m_tms);  
+    m_rtl->tdi_i(m_tdi);  
+    m_rtl->tdo_o(m_tdo); 
+
 
     SC_METHOD(async_outputs);
     sensitive << clk_in;

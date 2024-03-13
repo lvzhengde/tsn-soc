@@ -7,13 +7,13 @@ SC_MODULE(sc_reset_gen)
 {
 public:
     sc_in <bool>    clk;
-    sc_signal<bool> rst;
+    sc_signal<bool> rst_n; //active low
 
     void thread(void) 
     {
-        rst.write(true);
+        rst_n.write(false);
         for(int i = 0; i < 5; i++) wait();
-        rst.write(false);
+        rst_n.write(true);
     }
 
     SC_HAS_PROCESS(sc_reset_gen);

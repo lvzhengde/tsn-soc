@@ -40,6 +40,7 @@
 
 //../../rtl/top/riscv_tcm_top.v
 //../../rtl/top/riscv_top.v
+../../rtl/top/riscv_core_jtag.v
 
 //testbench files
 //../../tb/core_icarus/tb_top.v

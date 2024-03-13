@@ -53,7 +53,7 @@ public:
     //-----------------------------------------------------------------
     // Signals
     //-----------------------------------------------------------------    
-    sc_signal <bool>             rst_cpu_in;
+    sc_signal <bool>             rst_cpu_in; //active low
 
     sc_signal <axi4_master>      axi_t_in;
     sc_signal <axi4_slave>       axi_t_out;
@@ -108,7 +108,7 @@ public:
         }
 
         // Force CPU into reset
-        rst_cpu_in.write(true);
+        rst_cpu_in.write(false);
         
         // Load Firmware
         printf("Running: %s\n", filename);
@@ -132,7 +132,7 @@ public:
         
         // Release CPU reset after TCM memory loaded
         for(int i = 0; i < 7; i++) wait();
-        rst_cpu_in.write(false);
+        rst_cpu_in.write(true);
 
         while (true)
         {
@@ -156,7 +156,7 @@ public:
     {
         m_dut = new riscv_tcm_top_rtl("DUT");
         m_dut->clk_in(clk);
-        m_dut->rst_in(rst);
+        m_dut->rst_in(rst_n);
         m_dut->rst_cpu_in(rst_cpu_in);
         m_dut->axi_t_out(axi_t_out);
         m_dut->axi_t_in(axi_t_in);
@@ -176,7 +176,7 @@ public:
         // Add signals to trace file
         #define TRACE_SIGNAL(a) sc_trace(fp,a,#a);
         TRACE_SIGNAL(clk);
-        TRACE_SIGNAL(rst);
+        TRACE_SIGNAL(rst_n);
 
         m_dut->add_trace(fp, "");
     }

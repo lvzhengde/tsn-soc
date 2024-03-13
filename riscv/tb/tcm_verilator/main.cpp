@@ -17,7 +17,7 @@
 #endif
 
 #ifndef RST0_NAME
-    #define RST0_NAME  rst
+    #define RST0_NAME  rst_n
 #endif
 
 #define xstr(a) str(a)
@@ -153,7 +153,7 @@ int sc_main(int argc, char* argv[])
     // Testbench
     tb = new testbench("tb");
     tb->CLK0_NAME(CLK0_NAME);
-    tb->RST0_NAME(clk0_rst.rst);
+    tb->RST0_NAME(clk0_rst.rst_n);
 
     tb->set_argcv(argc - last_argc, &argv[last_argc]);
 
