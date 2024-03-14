@@ -120,6 +120,10 @@ private:
     sc_signal <uint32_t> m_axi_d_arburst_out;
     sc_signal <bool> m_axi_d_rready_out;
 
+    sc_signal<bool> m_tck; 
+    sc_signal<bool> m_tms; 
+    sc_signal<bool> m_tdi; 
+    sc_signal<bool> m_tdo;
 public:
     Vriscv_top *m_rtl;
 #if VM_TRACE

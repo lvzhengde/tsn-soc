@@ -12,7 +12,7 @@ class testbench_vbase: public sc_module
 {
 public:
     sc_in <bool>    clk;
-    sc_in <bool>    rst;
+    sc_in <bool>    rst_n;
 
     virtual void set_testcase(int tc) { }
     virtual void set_delays(bool en) { }

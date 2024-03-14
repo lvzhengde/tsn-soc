@@ -148,7 +148,7 @@ public:
     {
         m_dut = new riscv_top("DUT");
         m_dut->clk_in(clk);
-        m_dut->rst_in(rst);
+        m_dut->rst_in(rst_n);
         m_dut->axi_i_out(mem_i_out);
         m_dut->axi_i_in(mem_i_in);
         m_dut->axi_d_out(mem_d_out);
@@ -159,14 +159,14 @@ public:
         // Instruction Cache Memory
         m_icache_mem = new tb_axi4_mem("ICACHE_MEM");
         m_icache_mem->clk_in(clk);
-        m_icache_mem->rst_in(rst);
+        m_icache_mem->rst_in(rst_n);
         m_icache_mem->axi_in(mem_i_out);
         m_icache_mem->axi_out(mem_i_in);
 
         // Data Cache Memory
         m_dcache_mem = new tb_axi4_mem("DCACHE_MEM");
         m_dcache_mem->clk_in(clk);
-        m_dcache_mem->rst_in(rst);
+        m_dcache_mem->rst_in(rst_n);
         m_dcache_mem->axi_in(mem_d_out);
         m_dcache_mem->axi_out(mem_d_in);
     }
@@ -182,7 +182,7 @@ public:
         // Add signals to trace file
         #define TRACE_SIGNAL(a) sc_trace(fp,a,#a);
         TRACE_SIGNAL(clk);
-        TRACE_SIGNAL(rst);
+        TRACE_SIGNAL(rst_n);
 
         m_dut->add_trace(fp, "");
     }
