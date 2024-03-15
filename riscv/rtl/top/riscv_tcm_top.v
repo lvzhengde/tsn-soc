@@ -244,8 +244,8 @@ module riscv_tcm_top
     u_dmux
     (
         // Inputs
-        .clk_i                 (clk)                 ,
-        .rst_i                 (~rst_n)              ,
+        .clk                   (clk)                 ,
+        .rst_n                 (rst_n)               ,
         .mem_addr_i            (dport_addr_w)        ,
         .mem_data_wr_i         (dport_data_wr_w)     ,
         .mem_rd_i              (dport_rd_w)          ,
@@ -295,8 +295,8 @@ module riscv_tcm_top
     tcm_mem u_tcm
     (
         // Inputs
-        .clk_i                (clk)                    ,
-        .rst_i                (~rst_n)                 ,
+        .clk                  (clk)                    ,
+        .rst_n                (rst_n)                  ,
         .mem_i_rd_i           (ifetch_rd_w)            ,
         .mem_i_flush_i        (ifetch_flush_w)         ,
         .mem_i_invalidate_i   (ifetch_invalidate_w)    ,
