@@ -353,8 +353,8 @@ module riscv_tcm_top
     dport_axi u_axi
     (
         // Inputs
-        .clk_i           (clk)                    ,
-        .rst_i           (~rst_n)                 ,
+        .clk             (clk)                    ,
+        .rst_n           (rst_n)                  ,
         .mem_addr_i      (dport_axi_addr_w)       ,
         .mem_data_wr_i   (dport_axi_data_wr_w)    ,
         .mem_rd_i        (dport_axi_rd_w)         ,
