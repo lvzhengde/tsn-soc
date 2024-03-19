@@ -272,8 +272,8 @@ module riscv_top
     u_icache
     (
         // Inputs
-        .clk_i                 (clk)                ,
-        .rst_i                 (~rst_n)             ,
+        .clk                   (clk)                ,
+        .rst_n                 (rst_n)              ,
         .req_rd_i              (icache_rd_w)        ,
         .req_flush_i           (icache_flush_w)     ,
         .req_invalidate_i      (icache_invalidate_w),
