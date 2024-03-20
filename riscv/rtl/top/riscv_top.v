@@ -158,8 +158,8 @@ module riscv_top
     u_dcache
     (
         // Inputs
-        .clk_i               (clk)                 ,
-        .rst_i               (~rst_n)              ,
+        .clk                 (clk)                 ,
+        .rst_n               (rst_n)               ,
         .mem_addr_i          (dcache_addr_w)       ,
         .mem_data_wr_i       (dcache_data_wr_w)    ,
         .mem_rd_i            (dcache_rd_w)         ,
