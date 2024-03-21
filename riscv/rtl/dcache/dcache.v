@@ -305,8 +305,8 @@ module dcache
     u_axi
     (
         // Inputs
-        .clk_i                    (clk)               ,
-        .rst_i                    (~rst_n)             ,
+        .clk                      (clk)               ,
+        .rst_n                    (rst_n)             ,
         .outport_awready_i        (axi_awready_i)     ,
         .outport_wready_i         (axi_wready_i)      ,
         .outport_bvalid_i         (axi_bvalid_i)      ,
