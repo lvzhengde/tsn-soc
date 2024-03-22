@@ -54,35 +54,44 @@ module riscv_core
 //-----------------------------------------------------------------
 (
     // Inputs
-     input           clk_i
-    ,input           rst_i
-    ,input  [ 31:0]  mem_d_data_rd_i
-    ,input           mem_d_accept_i
-    ,input           mem_d_ack_i
-    ,input           mem_d_error_i
-    ,input  [ 10:0]  mem_d_resp_tag_i
-    ,input           mem_i_accept_i
-    ,input           mem_i_valid_i
-    ,input           mem_i_error_i
-    ,input  [ 63:0]  mem_i_inst_i
-    ,input           intr_i
-    ,input  [ 31:0]  reset_vector_i
-    ,input  [ 31:0]  cpu_id_i
+    input           clk_i            ,
+    input           rst_i            ,
+    input  [ 31:0]  mem_d_data_rd_i  ,
+    input           mem_d_accept_i   ,
+    input           mem_d_ack_i      ,
+    input           mem_d_error_i    ,
+    input  [ 10:0]  mem_d_resp_tag_i ,
+    input           mem_i_accept_i   ,
+    input           mem_i_valid_i    ,
+    input           mem_i_error_i    ,
+    input  [ 63:0]  mem_i_inst_i     ,
+    input           intr_i           ,
+    input  [ 31:0]  reset_vector_i   ,
+    input  [ 31:0]  cpu_id_i         ,
 
     // Outputs
-    ,output [ 31:0]  mem_d_addr_o
-    ,output [ 31:0]  mem_d_data_wr_o
-    ,output          mem_d_rd_o
-    ,output [  3:0]  mem_d_wr_o
-    ,output          mem_d_cacheable_o
-    ,output [ 10:0]  mem_d_req_tag_o
-    ,output          mem_d_invalidate_o
-    ,output          mem_d_writeback_o
-    ,output          mem_d_flush_o
-    ,output          mem_i_rd_o
-    ,output          mem_i_flush_o
-    ,output          mem_i_invalidate_o
-    ,output [ 31:0]  mem_i_pc_o
+    output [ 31:0]  mem_d_addr_o       ,
+    output [ 31:0]  mem_d_data_wr_o    ,
+    output          mem_d_rd_o         ,
+    output [  3:0]  mem_d_wr_o         ,
+    output          mem_d_cacheable_o  ,
+    output [ 10:0]  mem_d_req_tag_o    ,
+    output          mem_d_invalidate_o ,
+    output          mem_d_writeback_o  ,
+    output          mem_d_flush_o      ,
+    output          mem_i_rd_o         ,
+    output          mem_i_flush_o      ,
+    output          mem_i_invalidate_o ,
+    output [ 31:0]  mem_i_pc_o         ,
+
+    // JTAG signals
+    input           jtag_reset_req_i   ,
+    input           jtag_halt_req_i    ,
+
+    input  [  4:0]  jtag_rf_waddr_i    ,
+    input  [ 31:0]  jtag_rf_data_wr_i  ,
+    input  [  4:0]  jtag_rf_raddr_i    ,
+    output [ 31:0]  jtag_rf_data_rd_o  
 );
 
 wire           mmu_lsu_writeback_w;

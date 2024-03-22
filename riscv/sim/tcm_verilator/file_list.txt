@@ -38,6 +38,9 @@
 ../../rtl/tcm/tcm_mem_ram.v
 ../../rtl/tcm/tcm_mem.v
 
+../../rtl/jtag/jtag_top.v
+../../rtl/jtag/jtag_core_mux.v
+
 //../../rtl/top/riscv_tcm_top.v
 //../../rtl/top/riscv_top.v
 ../../rtl/top/riscv_core_jtag.v
