@@ -33,28 +33,28 @@ module riscv_top
 // Params
 //-----------------------------------------------------------------
 #(
-     parameter CORE_ID          = 0
-    ,parameter ICACHE_AXI_ID    = 0
-    ,parameter DCACHE_AXI_ID    = 0
-    ,parameter SUPPORT_BRANCH_PREDICTION = 1
-    ,parameter SUPPORT_MULDIV   = 1
-    ,parameter SUPPORT_SUPER    = 1
-    ,parameter SUPPORT_MMU      = 1
-    ,parameter SUPPORT_DUAL_ISSUE = 1
-    ,parameter SUPPORT_LOAD_BYPASS = 1
-    ,parameter SUPPORT_MUL_BYPASS = 1
-    ,parameter EXTRA_DECODE_STAGE = 0
-    ,parameter MEM_CACHE_ADDR_MIN = 32'h80000000
-    ,parameter MEM_CACHE_ADDR_MAX = 32'h8fffffff
-    ,parameter NUM_BTB_ENTRIES  = 32
-    ,parameter NUM_BTB_ENTRIES_W = 5
-    ,parameter NUM_BHT_ENTRIES  = 512
-    ,parameter NUM_BHT_ENTRIES_W = 9
-    ,parameter RAS_ENABLE       = 1
-    ,parameter GSHARE_ENABLE    = 0
-    ,parameter BHT_ENABLE       = 1
-    ,parameter NUM_RAS_ENTRIES  = 8
-    ,parameter NUM_RAS_ENTRIES_W = 3
+    parameter CORE_ID          = 0               ,
+    parameter ICACHE_AXI_ID    = 0               ,
+    parameter DCACHE_AXI_ID    = 0               ,
+    parameter SUPPORT_BRANCH_PREDICTION = 1      ,
+    parameter SUPPORT_MULDIV   = 1               ,
+    parameter SUPPORT_SUPER    = 1               ,
+    parameter SUPPORT_MMU      = 1               ,
+    parameter SUPPORT_DUAL_ISSUE = 1             ,
+    parameter SUPPORT_LOAD_BYPASS = 1            ,
+    parameter SUPPORT_MUL_BYPASS = 1             ,
+    parameter EXTRA_DECODE_STAGE = 0             ,
+    parameter MEM_CACHE_ADDR_MIN = 32'h80000000  ,
+    parameter MEM_CACHE_ADDR_MAX = 32'h8fffffff  ,
+    parameter NUM_BTB_ENTRIES  = 32              ,
+    parameter NUM_BTB_ENTRIES_W = 5              ,
+    parameter NUM_BHT_ENTRIES  = 512             ,
+    parameter NUM_BHT_ENTRIES_W = 9              ,
+    parameter RAS_ENABLE       = 1               ,
+    parameter GSHARE_ENABLE    = 0               ,
+    parameter BHT_ENABLE       = 1               ,
+    parameter NUM_RAS_ENTRIES  = 8               ,
+    parameter NUM_RAS_ENTRIES_W = 3              
 )
 //-----------------------------------------------------------------
 // Ports

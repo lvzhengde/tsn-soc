@@ -183,8 +183,8 @@ module riscv_core_jtag
     u_riscv_core
     (
         //Inputs
-        .clk_i                     (clk             ) ,
-        .rst_i                     (~rst_n          ) ,
+        .clk                       (clk             ) ,
+        .rst_n                     (rst_n           ) ,
         .mem_d_data_rd_i           (core_mem_d_data_rd_w ) ,
         .mem_d_accept_i            (core_mem_d_accept_w  ) ,
         .mem_d_ack_i               (core_mem_d_ack_w     ) ,
@@ -307,7 +307,7 @@ module riscv_core_jtag
 
     jtag_top 
     #(
-        .MEM_CACHE_ADDR_MIN        (MEM_CACHE_ADDR_MIN)       ,
+        .MEM_CACHE_ADDR_MIN        (MEM_CACHE_ADDR_MIN) ,
         .MEM_CACHE_ADDR_MAX        (MEM_CACHE_ADDR_MAX)       
     )
     u_jtag_top
