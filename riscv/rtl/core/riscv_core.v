@@ -285,8 +285,8 @@ module riscv_core
     u_frontend
     (
         // Inputs
-        .clk_i                         (clk)                        ,
-        .rst_i                         (~rst_n)                     ,
+        .clk                           (clk)                        ,
+        .rst_n                         (rst_n)                      ,
         .icache_accept_i               (mmu_ifetch_accept_w)        ,
         .icache_valid_i                (mmu_ifetch_valid_w)         ,
         .icache_error_i                (mmu_ifetch_error_w)         ,
