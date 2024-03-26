@@ -137,23 +137,23 @@ module biriscv_frontend
     u_npc
     (
         // Inputs
-        .clk_i                (clk)                        ,
-        .rst_i                (~rst_n)                     ,
-        .invalidate_i         (1'b0)                       ,
-        .branch_request_i     (branch_info_request_i)      ,
-        .branch_is_taken_i    (branch_info_is_taken_i)     ,
-        .branch_is_not_taken_i(branch_info_is_not_taken_i) ,
-        .branch_source_i      (branch_info_source_i)       ,
-        .branch_is_call_i     (branch_info_is_call_i)      ,
-        .branch_is_ret_i      (branch_info_is_ret_i)       ,
-        .branch_is_jmp_i      (branch_info_is_jmp_i)       ,
-        .branch_pc_i          (branch_info_pc_i)           ,
-        .pc_f_i               (fetch_pc_f_w)               ,
-        .pc_accept_i          (fetch_pc_accept_w)          ,
+        .clk                      (clk)                        ,
+        .rst_n                    (rst_n)                      ,
+        .invalidate_i             (1'b0)                       ,
+        .branch_request_i         (branch_info_request_i)      ,
+        .branch_is_taken_i        (branch_info_is_taken_i)     ,
+        .branch_is_not_taken_i    (branch_info_is_not_taken_i) ,
+        .branch_source_i          (branch_info_source_i)       ,
+        .branch_is_call_i         (branch_info_is_call_i)      ,
+        .branch_is_ret_i          (branch_info_is_ret_i)       ,
+        .branch_is_jmp_i          (branch_info_is_jmp_i)       ,
+        .branch_pc_i              (branch_info_pc_i)           ,
+        .pc_f_i                   (fetch_pc_f_w)               ,
+        .pc_accept_i              (fetch_pc_accept_w)          ,
     
         // Outputs
-        .next_pc_f_o          (next_pc_f_w)    ,
-        .next_taken_f_o       (next_taken_f_w) 
+        .next_pc_f_o              (next_pc_f_w)    ,
+        .next_taken_f_o           (next_taken_f_w) 
     );
     
 
