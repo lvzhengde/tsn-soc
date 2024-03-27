@@ -217,8 +217,8 @@ module biriscv_frontend
     u_fetch
     (
         // Inputs
-        .clk_i                  (clk)                 ,
-        .rst_i                  (~rst_n)              ,
+        .clk                    (clk)                 ,
+        .rst_n                  (rst_n)               ,
         .fetch_accept_i         (fetch_accept_w)      ,
         .icache_accept_i        (icache_accept_i)     ,
         .icache_valid_i         (icache_valid_i)      ,
