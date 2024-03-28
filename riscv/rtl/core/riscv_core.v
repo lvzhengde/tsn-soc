@@ -351,8 +351,8 @@ module riscv_core
     u_mmu
     (
         // Inputs
-        .clk_i                     (clk)                     ,
-        .rst_i                     (~rst_n)                  ,
+        .clk                       (clk)                     ,
+        .rst_n                     (rst_n)                   ,
         .priv_d_i                  (mmu_priv_d_w)            ,
         .sum_i                     (mmu_sum_w)               ,
         .mxr_i                     (mmu_mxr_w)               ,
