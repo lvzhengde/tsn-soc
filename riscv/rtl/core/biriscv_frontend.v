@@ -165,8 +165,8 @@ module biriscv_frontend
     u_decode
     (
         // Inputs
-        .clk_i                          (clk)                 ,
-        .rst_i                          (~rst_n)              ,
+        .clk                            (clk)                 ,
+        .rst_n                          (rst_n)               ,
         .fetch_in_valid_i               (fetch_valid_w)       ,
         .fetch_in_instr_i               (fetch_instr_w)       ,
         .fetch_in_pred_branch_i         (fetch_pred_branch_w) ,
