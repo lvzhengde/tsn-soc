@@ -419,8 +419,8 @@ module riscv_core
     u_lsu
     (
         // Inputs
-        .clk_i                    (clk)                        ,
-        .rst_i                    (~rst_n)                     ,
+        .clk                      (clk)                        ,
+        .rst_n                    (rst_n)                      ,
         .opcode_valid_i           (lsu_opcode_valid_w)         ,
         .opcode_opcode_i          (lsu_opcode_opcode_w)        ,
         .opcode_pc_i              (lsu_opcode_pc_w)            ,
