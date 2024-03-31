@@ -506,8 +506,8 @@ module riscv_core
     biriscv_multiplier u_mul
     (
         // Inputs
-        .clk_i                   (clk)                     ,
-        .rst_i                   (~rst_n)                  ,
+        .clk                     (clk)                     ,
+        .rst_n                   (rst_n)                   ,
         .opcode_valid_i          (mul_opcode_valid_w)      ,
         .opcode_opcode_i         (mul_opcode_opcode_w)     ,
         .opcode_pc_i             (mul_opcode_pc_w)         ,
