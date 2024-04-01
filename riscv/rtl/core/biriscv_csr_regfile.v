@@ -1,4 +1,9 @@
 //-----------------------------------------------------------------
+//
+// Copyright (c) 2022-2024 Zhengde
+// All rights reserved.
+//
+//-----------------------------------------------------------------
 //                         biRISC-V CPU
 //                            V0.8.1
 //                     Ultra-Embedded.com
@@ -34,8 +39,8 @@ module biriscv_csr_regfile
 // Ports
 //-----------------------------------------------------------------
 (
-     input           clk_i
-    ,input           rst_i
+     input           clk
+    ,input           rst_n
 
     ,input           ext_intr_i
     ,input           timer_intr_i
@@ -134,8 +139,8 @@ begin
 end
 
 reg [1:0] irq_priv_q;
-always @ (posedge clk_i or posedge rst_i)
-if (rst_i)
+always @(posedge clk or negedge rst_n)
+if (!rst_n)
     irq_priv_q <= `PRIV_MACHINE;
 else if (|irq_masked_r)
     irq_priv_q <= irq_priv_r;
@@ -145,8 +150,8 @@ assign interrupt_o = irq_masked_r;
 
 reg csr_mip_upd_q;
 
-always @ (posedge clk_i or posedge rst_i)
-if (rst_i)
+always @(posedge clk or negedge rst_n)
+if (!rst_n)
     csr_mip_upd_q <= 1'b0;
 else if ((csr_ren_i && csr_raddr_i == `CSR_MIP) || (csr_ren_i && csr_raddr_i == `CSR_SIP))
     csr_mip_upd_q <= 1'b1;
@@ -483,8 +488,8 @@ end
     end
 `endif
 
-always @ (posedge clk_i or posedge rst_i)
-if (rst_i)
+always @(posedge clk or negedge rst_n)
+if (!rst_n)
 begin
     // CSR - Machine
     csr_mepc_q         <= 32'b0;

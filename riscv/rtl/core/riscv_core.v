@@ -463,8 +463,8 @@ module riscv_core
     u_csr
     (
         // Inputs
-        .clk_i                             (clk)                             ,
-        .rst_i                             (~rst_n)                          ,
+        .clk                               (clk)                             ,
+        .rst_n                             (rst_n)                           ,
         .intr_i                            (intr_i)                          ,
         .opcode_valid_i                    (csr_opcode_valid_w)              ,
         .opcode_opcode_i                   (csr_opcode_opcode_w)             ,
