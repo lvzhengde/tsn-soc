@@ -527,8 +527,8 @@ module riscv_core
     biriscv_divider u_div
     (
         // Inputs
-        .clk_i                   (clk)                   ,
-        .rst_i                   (~rst_n)                ,
+        .clk                     (clk)                   ,
+        .rst_n                   (rst_n)                 ,
         .opcode_valid_i          (div_opcode_valid_w)    ,
         .opcode_opcode_i         (opcode0_opcode_w)      ,
         .opcode_pc_i             (opcode0_pc_w)          ,
