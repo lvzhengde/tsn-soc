@@ -555,8 +555,8 @@ module riscv_core
     u_issue
     (
         // Inputs
-        .clk_i                             (clk)                           ,
-        .rst_i                             (~rst_n)                        ,
+        .clk                               (clk)                           ,
+        .rst_n                             (rst_n)                         ,
         .fetch0_valid_i                    (fetch0_valid_w)                ,
         .fetch0_instr_i                    (fetch0_instr_w)                ,
         .fetch0_pc_i                       (fetch0_pc_w)                   ,

@@ -1,4 +1,9 @@
 //-----------------------------------------------------------------
+//
+// Copyright (c) 2022-2024 Zhengde
+// All rights reserved.
+//
+//-----------------------------------------------------------------
 //                         biRISC-V CPU
 //                            V0.8.1
 //                     Ultra-Embedded.com
@@ -35,8 +40,8 @@ module biriscv_regfile
 //-----------------------------------------------------------------
 (
     // Inputs
-     input           clk_i
-    ,input           rst_i
+     input           clk
+    ,input           rst_n
     ,input  [  4:0]  rd0_i
     ,input  [  4:0]  rd1_i
     ,input  [ 31:0]  rd0_value_i
@@ -68,8 +73,8 @@ begin: REGFILE_XILINX
     u_a_0
     (
         // Inputs
-         .clk_i(clk_i)
-        ,.rst_i(rst_i)
+         .clk(clk)
+        ,.rst_n(rst_n)
         ,.rd0_i(rd0_i)
         ,.rd0_value_i(rd0_value_i)
         ,.ra_i(ra0_i)
@@ -84,8 +89,8 @@ begin: REGFILE_XILINX
     u_a_1
     (
         // Inputs
-         .clk_i(clk_i)
-        ,.rst_i(rst_i)
+         .clk(clk)
+        ,.rst_n(rst_n)
         ,.rd0_i(rd1_i)
         ,.rd0_value_i(rd1_value_i)
         ,.ra_i(ra0_i)
@@ -100,8 +105,8 @@ begin: REGFILE_XILINX
     u_b_0
     (
         // Inputs
-         .clk_i(clk_i)
-        ,.rst_i(rst_i)
+         .clk(clk)
+        ,.rst_n(rst_n)
         ,.rd0_i(rd0_i)
         ,.rd0_value_i(rd0_value_i)
         ,.ra_i(ra1_i)
@@ -116,8 +121,8 @@ begin: REGFILE_XILINX
     u_b_1
     (
         // Inputs
-         .clk_i(clk_i)
-        ,.rst_i(rst_i)
+         .clk(clk)
+        ,.rst_n(rst_n)
         ,.rd0_i(rd1_i)
         ,.rd0_value_i(rd1_value_i)
         ,.ra_i(ra1_i)
@@ -143,8 +148,8 @@ begin: REGFILE_XILINX
         reg_src_r[0] = 1'b0;
     end 
 
-    always @ (posedge clk_i or posedge rst_i)
-    if (rst_i)
+    always @(posedge clk or negedge rst_n)
+    if (!rst_n)
         reg_src_q <= 32'b0;
     else
         reg_src_q <= reg_src_r;
@@ -165,8 +170,8 @@ begin: REGFILE_XILINX_SINGLE
     u_reg
     (
         // Inputs
-         .clk_i(clk_i)
-        ,.rst_i(rst_i)
+         .clk(clk)
+        ,.rst_n(rst_n)
         ,.rd0_i(rd0_i)
         ,.rd0_value_i(rd0_value_i)
         ,.ra_i(ra0_i)
@@ -256,8 +261,8 @@ begin: REGFILE
     //-----------------------------------------------------------------
 
     // Synchronous register write back
-    always @ (posedge clk_i )
-    if (rst_i)
+    always @(posedge clk or negedge rst_n)
+    if (!rst_n)
     begin
         reg_r1_q       <= 32'h00000000;
         reg_r2_q       <= 32'h00000000;

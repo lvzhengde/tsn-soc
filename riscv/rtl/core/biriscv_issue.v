@@ -1,4 +1,9 @@
 //-----------------------------------------------------------------
+//
+// Copyright (c) 2022-2024 Zhengde
+// All rights reserved.
+//
+//-----------------------------------------------------------------
 //                         biRISC-V CPU
 //                            V0.8.1
 //                     Ultra-Embedded.com
@@ -28,19 +33,18 @@ module biriscv_issue
 // Params
 //-----------------------------------------------------------------
 #(
-     parameter SUPPORT_MULDIV   = 1
-    ,parameter SUPPORT_DUAL_ISSUE = 1
-    ,parameter SUPPORT_LOAD_BYPASS = 1
-    ,parameter SUPPORT_MUL_BYPASS = 1
-    ,parameter SUPPORT_REGFILE_XILINX = 0
+    parameter SUPPORT_MULDIV      = 1  ,
+    parameter SUPPORT_DUAL_ISSUE  = 1  ,
+    parameter SUPPORT_LOAD_BYPASS = 1  ,
+    parameter SUPPORT_MUL_BYPASS  = 1  
 )
 //-----------------------------------------------------------------
 // Ports
 //-----------------------------------------------------------------
 (
     // Inputs
-     input           clk_i
-    ,input           rst_i
+     input           clk
+    ,input           rst_n
     ,input           fetch0_valid_i
     ,input  [ 31:0]  fetch0_instr_i
     ,input  [ 31:0]  fetch0_pc_i
@@ -198,8 +202,8 @@ wire        dual_issue_w;
 reg  [31:0] pc_x_q;
 reg   [1:0] priv_x_q;
 
-always @ (posedge clk_i or posedge rst_i)
-if (rst_i)
+always @(posedge clk or negedge rst_n)
+if (!rst_n)
     pc_x_q <= 32'b0;
 else if (branch_csr_request_i)
     pc_x_q <= branch_csr_pc_i;
@@ -212,8 +216,8 @@ else if (dual_issue_w)
 else if (single_issue_w)
     pc_x_q <= pc_x_q + 32'd4;
 
-always @ (posedge clk_i or posedge rst_i)
-if (rst_i)
+always @(posedge clk or negedge rst_n)
+if (!rst_n)
     priv_x_q <= `PRIV_MACHINE;
 else if (branch_csr_request_i)
     priv_x_q <= branch_csr_priv_i;
@@ -375,8 +379,8 @@ biriscv_pipe_ctrl
 )
 u_pipe0_ctrl
 (
-     .clk_i(clk_i)
-    ,.rst_i(rst_i)    
+     .clk(clk)
+    ,.rst_n(rst_n)    
 
     // Issue
     ,.issue_valid_i(opcode_a_issue_r)
@@ -497,8 +501,8 @@ biriscv_pipe_ctrl
 )
 u_pipe1_ctrl
 (
-     .clk_i(clk_i)
-    ,.rst_i(rst_i)
+     .clk(clk)
+    ,.rst_n(rst_n)
 
     // Issue
     ,.issue_valid_i(opcode_b_issue_r)
@@ -602,8 +606,8 @@ reg csr_pending_q;
 
 // Division operations take 2 - 34 cycles and stall
 // the pipeline (complete out-of-pipe) until completed.
-always @ (posedge clk_i or posedge rst_i)
-if (rst_i)
+always @(posedge clk or negedge rst_n)
+if (!rst_n)
     div_pending_q <= 1'b0;
 else if (pipe0_squash_e1_e2_w || pipe1_squash_e1_e2_w)
     div_pending_q <= 1'b0;
@@ -614,8 +618,8 @@ else if (writeback_div_valid_i)
 
 // CSR operations are infrequent - avoid any complications of pipelining them.
 // These only take a 2-3 cycles anyway and may result in a pipe flush (e.g. ecall, ebreak..).
-always @ (posedge clk_i or posedge rst_i)
-if (rst_i)
+always @(posedge clk or negedge rst_n)
+if (!rst_n)
     csr_pending_q <= 1'b0;
 else if (pipe0_squash_e1_e2_w || pipe1_squash_e1_e2_w)
     csr_pending_q <= 1'b0;
@@ -744,13 +748,12 @@ wire [31:0] issue_b_rb_value_w;
 // Register file: 2W4R
 biriscv_regfile
 #(
-     .SUPPORT_REGFILE_XILINX(SUPPORT_REGFILE_XILINX)
-    ,.SUPPORT_DUAL_ISSUE(SUPPORT_DUAL_ISSUE)
+    .SUPPORT_DUAL_ISSUE    (SUPPORT_DUAL_ISSUE)
 )
 u_regfile
 (
-    .clk_i(clk_i),
-    .rst_i(rst_i),
+    .clk(clk),
+    .rst_n(rst_n),
 
     // Write ports
     .rd0_i(pipe0_rd_wb_w),

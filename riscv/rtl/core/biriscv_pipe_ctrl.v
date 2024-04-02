@@ -1,4 +1,9 @@
 //-----------------------------------------------------------------
+//
+// Copyright (c) 2022-2024 Zhengde
+// All rights reserved.
+//
+//-----------------------------------------------------------------
 //                         biRISC-V CPU
 //                            V0.8.1
 //                     Ultra-Embedded.com
@@ -27,15 +32,15 @@ module biriscv_pipe_ctrl
 // Params
 //-----------------------------------------------------------------
 #(
-     parameter SUPPORT_LOAD_BYPASS = 1
-    ,parameter SUPPORT_MUL_BYPASS  = 1
+    parameter SUPPORT_LOAD_BYPASS = 1 ,
+    parameter SUPPORT_MUL_BYPASS  = 1 
 )
 //-----------------------------------------------------------------
 // Ports
 //-----------------------------------------------------------------
 (
-     input           clk_i
-    ,input           rst_i
+     input           clk
+    ,input           rst_n
 
     // Issue
     ,input           issue_valid_i
@@ -147,8 +152,8 @@ reg [31:0]              operand_ra_e1_q;
 reg [31:0]              operand_rb_e1_q;
 reg [`EXCEPTION_W-1:0]  exception_e1_q;
 
-always @ (posedge clk_i or posedge rst_i)
-if (rst_i)
+always @(posedge clk or negedge rst_n)
+if (!rst_n)
 begin
     valid_e1_q      <= 1'b0;
     ctrl_e1_q       <= `PCINFO_W'b0;
@@ -225,8 +230,8 @@ reg [31:0]              operand_ra_e2_q;
 reg [31:0]              operand_rb_e2_q;
 reg [`EXCEPTION_W-1:0]  exception_e2_q;
 
-always @ (posedge clk_i or posedge rst_i)
-if (rst_i)
+always @(posedge clk or negedge rst_n)
+if (!rst_n)
 begin
     valid_e2_q      <= 1'b0;
     ctrl_e2_q       <= `PCINFO_W'b0;
@@ -328,8 +333,8 @@ assign squash_e1_e2_w = |exception_e2_r;
 
 reg squash_e1_e2_q;
 
-always @ (posedge clk_i or posedge rst_i)
-if (rst_i)
+always @(posedge clk or negedge rst_n)
+if (!rst_n)
     squash_e1_e2_q <= 1'b0;
 else if (~issue_stall_i)
     squash_e1_e2_q <= squash_e1_e2_w;
@@ -351,8 +356,8 @@ reg [31:0]              operand_ra_wb_q;
 reg [31:0]              operand_rb_wb_q;
 reg [`EXCEPTION_W-1:0]  exception_wb_q;
 
-always @ (posedge clk_i or posedge rst_i)
-if (rst_i)
+always @(posedge clk or negedge rst_n)
+if (!rst_n)
 begin
     valid_wb_q      <= 1'b0;
     ctrl_wb_q       <= `PCINFO_W'b0;
