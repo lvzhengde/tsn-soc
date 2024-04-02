@@ -699,8 +699,8 @@ module riscv_core
     biriscv_exec u_exec0
     (
         // Inputs
-        .clk_i                    (clk)                   ,
-        .rst_i                    (~rst_n)                ,
+        .clk                      (clk)                   ,
+        .rst_n                    (rst_n)                 ,
         .opcode_valid_i           (exec0_opcode_valid_w)  ,
         .opcode_opcode_i          (opcode0_opcode_w)      ,
         .opcode_pc_i              (opcode0_pc_w)          ,
@@ -731,8 +731,8 @@ module riscv_core
     biriscv_exec u_exec1
     (
         // Inputs
-        .clk_i                    (clk)                  ,
-        .rst_i                    (~rst_n)               ,
+        .clk                      (clk)                  ,
+        .rst_n                    (rst_n)                ,
         .opcode_valid_i           (exec1_opcode_valid_w) ,
         .opcode_opcode_i          (opcode1_opcode_w)     ,
         .opcode_pc_i              (opcode1_pc_w)         ,
