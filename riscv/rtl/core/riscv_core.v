@@ -693,7 +693,10 @@ module riscv_core
         .exec0_hold_o                      (exec0_hold_w)                  ,
         .exec1_hold_o                      (exec1_hold_w)                  ,
         .mul_hold_o                        (mul_hold_w)                    ,
-        .interrupt_inhibit_o               (interrupt_inhibit_w)           
+        .interrupt_inhibit_o               (interrupt_inhibit_w)           ,
+
+        // JTAG Signals
+        .jtag_halt_req_i                   (jtag_halt_req_i)
     );
     
 

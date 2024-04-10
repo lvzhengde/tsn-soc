@@ -180,7 +180,10 @@ module biriscv_issue
     output          exec0_hold_o                    ,
     output          exec1_hold_o                    ,
     output          mul_hold_o                      ,
-    output          interrupt_inhibit_o             
+    output          interrupt_inhibit_o             ,
+
+    // JTAG Signals
+    input           jtag_halt_req_i
 );
 
     `include "biriscv_defs.v"
@@ -733,7 +736,7 @@ module biriscv_issue
     assign fetch0_accept_o      = ((slot0_valid_r & opcode_a_accept_r) | slot1_valid_r) & ~take_interrupt_i;
     assign fetch1_accept_o      = ((slot1_valid_r & opcode_a_accept_r) | (opcode_b_accept_r)) & ~take_interrupt_i;
     
-    assign stall_w              = pipe0_stall_raw_w | pipe1_stall_raw_w;
+    assign stall_w              = pipe0_stall_raw_w | pipe1_stall_raw_w | jtag_halt_req_i;
 
     //-------------------------------------------------------------
     // Register File
