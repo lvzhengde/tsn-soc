@@ -465,6 +465,7 @@ module riscv_core
         // Inputs
         .clk                               (clk)                             ,
         .rst_n                             (rst_n)                           ,
+        .jtag_reset_req_i                  (jtag_reset_req_i)                ,
         .intr_i                            (intr_i)                          ,
         .opcode_valid_i                    (csr_opcode_valid_w)              ,
         .opcode_opcode_i                   (csr_opcode_opcode_w)             ,
