@@ -696,7 +696,11 @@ module riscv_core
         .interrupt_inhibit_o               (interrupt_inhibit_w)           ,
 
         // JTAG Signals
-        .jtag_halt_req_i                   (jtag_halt_req_i)
+        .jtag_halt_req_i                   (jtag_halt_req_i  )             ,             
+        .jtag_rf_waddr_i                   (jtag_rf_waddr_i  )             ,              
+        .jtag_rf_data_wr_i                 (jtag_rf_data_wr_i)             ,              
+        .jtag_rf_raddr_i                   (jtag_rf_raddr_i  )             ,              
+        .jtag_rf_data_rd_o                 (jtag_rf_data_rd_o)                           
     );
     
 

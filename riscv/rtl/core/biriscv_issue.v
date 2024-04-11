@@ -183,7 +183,11 @@ module biriscv_issue
     output          interrupt_inhibit_o             ,
 
     // JTAG Signals
-    input           jtag_halt_req_i
+    input           jtag_halt_req_i    , 
+    input  [  4:0]  jtag_rf_waddr_i    , 
+    input  [ 31:0]  jtag_rf_data_wr_i  , 
+    input  [  4:0]  jtag_rf_raddr_i    ,
+    output [ 31:0]  jtag_rf_data_rd_o   
 );
 
     `include "biriscv_defs.v"
@@ -747,31 +751,33 @@ module biriscv_issue
     wire [31:0] issue_b_rb_value_w;
 
     // Register file: 2W4R
-    biriscv_regfile
-    #(
-        .SUPPORT_DUAL_ISSUE    (SUPPORT_DUAL_ISSUE)
-    )
-    u_regfile
+    biriscv_regfile u_regfile
     (
-        .clk            (clk),
-        .rst_n          (rst_n),
+        .clk                  (clk),
+        .rst_n                (rst_n),
     
         // Write ports
-        .rd0_i          (pipe0_rd_wb_w),
-        .rd0_value_i    (pipe0_result_wb_w),
-        .rd1_i          (pipe1_rd_wb_w),
-        .rd1_value_i    (pipe1_result_wb_w),
+        .rd0_i                (pipe0_rd_wb_w),
+        .rd0_value_i          (pipe0_result_wb_w),
+        .rd1_i                (pipe1_rd_wb_w),
+        .rd1_value_i          (pipe1_result_wb_w),
     
         // Read ports
-        .ra0_i          (issue_a_ra_idx_w),
-        .rb0_i          (issue_a_rb_idx_w),
-        .ra0_value_o    (issue_a_ra_value_w),
-        .rb0_value_o    (issue_a_rb_value_w),
+        .ra0_i                (issue_a_ra_idx_w),
+        .rb0_i                (issue_a_rb_idx_w),
+        .ra0_value_o          (issue_a_ra_value_w),
+        .rb0_value_o          (issue_a_rb_value_w),
     
-        .ra1_i          (issue_b_ra_idx_w),
-        .rb1_i          (issue_b_rb_idx_w),
-        .ra1_value_o    (issue_b_ra_value_w),
-        .rb1_value_o    (issue_b_rb_value_w)    
+        .ra1_i                (issue_b_ra_idx_w),
+        .rb1_i                (issue_b_rb_idx_w),
+        .ra1_value_o          (issue_b_ra_value_w),
+        .rb1_value_o          (issue_b_rb_value_w),    
+
+        // JTAG regfile ports
+        .jtag_rf_waddr_i      (jtag_rf_waddr_i  ), 
+        .jtag_rf_data_wr_i    (jtag_rf_data_wr_i), 
+        .jtag_rf_raddr_i      (jtag_rf_raddr_i  ),
+        .jtag_rf_data_rd_o    (jtag_rf_data_rd_o) 
     );
 
     //-------------------------------------------------------------
