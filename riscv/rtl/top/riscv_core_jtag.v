@@ -31,6 +31,7 @@
 
 /*+
  * riscv core with jtag debug support
+ * TODO: to support virtual address, should place JTAG module upstream biriscv_mmu??
 -*/
 
 

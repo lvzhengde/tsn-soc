@@ -1,5 +1,6 @@
 #include <stdint.h>
 
+#define CSR_SIM_CTRL       0x8b2
 #define CSR_SIM_CTRL_PUTC (1 << 24)
 
 void sim_print(const char *str) 
@@ -9,14 +10,16 @@ void sim_print(const char *str)
     while (*str != '\0') {
         x = (*str) & 0xff;
         x = x | CSR_SIM_CTRL_PUTC;
-        asm volatile ("csrw dscratch, %0" :: "r"(x));
+        //asm volatile ("csrw dscratch, %0" :: "r"(x));
+        asm volatile ("csrw %0, %1" : : "i"(CSR_SIM_CTRL), "r"(x));
 
         str++;
     }
 
     x = '\n' & 0xff;
     x = x | CSR_SIM_CTRL_PUTC;
-    asm volatile ("csrw dscratch, %0" :: "r"(x));
+    //asm volatile ("csrw dscratch, %0" :: "r"(x));
+    asm volatile ("csrw %0, %1" : : "i"(CSR_SIM_CTRL), "r"(x));
 #endif
 }
 
