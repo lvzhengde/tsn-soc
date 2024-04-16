@@ -1,4 +1,9 @@
 //-----------------------------------------------------------------
+//
+// Copyright (c) 2022-2024 Zhengde
+// All rights reserved.
+//
+//-----------------------------------------------------------------
 //                         biRISC-V CPU
 //                            V0.8.1
 //                     Ultra-Embedded.com
@@ -302,6 +307,27 @@
 `define SR_IP_SSIP_R      `IRQ_S_SOFT
 `define SR_IP_STIP_R      `IRQ_S_TIMER
 `define SR_IP_SEIP_R      `IRQ_S_EXT
+
+//--------------------------------------------------------------------
+// CSR Registers - Debug Mode
+//--------------------------------------------------------------------
+`define CSR_TSELECT            12'h7a0
+`define CSR_TSELECT_MASK       32'hFFFFFFFF
+`define CSR_TDATA1             12'h7a1
+`define CSR_TDATA1_MASK        32'hFFFFFFFF
+`define CSR_TDATA2             12'h7a2
+`define CSR_TDATA2_MASK        32'hFFFFFFFF
+`define CSR_TDATA3             12'h7a3
+`define CSR_TDATA3_MASK        32'hFFFFFFFF
+
+`define CSR_DCSR               12'h7b0
+`define CSR_DCSR_MASK          32'hF000BFDF
+`define CSR_DPC                12'h7b1
+`define CSR_DPC_MASK           32'hFFFFFFFF
+`define CSR_DSCRATCH0          12'h7b2
+`define CSR_DSCRATCH0_MASK     32'hFFFFFFFF
+`define CSR_DSCRATCH1          12'h7b3
+`define CSR_DSCRATCH1_MASK     32'hFFFFFFFF
 
 //--------------------------------------------------------------------
 // CSR Registers - Simulation control
