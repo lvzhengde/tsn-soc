@@ -45,10 +45,6 @@ module jtag_core_mux
     input            mem_d_ack_i        ,
     input            mem_d_error_i      ,
     input  [ 10:0]   mem_d_resp_tag_i   ,
-    input            mem_i_accept_i     ,
-    input            mem_i_valid_i      ,
-    input            mem_i_error_i      ,
-    input  [ 63:0]   mem_i_inst_i       ,
 
     input  [ 31:0]   core_mem_d_addr_i       ,
     input  [ 31:0]   core_mem_d_data_wr_i    ,
@@ -59,10 +55,6 @@ module jtag_core_mux
     input            core_mem_d_invalidate_i ,
     input            core_mem_d_writeback_i  ,
     input            core_mem_d_flush_i      ,
-    input            core_mem_i_rd_i         ,
-    input            core_mem_i_flush_i      ,
-    input            core_mem_i_invalidate_i ,
-    input  [ 31:0]   core_mem_i_pc_i         ,
 
     input  [ 31:0]   jtag_mem_d_addr_i       ,
     input  [ 31:0]   jtag_mem_d_data_wr_i    ,
@@ -73,10 +65,6 @@ module jtag_core_mux
     input            jtag_mem_d_invalidate_i ,
     input            jtag_mem_d_writeback_i  ,
     input            jtag_mem_d_flush_i      ,
-    input            jtag_mem_i_rd_i         ,
-    input            jtag_mem_i_flush_i      ,
-    input            jtag_mem_i_invalidate_i ,
-    input  [ 31:0]   jtag_mem_i_pc_i         ,
 
     //Outputs
     output [ 31:0]   mem_d_addr_o       ,
@@ -88,30 +76,18 @@ module jtag_core_mux
     output           mem_d_invalidate_o ,
     output           mem_d_writeback_o  ,
     output           mem_d_flush_o      ,
-    output           mem_i_rd_o         ,
-    output           mem_i_flush_o      ,
-    output           mem_i_invalidate_o ,
-    output [ 31:0]   mem_i_pc_o         ,
 
     output [ 31:0]   core_mem_d_data_rd_o  ,
     output           core_mem_d_accept_o   ,
     output           core_mem_d_ack_o      ,
     output           core_mem_d_error_o    ,
     output [ 10:0]   core_mem_d_resp_tag_o ,
-    output           core_mem_i_accept_o   ,
-    output           core_mem_i_valid_o    ,
-    output           core_mem_i_error_o    ,
-    output [ 63:0]   core_mem_i_inst_o     ,
 
     output [ 31:0]   jtag_mem_d_data_rd_o  ,
     output           jtag_mem_d_accept_o   ,
     output           jtag_mem_d_ack_o      ,
     output           jtag_mem_d_error_o    ,
-    output [ 10:0]   jtag_mem_d_resp_tag_o ,
-    output           jtag_mem_i_accept_o   ,
-    output           jtag_mem_i_valid_o    ,
-    output           jtag_mem_i_error_o    ,
-    output [ 63:0]   jtag_mem_i_inst_o     
+    output [ 10:0]   jtag_mem_d_resp_tag_o  
 );
 
     reg   [ 31:0]   mem_d_addr_r       ;
@@ -123,10 +99,6 @@ module jtag_core_mux
     reg             mem_d_invalidate_r ;
     reg             mem_d_writeback_r  ;
     reg             mem_d_flush_r      ;
-    reg             mem_i_rd_r         ;
-    reg             mem_i_flush_r      ;
-    reg             mem_i_invalidate_r ;
-    reg   [ 31:0]   mem_i_pc_r         ;
 
     always @(*) begin
         if (jtag_bus_req_i == 1'b1) begin
@@ -139,10 +111,6 @@ module jtag_core_mux
             mem_d_invalidate_r = jtag_mem_d_invalidate_i ;
             mem_d_writeback_r  = jtag_mem_d_writeback_i  ;
             mem_d_flush_r      = jtag_mem_d_flush_i      ;
-            mem_i_rd_r         = jtag_mem_i_rd_i         ;
-            mem_i_flush_r      = jtag_mem_i_flush_i      ;
-            mem_i_invalidate_r = jtag_mem_i_invalidate_i ;
-            mem_i_pc_r         = jtag_mem_i_pc_i         ;
         end
         else begin
             mem_d_addr_r       = core_mem_d_addr_i       ;
@@ -154,10 +122,6 @@ module jtag_core_mux
             mem_d_invalidate_r = core_mem_d_invalidate_i ;
             mem_d_writeback_r  = core_mem_d_writeback_i  ;
             mem_d_flush_r      = core_mem_d_flush_i      ;
-            mem_i_rd_r         = core_mem_i_rd_i         ;
-            mem_i_flush_r      = core_mem_i_flush_i      ;
-            mem_i_invalidate_r = core_mem_i_invalidate_i ;
-            mem_i_pc_r         = core_mem_i_pc_i         ;
         end
     end
 
@@ -170,29 +134,17 @@ module jtag_core_mux
     assign mem_d_invalidate_o  = mem_d_invalidate_r ;
     assign mem_d_writeback_o   = mem_d_writeback_r  ;
     assign mem_d_flush_o       = mem_d_flush_r      ;
-    assign mem_i_rd_o          = mem_i_rd_r         ;
-    assign mem_i_flush_o       = mem_i_flush_r      ;
-    assign mem_i_invalidate_o  = mem_i_invalidate_r ;
-    assign mem_i_pc_o          = mem_i_pc_r         ;
 
     assign core_mem_d_data_rd_o  = mem_d_data_rd_i  ;
     assign core_mem_d_accept_o   = (jtag_bus_req_i == 1'b0) ? mem_d_accept_i : 1'b0   ;
     assign core_mem_d_ack_o      = (jtag_bus_req_i == 1'b0) ? mem_d_ack_i    : 1'b0   ;
     assign core_mem_d_error_o    = mem_d_error_i    ;
     assign core_mem_d_resp_tag_o = mem_d_resp_tag_i ;
-    assign core_mem_i_accept_o   = (jtag_bus_req_i == 1'b0) ? mem_i_accept_i : 1'b0   ;
-    assign core_mem_i_valid_o    = (jtag_bus_req_i == 1'b0) ? mem_i_valid_i  : 1'b0   ;
-    assign core_mem_i_error_o    = mem_i_error_i    ;
-    assign core_mem_i_inst_o     = mem_i_inst_i     ;
 
     assign jtag_mem_d_data_rd_o  = mem_d_data_rd_i  ;
     assign jtag_mem_d_accept_o   = (jtag_bus_req_i == 1'b1) ? mem_d_accept_i : 1'b0   ;
     assign jtag_mem_d_ack_o      = (jtag_bus_req_i == 1'b1) ? mem_d_ack_i    : 1'b0   ;
     assign jtag_mem_d_error_o    = mem_d_error_i    ;
     assign jtag_mem_d_resp_tag_o = mem_d_resp_tag_i ;
-    assign jtag_mem_i_accept_o   = (jtag_bus_req_i == 1'b1) ? mem_i_accept_i : 1'b0   ;
-    assign jtag_mem_i_valid_o    = (jtag_bus_req_i == 1'b1) ? mem_i_valid_i  : 1'b0   ;
-    assign jtag_mem_i_error_o    = mem_i_error_i    ;
-    assign jtag_mem_i_inst_o     = mem_i_inst_i     ;
 
 endmodule

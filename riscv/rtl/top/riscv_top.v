@@ -205,7 +205,7 @@ module riscv_top
         .axi_rready_o        (axi_d_rready_o)      
     );
 
-    riscv_core_jtag
+    riscv_core
     #(
         .MEM_CACHE_ADDR_MIN           (MEM_CACHE_ADDR_MIN)        ,
         .MEM_CACHE_ADDR_MAX           (MEM_CACHE_ADDR_MAX)        ,
@@ -227,7 +227,7 @@ module riscv_top
         .NUM_RAS_ENTRIES              (NUM_RAS_ENTRIES)           ,
         .NUM_RAS_ENTRIES_W            (NUM_RAS_ENTRIES_W)         
     )
-    u_riscv_core_jtag
+    u_riscv_core
     (
         // Inputs
         .clk                   (clk)               ,

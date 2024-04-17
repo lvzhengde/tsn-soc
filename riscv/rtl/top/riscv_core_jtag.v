@@ -101,63 +101,6 @@ module riscv_core_jtag
     input           tdi_i              , 
     output          tdo_o               
 );
-    wire            jtag_bus_req_w     ;
-    wire            jtag_reset_req_w   ;
-    wire            jtag_halt_req_w    ;
-    
-    wire  [  4:0]   jtag_rf_waddr_w    ; 
-    wire  [ 31:0]   jtag_rf_data_wr_w  ; 
-    wire  [  4:0]   jtag_rf_raddr_w    ; 
-    wire  [ 31:0]   jtag_rf_data_rd_w  ; 
-
-    wire  [ 31:0]   core_mem_d_data_rd_w    ;
-    wire            core_mem_d_accept_w     ;
-    wire            core_mem_d_ack_w        ;
-    wire            core_mem_d_error_w      ;
-    wire  [ 10:0]   core_mem_d_resp_tag_w   ;
-    wire            core_mem_i_accept_w     ;
-    wire            core_mem_i_valid_w      ;
-    wire            core_mem_i_error_w      ;
-    wire  [ 63:0]   core_mem_i_inst_w       ;
-
-    wire  [ 31:0]   core_mem_d_addr_w       ;
-    wire  [ 31:0]   core_mem_d_data_wr_w    ;
-    wire            core_mem_d_rd_w         ;
-    wire  [  3:0]   core_mem_d_wr_w         ;
-    wire            core_mem_d_cacheable_w  ;
-    wire  [ 10:0]   core_mem_d_req_tag_w    ;
-    wire            core_mem_d_invalidate_w ;
-    wire            core_mem_d_writeback_w  ;
-    wire            core_mem_d_flush_w      ;
-    wire            core_mem_i_rd_w         ;
-    wire            core_mem_i_flush_w      ;
-    wire            core_mem_i_invalidate_w ;
-    wire  [ 31:0]   core_mem_i_pc_w         ;
-
-    wire  [ 31:0]   jtag_mem_d_data_rd_w    ;
-    wire            jtag_mem_d_accept_w     ;
-    wire            jtag_mem_d_ack_w        ;
-    wire            jtag_mem_d_error_w      ;
-    wire  [ 10:0]   jtag_mem_d_resp_tag_w   ;
-    wire            jtag_mem_i_accept_w     ;
-    wire            jtag_mem_i_valid_w      ;
-    wire            jtag_mem_i_error_w      ;
-    wire  [ 63:0]   jtag_mem_i_inst_w       ;
-
-    wire  [ 31:0]   jtag_mem_d_addr_w       ;
-    wire  [ 31:0]   jtag_mem_d_data_wr_w    ;
-    wire            jtag_mem_d_rd_w         ;
-    wire  [  3:0]   jtag_mem_d_wr_w         ;
-    wire            jtag_mem_d_cacheable_w  ;
-    wire  [ 10:0]   jtag_mem_d_req_tag_w    ;
-    wire            jtag_mem_d_invalidate_w ;
-    wire            jtag_mem_d_writeback_w  ;
-    wire            jtag_mem_d_flush_w      ;
-    wire            jtag_mem_i_rd_w         ;
-    wire            jtag_mem_i_flush_w      ;
-    wire            jtag_mem_i_invalidate_w ;
-    wire  [ 31:0]   jtag_mem_i_pc_w         ;
-
 
     riscv_core
     #(
@@ -186,44 +129,41 @@ module riscv_core_jtag
         //Inputs
         .clk                       (clk             ) ,
         .rst_n                     (rst_n           ) ,
-        .mem_d_data_rd_i           (core_mem_d_data_rd_w ) ,
-        .mem_d_accept_i            (core_mem_d_accept_w  ) ,
-        .mem_d_ack_i               (core_mem_d_ack_w     ) ,
-        .mem_d_error_i             (core_mem_d_error_w   ) ,
-        .mem_d_resp_tag_i          (core_mem_d_resp_tag_w) ,
-        .mem_i_accept_i            (core_mem_i_accept_w  ) ,
-        .mem_i_valid_i             (core_mem_i_valid_w   ) ,
-        .mem_i_error_i             (core_mem_i_error_w   ) ,
-        .mem_i_inst_i              (core_mem_i_inst_w    ) ,
+        .mem_d_data_rd_i           (mem_d_data_rd_i ) ,
+        .mem_d_accept_i            (mem_d_accept_i  ) ,
+        .mem_d_ack_i               (mem_d_ack_i     ) ,
+        .mem_d_error_i             (mem_d_error_i   ) ,
+        .mem_d_resp_tag_i          (mem_d_resp_tag_i) ,
+        .mem_i_accept_i            (mem_i_accept_i  ) ,
+        .mem_i_valid_i             (mem_i_valid_i   ) ,
+        .mem_i_error_i             (mem_i_error_i   ) ,
+        .mem_i_inst_i              (mem_i_inst_i    ) ,
         .intr_i                    (intr_i          ) ,
         .reset_vector_i            (reset_vector_i  ) ,
         .cpu_id_i                  (cpu_id_i        ) ,
     
         //Outputs
-        .mem_d_addr_o              (core_mem_d_addr_w      ) ,
-        .mem_d_data_wr_o           (core_mem_d_data_wr_w   ) ,
-        .mem_d_rd_o                (core_mem_d_rd_w        ) ,
-        .mem_d_wr_o                (core_mem_d_wr_w        ) ,
-        .mem_d_cacheable_o         (core_mem_d_cacheable_w ) ,
-        .mem_d_req_tag_o           (core_mem_d_req_tag_w   ) ,
-        .mem_d_invalidate_o        (core_mem_d_invalidate_w) ,
-        .mem_d_writeback_o         (core_mem_d_writeback_w ) ,
-        .mem_d_flush_o             (core_mem_d_flush_w     ) ,
-        .mem_i_rd_o                (core_mem_i_rd_w        ) ,
-        .mem_i_flush_o             (core_mem_i_flush_w     ) ,
-        .mem_i_invalidate_o        (core_mem_i_invalidate_w) ,
-        .mem_i_pc_o                (core_mem_i_pc_w        ) ,
+        .mem_d_addr_o              (mem_d_addr_o      ) ,
+        .mem_d_data_wr_o           (mem_d_data_wr_o   ) ,
+        .mem_d_rd_o                (mem_d_rd_o        ) ,
+        .mem_d_wr_o                (mem_d_wr_o        ) ,
+        .mem_d_cacheable_o         (mem_d_cacheable_o ) ,
+        .mem_d_req_tag_o           (mem_d_req_tag_o   ) ,
+        .mem_d_invalidate_o        (mem_d_invalidate_o) ,
+        .mem_d_writeback_o         (mem_d_writeback_o ) ,
+        .mem_d_flush_o             (mem_d_flush_o     ) ,
+        .mem_i_rd_o                (mem_i_rd_o        ) ,
+        .mem_i_flush_o             (mem_i_flush_o     ) ,
+        .mem_i_invalidate_o        (mem_i_invalidate_o) ,
+        .mem_i_pc_o                (mem_i_pc_o        ) ,
 
-        // JTAG signals
-        .jtag_reset_req_i          (jtag_reset_req_w ),
-        .jtag_halt_req_i           (jtag_halt_req_w  ),
-                                                     
-        .jtag_rf_waddr_i           (jtag_rf_waddr_w  ),
-        .jtag_rf_data_wr_i         (jtag_rf_data_wr_w),
-        .jtag_rf_raddr_i           (jtag_rf_raddr_w  ),
-        .jtag_rf_data_rd_o         (jtag_rf_data_rd_w)
+        .tck_i                     (tck_i), 
+        .tms_i                     (tms_i), 
+        .tdi_i                     (tdi_i), 
+        .tdo_o                     (tdo_o) 
     );
 
+/*
     jtag_core_mux u_jtag_core_mux
     (
         //Inputs
@@ -231,15 +171,15 @@ module riscv_core_jtag
         .rst_n                     (rst_n         ),
         .jtag_bus_req_i            (jtag_bus_req_w),
     
-        .mem_d_data_rd_i           (mem_d_data_rd_i ),
-        .mem_d_accept_i            (mem_d_accept_i  ),
-        .mem_d_ack_i               (mem_d_ack_i     ),
-        .mem_d_error_i             (mem_d_error_i   ),
-        .mem_d_resp_tag_i          (mem_d_resp_tag_i),
-        .mem_i_accept_i            (mem_i_accept_i  ),
-        .mem_i_valid_i             (mem_i_valid_i   ),
-        .mem_i_error_i             (mem_i_error_i   ),
-        .mem_i_inst_i              (mem_i_inst_i    ),
+        .mem_d_data_rd_i           (),
+        .mem_d_accept_i            (),
+        .mem_d_ack_i               (),
+        .mem_d_error_i             (),
+        .mem_d_resp_tag_i          (),
+        .mem_i_accept_i            (),
+        .mem_i_valid_i             (),
+        .mem_i_error_i             (),
+        .mem_i_inst_i              (),
     
         .core_mem_d_addr_i         (core_mem_d_addr_w      ),
         .core_mem_d_data_wr_i      (core_mem_d_data_wr_w   ),
@@ -270,19 +210,19 @@ module riscv_core_jtag
         .jtag_mem_i_pc_i           (jtag_mem_i_pc_w        ),
     
         //Outputs
-        .mem_d_addr_o              (mem_d_addr_o      ),
-        .mem_d_data_wr_o           (mem_d_data_wr_o   ),
-        .mem_d_rd_o                (mem_d_rd_o        ),
-        .mem_d_wr_o                (mem_d_wr_o        ),
-        .mem_d_cacheable_o         (mem_d_cacheable_o ),
-        .mem_d_req_tag_o           (mem_d_req_tag_o   ),
-        .mem_d_invalidate_o        (mem_d_invalidate_o),
-        .mem_d_writeback_o         (mem_d_writeback_o ),
-        .mem_d_flush_o             (mem_d_flush_o     ),
-        .mem_i_rd_o                (mem_i_rd_o        ),
-        .mem_i_flush_o             (mem_i_flush_o     ),
-        .mem_i_invalidate_o        (mem_i_invalidate_o),
-        .mem_i_pc_o                (mem_i_pc_o        ),
+        .mem_d_addr_o              (),
+        .mem_d_data_wr_o           (),
+        .mem_d_rd_o                (),
+        .mem_d_wr_o                (),
+        .mem_d_cacheable_o         (),
+        .mem_d_req_tag_o           (),
+        .mem_d_invalidate_o        (),
+        .mem_d_writeback_o         (),
+        .mem_d_flush_o             (),
+        .mem_i_rd_o                (),
+        .mem_i_flush_o             (),
+        .mem_i_invalidate_o        (),
+        .mem_i_pc_o                (),
     
         .core_mem_d_data_rd_o      (core_mem_d_data_rd_w ),
         .core_mem_d_accept_o       (core_mem_d_accept_w  ),
@@ -360,6 +300,7 @@ module riscv_core_jtag
         .mem_i_invalidate_o   (jtag_mem_i_invalidate_w),
         .mem_i_pc_o           (jtag_mem_i_pc_w        )
     );
+*/
 
 endmodule
 

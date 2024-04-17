@@ -4,7 +4,7 @@ module sim_riscv;
 
     tb_top tb();
 
-    wire sim_finish = tb.u_dut.u_riscv_core.u_csr.u_csrfile.sim_finish;
+    wire sim_finish = tb.u_dut.u_csr.u_csrfile.sim_finish;
 
     integer i;
     integer f;

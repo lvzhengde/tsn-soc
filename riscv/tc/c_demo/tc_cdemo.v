@@ -4,9 +4,9 @@ module sim_riscv;
 
     tb_top tb();
 
-    wire sim_finish = tb.u_dut.u_riscv_core.u_csr.u_csrfile.sim_finish;
-    wire [31:0] t3 = tb.u_dut.u_riscv_core.u_issue.u_regfile.x28_t3_w[31:0];
-    wire [31:0] t4 = tb.u_dut.u_riscv_core.u_issue.u_regfile.x29_t4_w[31:0];
+    wire sim_finish = tb.u_dut.u_csr.u_csrfile.sim_finish;
+    wire [31:0] t3 = tb.u_dut.u_issue.u_regfile.x28_t3_w[31:0];
+    wire [31:0] t4 = tb.u_dut.u_issue.u_regfile.x29_t4_w[31:0];
 
     integer i;
     integer f;

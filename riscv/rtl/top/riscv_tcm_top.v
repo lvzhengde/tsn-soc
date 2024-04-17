@@ -174,7 +174,7 @@ module riscv_tcm_top
     wire           dport_accept_w;
     
     
-    riscv_core_jtag
+    riscv_core
     #(
         .MEM_CACHE_ADDR_MIN         (MEM_CACHE_ADDR_MIN)        ,
         .MEM_CACHE_ADDR_MAX         (MEM_CACHE_ADDR_MAX)        ,
@@ -196,7 +196,7 @@ module riscv_tcm_top
         .NUM_RAS_ENTRIES            (NUM_RAS_ENTRIES)           ,
         .NUM_RAS_ENTRIES_W          (NUM_RAS_ENTRIES_W)         
     )
-    u_riscv_core_jtag
+    u_riscv_core
     (
         // Inputs
         .clk                 (clk)             ,

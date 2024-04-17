@@ -51,10 +51,10 @@ module biriscv_regfile
     output [ 31:0]  rb1_value_o  ,  
 
     // JTAG regfile ports
-    input  [  4:0]  jtag_rf_waddr_i    , 
-    input  [ 31:0]  jtag_rf_data_wr_i  , 
-    input  [  4:0]  jtag_rf_raddr_i    ,
-    output [ 31:0]  jtag_rf_data_rd_o   
+    input  [  4:0]  jtag_gpr_waddr_i    , 
+    input  [ 31:0]  jtag_gpr_data_wr_i  , 
+    input  [  4:0]  jtag_gpr_raddr_i    ,
+    output [ 31:0]  jtag_gpr_data_rd_o   
 );
     //-----------------------------------------------------------------
     // Flop based register file
@@ -162,129 +162,129 @@ module biriscv_regfile
             reg_r31_q      <= 32'h00000000;
         end
         else begin
-            if      (rd0_i           == 5'd1)  reg_r1_q <= rd0_value_i;
-            else if (rd1_i           == 5'd1)  reg_r1_q <= rd1_value_i;
-            else if (jtag_rf_waddr_i == 5'd1)  reg_r1_q <= jtag_rf_data_wr_i;
+            if      (rd0_i            == 5'd1)  reg_r1_q <= rd0_value_i;
+            else if (rd1_i            == 5'd1)  reg_r1_q <= rd1_value_i;
+            else if (jtag_gpr_waddr_i == 5'd1)  reg_r1_q <= jtag_gpr_data_wr_i;
 
-            if      (rd0_i           == 5'd2)  reg_r2_q <= rd0_value_i;
-            else if (rd1_i           == 5'd2)  reg_r2_q <= rd1_value_i;
-            else if (jtag_rf_waddr_i == 5'd2)  reg_r2_q <= jtag_rf_data_wr_i;
+            if      (rd0_i            == 5'd2)  reg_r2_q <= rd0_value_i;
+            else if (rd1_i            == 5'd2)  reg_r2_q <= rd1_value_i;
+            else if (jtag_gpr_waddr_i == 5'd2)  reg_r2_q <= jtag_gpr_data_wr_i;
 
-            if      (rd0_i           == 5'd3)  reg_r3_q <= rd0_value_i;
-            else if (rd1_i           == 5'd3)  reg_r3_q <= rd1_value_i;
-            else if (jtag_rf_waddr_i == 5'd3)  reg_r3_q <= jtag_rf_data_wr_i;
+            if      (rd0_i            == 5'd3)  reg_r3_q <= rd0_value_i;
+            else if (rd1_i            == 5'd3)  reg_r3_q <= rd1_value_i;
+            else if (jtag_gpr_waddr_i == 5'd3)  reg_r3_q <= jtag_gpr_data_wr_i;
 
-            if      (rd0_i           == 5'd4)  reg_r4_q <= rd0_value_i;
-            else if (rd1_i           == 5'd4)  reg_r4_q <= rd1_value_i;
-            else if (jtag_rf_waddr_i == 5'd4)  reg_r4_q <= jtag_rf_data_wr_i;
+            if      (rd0_i            == 5'd4)  reg_r4_q <= rd0_value_i;
+            else if (rd1_i            == 5'd4)  reg_r4_q <= rd1_value_i;
+            else if (jtag_gpr_waddr_i == 5'd4)  reg_r4_q <= jtag_gpr_data_wr_i;
 
-            if      (rd0_i           == 5'd5)  reg_r5_q <= rd0_value_i;
-            else if (rd1_i           == 5'd5)  reg_r5_q <= rd1_value_i;
-            else if (jtag_rf_waddr_i == 5'd5)  reg_r5_q <= jtag_rf_data_wr_i;
+            if      (rd0_i            == 5'd5)  reg_r5_q <= rd0_value_i;
+            else if (rd1_i            == 5'd5)  reg_r5_q <= rd1_value_i;
+            else if (jtag_gpr_waddr_i == 5'd5)  reg_r5_q <= jtag_gpr_data_wr_i;
 
-            if      (rd0_i           == 5'd6)  reg_r6_q <= rd0_value_i;
-            else if (rd1_i           == 5'd6)  reg_r6_q <= rd1_value_i;
-            else if (jtag_rf_waddr_i == 5'd6)  reg_r6_q <= jtag_rf_data_wr_i;
+            if      (rd0_i            == 5'd6)  reg_r6_q <= rd0_value_i;
+            else if (rd1_i            == 5'd6)  reg_r6_q <= rd1_value_i;
+            else if (jtag_gpr_waddr_i == 5'd6)  reg_r6_q <= jtag_gpr_data_wr_i;
 
-            if      (rd0_i           == 5'd7)  reg_r7_q <= rd0_value_i;
-            else if (rd1_i           == 5'd7)  reg_r7_q <= rd1_value_i;
-            else if (jtag_rf_waddr_i == 5'd7)  reg_r7_q <= jtag_rf_data_wr_i;
+            if      (rd0_i            == 5'd7)  reg_r7_q <= rd0_value_i;
+            else if (rd1_i            == 5'd7)  reg_r7_q <= rd1_value_i;
+            else if (jtag_gpr_waddr_i == 5'd7)  reg_r7_q <= jtag_gpr_data_wr_i;
 
-            if      (rd0_i           == 5'd8)  reg_r8_q <= rd0_value_i;
-            else if (rd1_i           == 5'd8)  reg_r8_q <= rd1_value_i;
-            else if (jtag_rf_waddr_i == 5'd8)  reg_r8_q <= jtag_rf_data_wr_i;
+            if      (rd0_i            == 5'd8)  reg_r8_q <= rd0_value_i;
+            else if (rd1_i            == 5'd8)  reg_r8_q <= rd1_value_i;
+            else if (jtag_gpr_waddr_i == 5'd8)  reg_r8_q <= jtag_gpr_data_wr_i;
 
-            if      (rd0_i           == 5'd9)  reg_r9_q <= rd0_value_i;
-            else if (rd1_i           == 5'd9)  reg_r9_q <= rd1_value_i;
-            else if (jtag_rf_waddr_i == 5'd9)  reg_r9_q <= jtag_rf_data_wr_i;
+            if      (rd0_i            == 5'd9)  reg_r9_q <= rd0_value_i;
+            else if (rd1_i            == 5'd9)  reg_r9_q <= rd1_value_i;
+            else if (jtag_gpr_waddr_i == 5'd9)  reg_r9_q <= jtag_gpr_data_wr_i;
 
-            if      (rd0_i           == 5'd10) reg_r10_q <= rd0_value_i;
-            else if (rd1_i           == 5'd10) reg_r10_q <= rd1_value_i;
-            else if (jtag_rf_waddr_i == 5'd10) reg_r10_q <= jtag_rf_data_wr_i;
+            if      (rd0_i            == 5'd10) reg_r10_q <= rd0_value_i;
+            else if (rd1_i            == 5'd10) reg_r10_q <= rd1_value_i;
+            else if (jtag_gpr_waddr_i == 5'd10) reg_r10_q <= jtag_gpr_data_wr_i;
 
-            if      (rd0_i           == 5'd11) reg_r11_q <= rd0_value_i;
-            else if (rd1_i           == 5'd11) reg_r11_q <= rd1_value_i;
-            else if (jtag_rf_waddr_i == 5'd11) reg_r11_q <= jtag_rf_data_wr_i;
+            if      (rd0_i            == 5'd11) reg_r11_q <= rd0_value_i;
+            else if (rd1_i            == 5'd11) reg_r11_q <= rd1_value_i;
+            else if (jtag_gpr_waddr_i == 5'd11) reg_r11_q <= jtag_gpr_data_wr_i;
 
-            if      (rd0_i           == 5'd12) reg_r12_q <= rd0_value_i;
-            else if (rd1_i           == 5'd12) reg_r12_q <= rd1_value_i;
-            else if (jtag_rf_waddr_i == 5'd12) reg_r12_q <= jtag_rf_data_wr_i;
+            if      (rd0_i            == 5'd12) reg_r12_q <= rd0_value_i;
+            else if (rd1_i            == 5'd12) reg_r12_q <= rd1_value_i;
+            else if (jtag_gpr_waddr_i == 5'd12) reg_r12_q <= jtag_gpr_data_wr_i;
 
-            if      (rd0_i           == 5'd13) reg_r13_q <= rd0_value_i;
-            else if (rd1_i           == 5'd13) reg_r13_q <= rd1_value_i;
-            else if (jtag_rf_waddr_i == 5'd13) reg_r13_q <= jtag_rf_data_wr_i;
+            if      (rd0_i            == 5'd13) reg_r13_q <= rd0_value_i;
+            else if (rd1_i            == 5'd13) reg_r13_q <= rd1_value_i;
+            else if (jtag_gpr_waddr_i == 5'd13) reg_r13_q <= jtag_gpr_data_wr_i;
 
-            if      (rd0_i           == 5'd14) reg_r14_q <= rd0_value_i;
-            else if (rd1_i           == 5'd14) reg_r14_q <= rd1_value_i;
-            else if (jtag_rf_waddr_i == 5'd14) reg_r14_q <= jtag_rf_data_wr_i;
+            if      (rd0_i            == 5'd14) reg_r14_q <= rd0_value_i;
+            else if (rd1_i            == 5'd14) reg_r14_q <= rd1_value_i;
+            else if (jtag_gpr_waddr_i == 5'd14) reg_r14_q <= jtag_gpr_data_wr_i;
 
-            if      (rd0_i           == 5'd15) reg_r15_q <= rd0_value_i;
-            else if (rd1_i           == 5'd15) reg_r15_q <= rd1_value_i;
-            else if (jtag_rf_waddr_i == 5'd15) reg_r15_q <= jtag_rf_data_wr_i;
+            if      (rd0_i            == 5'd15) reg_r15_q <= rd0_value_i;
+            else if (rd1_i            == 5'd15) reg_r15_q <= rd1_value_i;
+            else if (jtag_gpr_waddr_i == 5'd15) reg_r15_q <= jtag_gpr_data_wr_i;
 
-            if      (rd0_i           == 5'd16) reg_r16_q <= rd0_value_i;
-            else if (rd1_i           == 5'd16) reg_r16_q <= rd1_value_i;
-            else if (jtag_rf_waddr_i == 5'd16) reg_r16_q <= jtag_rf_data_wr_i;
+            if      (rd0_i            == 5'd16) reg_r16_q <= rd0_value_i;
+            else if (rd1_i            == 5'd16) reg_r16_q <= rd1_value_i;
+            else if (jtag_gpr_waddr_i == 5'd16) reg_r16_q <= jtag_gpr_data_wr_i;
 
-            if      (rd0_i           == 5'd17) reg_r17_q <= rd0_value_i;
-            else if (rd1_i           == 5'd17) reg_r17_q <= rd1_value_i;
-            else if (jtag_rf_waddr_i == 5'd17) reg_r17_q <= jtag_rf_data_wr_i;
+            if      (rd0_i            == 5'd17) reg_r17_q <= rd0_value_i;
+            else if (rd1_i            == 5'd17) reg_r17_q <= rd1_value_i;
+            else if (jtag_gpr_waddr_i == 5'd17) reg_r17_q <= jtag_gpr_data_wr_i;
 
-            if      (rd0_i           == 5'd18) reg_r18_q <= rd0_value_i;
-            else if (rd1_i           == 5'd18) reg_r18_q <= rd1_value_i;
-            else if (jtag_rf_waddr_i == 5'd18) reg_r18_q <= jtag_rf_data_wr_i;
+            if      (rd0_i            == 5'd18) reg_r18_q <= rd0_value_i;
+            else if (rd1_i            == 5'd18) reg_r18_q <= rd1_value_i;
+            else if (jtag_gpr_waddr_i == 5'd18) reg_r18_q <= jtag_gpr_data_wr_i;
 
-            if      (rd0_i           == 5'd19) reg_r19_q <= rd0_value_i;
-            else if (rd1_i           == 5'd19) reg_r19_q <= rd1_value_i;
-            else if (jtag_rf_waddr_i == 5'd19) reg_r19_q <= jtag_rf_data_wr_i;
+            if      (rd0_i            == 5'd19) reg_r19_q <= rd0_value_i;
+            else if (rd1_i            == 5'd19) reg_r19_q <= rd1_value_i;
+            else if (jtag_gpr_waddr_i == 5'd19) reg_r19_q <= jtag_gpr_data_wr_i;
 
-            if      (rd0_i           == 5'd20) reg_r20_q <= rd0_value_i;
-            else if (rd1_i           == 5'd20) reg_r20_q <= rd1_value_i;
-            else if (jtag_rf_waddr_i == 5'd20) reg_r20_q <= jtag_rf_data_wr_i;
+            if      (rd0_i            == 5'd20) reg_r20_q <= rd0_value_i;
+            else if (rd1_i            == 5'd20) reg_r20_q <= rd1_value_i;
+            else if (jtag_gpr_waddr_i == 5'd20) reg_r20_q <= jtag_gpr_data_wr_i;
 
-            if      (rd0_i           == 5'd21) reg_r21_q <= rd0_value_i;
-            else if (rd1_i           == 5'd21) reg_r21_q <= rd1_value_i;
-            else if (jtag_rf_waddr_i == 5'd21) reg_r21_q <= jtag_rf_data_wr_i;
+            if      (rd0_i            == 5'd21) reg_r21_q <= rd0_value_i;
+            else if (rd1_i            == 5'd21) reg_r21_q <= rd1_value_i;
+            else if (jtag_gpr_waddr_i == 5'd21) reg_r21_q <= jtag_gpr_data_wr_i;
 
-            if      (rd0_i           == 5'd22) reg_r22_q <= rd0_value_i;
-            else if (rd1_i           == 5'd22) reg_r22_q <= rd1_value_i;
-            else if (jtag_rf_waddr_i == 5'd22) reg_r22_q <= jtag_rf_data_wr_i;
+            if      (rd0_i            == 5'd22) reg_r22_q <= rd0_value_i;
+            else if (rd1_i            == 5'd22) reg_r22_q <= rd1_value_i;
+            else if (jtag_gpr_waddr_i == 5'd22) reg_r22_q <= jtag_gpr_data_wr_i;
 
-            if      (rd0_i           == 5'd23) reg_r23_q <= rd0_value_i;
-            else if (rd1_i           == 5'd23) reg_r23_q <= rd1_value_i;
-            else if (jtag_rf_waddr_i == 5'd23) reg_r23_q <= jtag_rf_data_wr_i;
+            if      (rd0_i            == 5'd23) reg_r23_q <= rd0_value_i;
+            else if (rd1_i            == 5'd23) reg_r23_q <= rd1_value_i;
+            else if (jtag_gpr_waddr_i == 5'd23) reg_r23_q <= jtag_gpr_data_wr_i;
 
-            if      (rd0_i           == 5'd24) reg_r24_q <= rd0_value_i;
-            else if (rd1_i           == 5'd24) reg_r24_q <= rd1_value_i;
-            else if (jtag_rf_waddr_i == 5'd24) reg_r24_q <= jtag_rf_data_wr_i;
+            if      (rd0_i            == 5'd24) reg_r24_q <= rd0_value_i;
+            else if (rd1_i            == 5'd24) reg_r24_q <= rd1_value_i;
+            else if (jtag_gpr_waddr_i == 5'd24) reg_r24_q <= jtag_gpr_data_wr_i;
 
-            if      (rd0_i           == 5'd25) reg_r25_q <= rd0_value_i;
-            else if (rd1_i           == 5'd25) reg_r25_q <= rd1_value_i;
-            else if (jtag_rf_waddr_i == 5'd25) reg_r25_q <= jtag_rf_data_wr_i;
+            if      (rd0_i            == 5'd25) reg_r25_q <= rd0_value_i;
+            else if (rd1_i            == 5'd25) reg_r25_q <= rd1_value_i;
+            else if (jtag_gpr_waddr_i == 5'd25) reg_r25_q <= jtag_gpr_data_wr_i;
 
-            if      (rd0_i           == 5'd26) reg_r26_q <= rd0_value_i;
-            else if (rd1_i           == 5'd26) reg_r26_q <= rd1_value_i;
-            else if (jtag_rf_waddr_i == 5'd26) reg_r26_q <= jtag_rf_data_wr_i;
+            if      (rd0_i            == 5'd26) reg_r26_q <= rd0_value_i;
+            else if (rd1_i            == 5'd26) reg_r26_q <= rd1_value_i;
+            else if (jtag_gpr_waddr_i == 5'd26) reg_r26_q <= jtag_gpr_data_wr_i;
 
-            if      (rd0_i           == 5'd27) reg_r27_q <= rd0_value_i;
-            else if (rd1_i           == 5'd27) reg_r27_q <= rd1_value_i;
-            else if (jtag_rf_waddr_i == 5'd27) reg_r27_q <= jtag_rf_data_wr_i;
+            if      (rd0_i            == 5'd27) reg_r27_q <= rd0_value_i;
+            else if (rd1_i            == 5'd27) reg_r27_q <= rd1_value_i;
+            else if (jtag_gpr_waddr_i == 5'd27) reg_r27_q <= jtag_gpr_data_wr_i;
 
-            if      (rd0_i           == 5'd28) reg_r28_q <= rd0_value_i;
-            else if (rd1_i           == 5'd28) reg_r28_q <= rd1_value_i;
-            else if (jtag_rf_waddr_i == 5'd28) reg_r28_q <= jtag_rf_data_wr_i;
+            if      (rd0_i            == 5'd28) reg_r28_q <= rd0_value_i;
+            else if (rd1_i            == 5'd28) reg_r28_q <= rd1_value_i;
+            else if (jtag_gpr_waddr_i == 5'd28) reg_r28_q <= jtag_gpr_data_wr_i;
 
-            if      (rd0_i           == 5'd29) reg_r29_q <= rd0_value_i;
-            else if (rd1_i           == 5'd29) reg_r29_q <= rd1_value_i;
-            else if (jtag_rf_waddr_i == 5'd29) reg_r29_q <= jtag_rf_data_wr_i;
+            if      (rd0_i            == 5'd29) reg_r29_q <= rd0_value_i;
+            else if (rd1_i            == 5'd29) reg_r29_q <= rd1_value_i;
+            else if (jtag_gpr_waddr_i == 5'd29) reg_r29_q <= jtag_gpr_data_wr_i;
 
-            if      (rd0_i           == 5'd30) reg_r30_q <= rd0_value_i;
-            else if (rd1_i           == 5'd30) reg_r30_q <= rd1_value_i;
-            else if (jtag_rf_waddr_i == 5'd30) reg_r30_q <= jtag_rf_data_wr_i;
+            if      (rd0_i            == 5'd30) reg_r30_q <= rd0_value_i;
+            else if (rd1_i            == 5'd30) reg_r30_q <= rd1_value_i;
+            else if (jtag_gpr_waddr_i == 5'd30) reg_r30_q <= jtag_gpr_data_wr_i;
 
-            if      (rd0_i           == 5'd31) reg_r31_q <= rd0_value_i;
-            else if (rd1_i           == 5'd31) reg_r31_q <= rd1_value_i;
-            else if (jtag_rf_waddr_i == 5'd31) reg_r31_q <= jtag_rf_data_wr_i;
+            if      (rd0_i            == 5'd31) reg_r31_q <= rd0_value_i;
+            else if (rd1_i            == 5'd31) reg_r31_q <= rd1_value_i;
+            else if (jtag_gpr_waddr_i == 5'd31) reg_r31_q <= jtag_gpr_data_wr_i;
         end
     end
 
@@ -449,46 +449,46 @@ module biriscv_regfile
     assign rb1_value_o = rb1_value_r;
 
 
-    reg [31:0]  jtag_rf_data_rd_r;
+    reg [31:0]  jtag_gpr_data_rd_r;
 
     always @(*) begin
-        case (jtag_rf_raddr_i)
-        5'd1:  jtag_rf_data_rd_r = reg_r1_q;
-        5'd2:  jtag_rf_data_rd_r = reg_r2_q;
-        5'd3:  jtag_rf_data_rd_r = reg_r3_q;
-        5'd4:  jtag_rf_data_rd_r = reg_r4_q;
-        5'd5:  jtag_rf_data_rd_r = reg_r5_q;
-        5'd6:  jtag_rf_data_rd_r = reg_r6_q;
-        5'd7:  jtag_rf_data_rd_r = reg_r7_q;
-        5'd8:  jtag_rf_data_rd_r = reg_r8_q;
-        5'd9:  jtag_rf_data_rd_r = reg_r9_q;
-        5'd10: jtag_rf_data_rd_r = reg_r10_q;
-        5'd11: jtag_rf_data_rd_r = reg_r11_q;
-        5'd12: jtag_rf_data_rd_r = reg_r12_q;
-        5'd13: jtag_rf_data_rd_r = reg_r13_q;
-        5'd14: jtag_rf_data_rd_r = reg_r14_q;
-        5'd15: jtag_rf_data_rd_r = reg_r15_q;
-        5'd16: jtag_rf_data_rd_r = reg_r16_q;
-        5'd17: jtag_rf_data_rd_r = reg_r17_q;
-        5'd18: jtag_rf_data_rd_r = reg_r18_q;
-        5'd19: jtag_rf_data_rd_r = reg_r19_q;
-        5'd20: jtag_rf_data_rd_r = reg_r20_q;
-        5'd21: jtag_rf_data_rd_r = reg_r21_q;
-        5'd22: jtag_rf_data_rd_r = reg_r22_q;
-        5'd23: jtag_rf_data_rd_r = reg_r23_q;
-        5'd24: jtag_rf_data_rd_r = reg_r24_q;
-        5'd25: jtag_rf_data_rd_r = reg_r25_q;
-        5'd26: jtag_rf_data_rd_r = reg_r26_q;
-        5'd27: jtag_rf_data_rd_r = reg_r27_q;
-        5'd28: jtag_rf_data_rd_r = reg_r28_q;
-        5'd29: jtag_rf_data_rd_r = reg_r29_q;
-        5'd30: jtag_rf_data_rd_r = reg_r30_q;
-        5'd31: jtag_rf_data_rd_r = reg_r31_q;
-        default : jtag_rf_data_rd_r = 32'h00000000;
+        case (jtag_gpr_raddr_i)
+        5'd1:  jtag_gpr_data_rd_r = reg_r1_q;
+        5'd2:  jtag_gpr_data_rd_r = reg_r2_q;
+        5'd3:  jtag_gpr_data_rd_r = reg_r3_q;
+        5'd4:  jtag_gpr_data_rd_r = reg_r4_q;
+        5'd5:  jtag_gpr_data_rd_r = reg_r5_q;
+        5'd6:  jtag_gpr_data_rd_r = reg_r6_q;
+        5'd7:  jtag_gpr_data_rd_r = reg_r7_q;
+        5'd8:  jtag_gpr_data_rd_r = reg_r8_q;
+        5'd9:  jtag_gpr_data_rd_r = reg_r9_q;
+        5'd10: jtag_gpr_data_rd_r = reg_r10_q;
+        5'd11: jtag_gpr_data_rd_r = reg_r11_q;
+        5'd12: jtag_gpr_data_rd_r = reg_r12_q;
+        5'd13: jtag_gpr_data_rd_r = reg_r13_q;
+        5'd14: jtag_gpr_data_rd_r = reg_r14_q;
+        5'd15: jtag_gpr_data_rd_r = reg_r15_q;
+        5'd16: jtag_gpr_data_rd_r = reg_r16_q;
+        5'd17: jtag_gpr_data_rd_r = reg_r17_q;
+        5'd18: jtag_gpr_data_rd_r = reg_r18_q;
+        5'd19: jtag_gpr_data_rd_r = reg_r19_q;
+        5'd20: jtag_gpr_data_rd_r = reg_r20_q;
+        5'd21: jtag_gpr_data_rd_r = reg_r21_q;
+        5'd22: jtag_gpr_data_rd_r = reg_r22_q;
+        5'd23: jtag_gpr_data_rd_r = reg_r23_q;
+        5'd24: jtag_gpr_data_rd_r = reg_r24_q;
+        5'd25: jtag_gpr_data_rd_r = reg_r25_q;
+        5'd26: jtag_gpr_data_rd_r = reg_r26_q;
+        5'd27: jtag_gpr_data_rd_r = reg_r27_q;
+        5'd28: jtag_gpr_data_rd_r = reg_r28_q;
+        5'd29: jtag_gpr_data_rd_r = reg_r29_q;
+        5'd30: jtag_gpr_data_rd_r = reg_r30_q;
+        5'd31: jtag_gpr_data_rd_r = reg_r31_q;
+        default : jtag_gpr_data_rd_r = 32'h00000000;
         endcase
     end
 
-    assign jtag_rf_data_rd_o = jtag_rf_data_rd_r;
+    assign jtag_gpr_data_rd_o = jtag_gpr_data_rd_r;
 
 
 `ifdef verilator

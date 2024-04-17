@@ -43,7 +43,7 @@ module tb_top;
     wire          tdi_w;  
     wire          tdo_w; 
     
-    riscv_core_jtag u_dut
+    riscv_core u_dut
     (
         // Inputs
         .clk                  (clk)              ,    
