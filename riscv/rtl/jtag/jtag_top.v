@@ -81,6 +81,8 @@ module jtag_top
     input            mem_d_ack_i        ,
     input            mem_d_error_i      ,
     input  [ 10:0]   mem_d_resp_tag_i   ,
+    input            mem_load_fault_i   ,
+    input            mem_store_fault_i  ,
 
     //Outputs
     output [ 31:0]   mem_d_addr_o       ,

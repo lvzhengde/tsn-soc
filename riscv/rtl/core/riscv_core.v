@@ -352,6 +352,8 @@ module riscv_core
     wire            core_mem_d_ack_w        ;
     wire            core_mem_d_error_w      ;
     wire  [ 10:0]   core_mem_d_resp_tag_w   ;
+    wire            core_mem_load_fault_w   ;
+    wire            core_mem_store_fault_w  ;
 
     wire  [ 31:0]   core_mem_d_addr_w       ;
     wire  [ 31:0]   core_mem_d_data_wr_w    ;
@@ -368,6 +370,8 @@ module riscv_core
     wire            jtag_mem_d_ack_w        ;
     wire            jtag_mem_d_error_w      ;
     wire  [ 10:0]   jtag_mem_d_resp_tag_w   ;
+    wire            jtag_mem_load_fault_w   ;
+    wire            jtag_mem_store_fault_w  ;
 
     wire  [ 31:0]   jtag_mem_d_addr_w       ;
     wire  [ 31:0]   jtag_mem_d_data_wr_w    ;
@@ -386,11 +390,13 @@ module riscv_core
         .rst_n                     (rst_n         ),
         .jtag_bus_req_i            (jtag_bus_req_w),
     
-        .mem_d_data_rd_i           (),
-        .mem_d_accept_i            (),
-        .mem_d_ack_i               (),
-        .mem_d_error_i             (),
-        .mem_d_resp_tag_i          (),
+        .mem_d_data_rd_i           (mmu_lsu_data_rd_w ),
+        .mem_d_accept_i            (mmu_lsu_accept_w  ),
+        .mem_d_ack_i               (mmu_lsu_ack_w     ),
+        .mem_d_error_i             (mmu_lsu_error_w   ),
+        .mem_d_resp_tag_i          (mmu_lsu_resp_tag_w),
+        .mem_load_fault_i          (mmu_load_fault_w  ),
+        .mem_store_fault_i         (mmu_store_fault_w ),
     
         .core_mem_d_addr_i         (core_mem_d_addr_w      ),
         .core_mem_d_data_wr_i      (core_mem_d_data_wr_w   ),
@@ -413,27 +419,31 @@ module riscv_core
         .jtag_mem_d_flush_i        (jtag_mem_d_flush_w     ),
     
         //Outputs
-        .mem_d_addr_o              (),
-        .mem_d_data_wr_o           (),
-        .mem_d_rd_o                (),
-        .mem_d_wr_o                (),
-        .mem_d_cacheable_o         (),
-        .mem_d_req_tag_o           (),
-        .mem_d_invalidate_o        (),
-        .mem_d_writeback_o         (),
-        .mem_d_flush_o             (),
+        .mem_d_addr_o              (mmu_lsu_addr_w         ),
+        .mem_d_data_wr_o           (mmu_lsu_data_wr_w      ),
+        .mem_d_rd_o                (mmu_lsu_rd_w           ),
+        .mem_d_wr_o                (mmu_lsu_wr_w           ),
+        .mem_d_cacheable_o         (mmu_lsu_cacheable_w    ),
+        .mem_d_req_tag_o           (mmu_lsu_req_tag_w      ),
+        .mem_d_invalidate_o        (mmu_lsu_invalidate_w   ),
+        .mem_d_writeback_o         (mmu_lsu_writeback_w    ),
+        .mem_d_flush_o             (mmu_lsu_flush_w        ),
     
-        .core_mem_d_data_rd_o      (core_mem_d_data_rd_w ),
-        .core_mem_d_accept_o       (core_mem_d_accept_w  ),
-        .core_mem_d_ack_o          (core_mem_d_ack_w     ),
-        .core_mem_d_error_o        (core_mem_d_error_w   ),
-        .core_mem_d_resp_tag_o     (core_mem_d_resp_tag_w),
+        .core_mem_d_data_rd_o      (core_mem_d_data_rd_w  ),
+        .core_mem_d_accept_o       (core_mem_d_accept_w   ),
+        .core_mem_d_ack_o          (core_mem_d_ack_w      ),
+        .core_mem_d_error_o        (core_mem_d_error_w    ),
+        .core_mem_d_resp_tag_o     (core_mem_d_resp_tag_w ),
+        .core_mem_load_fault_o     (core_mem_load_fault_w ),
+        .core_mem_store_fault_o    (core_mem_store_fault_w),
     
-        .jtag_mem_d_data_rd_o      (jtag_mem_d_data_rd_w ),
-        .jtag_mem_d_accept_o       (jtag_mem_d_accept_w  ),
-        .jtag_mem_d_ack_o          (jtag_mem_d_ack_w     ),
-        .jtag_mem_d_error_o        (jtag_mem_d_error_w   ),
-        .jtag_mem_d_resp_tag_o     (jtag_mem_d_resp_tag_w) 
+        .jtag_mem_d_data_rd_o      (jtag_mem_d_data_rd_w  ),
+        .jtag_mem_d_accept_o       (jtag_mem_d_accept_w   ),
+        .jtag_mem_d_ack_o          (jtag_mem_d_ack_w      ),
+        .jtag_mem_d_error_o        (jtag_mem_d_error_w    ),
+        .jtag_mem_d_resp_tag_o     (jtag_mem_d_resp_tag_w ),
+        .jtag_mem_load_fault_o     (jtag_mem_load_fault_w ),
+        .jtag_mem_store_fault_o    (jtag_mem_store_fault_w)
     );
 
 
@@ -474,11 +484,13 @@ module riscv_core
 
         //JTAG memory access interface
         //Inputs
-        .mem_d_data_rd_i      (jtag_mem_d_data_rd_w ),
-        .mem_d_accept_i       (jtag_mem_d_accept_w  ),
-        .mem_d_ack_i          (jtag_mem_d_ack_w     ),
-        .mem_d_error_i        (jtag_mem_d_error_w   ),
-        .mem_d_resp_tag_i     (jtag_mem_d_resp_tag_w),
+        .mem_d_data_rd_i      (jtag_mem_d_data_rd_w  ),
+        .mem_d_accept_i       (jtag_mem_d_accept_w   ),
+        .mem_d_ack_i          (jtag_mem_d_ack_w      ),
+        .mem_d_error_i        (jtag_mem_d_error_w    ),
+        .mem_d_resp_tag_i     (jtag_mem_d_resp_tag_w ),
+        .mem_load_fault_i     (jtag_mem_load_fault_w ),
+        .mem_store_fault_i    (jtag_mem_store_fault_w),
     
         //Outputs
         .mem_d_addr_o         (jtag_mem_d_addr_w      ),
@@ -581,24 +593,24 @@ module riscv_core
         .opcode_rb_idx_i          (lsu_opcode_rb_idx_w)        ,
         .opcode_ra_operand_i      (lsu_opcode_ra_operand_w)    ,
         .opcode_rb_operand_i      (lsu_opcode_rb_operand_w)    ,
-        .mem_data_rd_i            (mmu_lsu_data_rd_w)          ,
-        .mem_accept_i             (mmu_lsu_accept_w)           ,
-        .mem_ack_i                (mmu_lsu_ack_w)              ,
-        .mem_error_i              (mmu_lsu_error_w)            ,
-        .mem_resp_tag_i           (mmu_lsu_resp_tag_w)         ,
-        .mem_load_fault_i         (mmu_load_fault_w)           ,
-        .mem_store_fault_i        (mmu_store_fault_w)          ,
+        .mem_data_rd_i            (core_mem_d_data_rd_w)       ,
+        .mem_accept_i             (core_mem_d_accept_w)        ,
+        .mem_ack_i                (core_mem_d_ack_w)           ,
+        .mem_error_i              (core_mem_d_error_w)         ,
+        .mem_resp_tag_i           (core_mem_d_resp_tag_w)      ,
+        .mem_load_fault_i         (core_mem_load_fault_w)      ,
+        .mem_store_fault_i        (core_mem_store_fault_w)     ,
     
         // Outputs
-        .mem_addr_o               (mmu_lsu_addr_w)             ,
-        .mem_data_wr_o            (mmu_lsu_data_wr_w)          ,
-        .mem_rd_o                 (mmu_lsu_rd_w)               ,
-        .mem_wr_o                 (mmu_lsu_wr_w)               ,
-        .mem_cacheable_o          (mmu_lsu_cacheable_w)        ,
-        .mem_req_tag_o            (mmu_lsu_req_tag_w)          ,
-        .mem_invalidate_o         (mmu_lsu_invalidate_w)       ,
-        .mem_writeback_o          (mmu_lsu_writeback_w)        ,
-        .mem_flush_o              (mmu_lsu_flush_w)            ,
+        .mem_addr_o               (core_mem_d_addr_w)          ,
+        .mem_data_wr_o            (core_mem_d_data_wr_w)       ,
+        .mem_rd_o                 (core_mem_d_rd_w)            ,
+        .mem_wr_o                 (core_mem_d_wr_w)            ,
+        .mem_cacheable_o          (core_mem_d_cacheable_w)     ,
+        .mem_req_tag_o            (core_mem_d_req_tag_w)       ,
+        .mem_invalidate_o         (core_mem_d_invalidate_w)    ,
+        .mem_writeback_o          (core_mem_d_writeback_w)     ,
+        .mem_flush_o              (core_mem_d_flush_w)         ,
         .writeback_valid_o        (writeback_mem_valid_w)      ,
         .writeback_value_o        (writeback_mem_value_w)      ,
         .writeback_exception_o    (writeback_mem_exception_w)  ,
