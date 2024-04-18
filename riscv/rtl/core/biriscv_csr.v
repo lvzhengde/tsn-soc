@@ -78,7 +78,14 @@ module biriscv_csr
     output          mmu_sum_o                  ,
     output          mmu_mxr_o                  ,
     output          mmu_flush_o                ,
-    output [ 31:0]  mmu_satp_o                 
+    output [ 31:0]  mmu_satp_o                 ,
+
+    //JTAG CSR access interface
+    input           jtag_csr_write_i        ,
+    input  [ 11:0]  jtag_csr_waddr_i        ,
+    input  [ 31:0]  jtag_csr_data_wr_i      ,
+    input  [ 11:0]  jtag_csr_raddr_i        ,
+    output [ 31:0]  jtag_csr_data_rd_o      
 );
     
     //-----------------------------------------------------------------
@@ -152,6 +159,10 @@ module biriscv_csr
     wire [31:0] status_reg_w;
     wire [31:0] satp_reg_w;
 
+    // Muxed CSR write port
+    wire [11:0] mux_csr_waddr_w = csr_writeback_write_i ? csr_writeback_waddr_i : (jtag_csr_write_i ? jtag_csr_waddr_i : 12'b0);
+    wire [31:0] mux_csr_wdata_w = csr_writeback_write_i ? csr_writeback_wdata_i : (jtag_csr_write_i ? jtag_csr_data_wr_i : csr_writeback_wdata_i);
+
     biriscv_csr_regfile
     #( 
         .SUPPORT_MTIMECMP    (1) ,
@@ -171,6 +182,10 @@ module biriscv_csr
         .csr_ren_i           (opcode_valid_i)         ,
         .csr_raddr_i         (opcode_opcode_i[31:20]) ,
         .csr_rdata_o         (csr_rdata_w)            ,
+
+        // JTAG read port
+        .jtag_csr_raddr_i    (jtag_csr_raddr_i  ) ,   
+        .jtag_csr_data_rd_o  (jtag_csr_data_rd_o) ,   
     
         // Exception (WB)
         .exception_i         (csr_writeback_exception_i)     ,
@@ -178,8 +193,8 @@ module biriscv_csr
         .exception_addr_i    (csr_writeback_exception_addr_i),
     
         // CSR register writes (WB)
-        .csr_waddr_i         (csr_writeback_write_i ? csr_writeback_waddr_i : 12'b0) ,
-        .csr_wdata_i         (csr_writeback_wdata_i)                                 ,
+        .csr_waddr_i         (mux_csr_waddr_w) ,
+        .csr_wdata_i         (mux_csr_wdata_w) ,
     
         // CSR branches
         .csr_branch_o        (csr_branch_w) ,

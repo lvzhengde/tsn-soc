@@ -338,15 +338,6 @@ module riscv_core
         .fetch1_instr_invalid_o        (fetch1_instr_invalid_w)     
     );
 
-    wire            jtag_bus_req_w     ;
-    wire            jtag_reset_req_w   ;
-    wire            jtag_halt_req_w    ;
-    
-    wire  [  4:0]   jtag_gpr_waddr_w    ; 
-    wire  [ 31:0]   jtag_gpr_data_wr_w  ; 
-    wire  [  4:0]   jtag_gpr_raddr_w    ; 
-    wire  [ 31:0]   jtag_gpr_data_rd_w  ; 
-
     wire  [ 31:0]   core_mem_d_data_rd_w    ;
     wire            core_mem_d_accept_w     ;
     wire            core_mem_d_ack_w        ;
@@ -446,6 +437,20 @@ module riscv_core
         .jtag_mem_store_fault_o    (jtag_mem_store_fault_w)
     );
 
+    wire            jtag_bus_req_w     ;
+    wire            jtag_reset_req_w   ;
+    wire            jtag_halt_req_w    ;
+    
+    wire  [  4:0]   jtag_gpr_waddr_w    ; 
+    wire  [ 31:0]   jtag_gpr_data_wr_w  ; 
+    wire  [  4:0]   jtag_gpr_raddr_w    ; 
+    wire  [ 31:0]   jtag_gpr_data_rd_w  ; 
+
+    wire            jtag_csr_write_w    ;    
+    wire  [ 11:0]   jtag_csr_waddr_w    ;    
+    wire  [ 31:0]   jtag_csr_data_wr_w  ;    
+    wire  [ 11:0]   jtag_csr_raddr_w    ;    
+    wire  [ 31:0]   jtag_csr_data_rd_w  ;    
 
     jtag_top 
     #(
@@ -476,11 +481,11 @@ module riscv_core
         .gpr_data_rd_i        (jtag_gpr_data_rd_w),
     
         //JTAG CSR access interface
-        .csr_write_o          (),
-        .csr_waddr_o          (),
-        .csr_data_wr_o        (),
-        .csr_raddr_o          (),
-        .csr_data_rd_i        (),
+        .csr_write_o          (jtag_csr_write_w  ),
+        .csr_waddr_o          (jtag_csr_waddr_w  ),
+        .csr_data_wr_o        (jtag_csr_data_wr_w),
+        .csr_raddr_o          (jtag_csr_raddr_w  ),
+        .csr_data_rd_i        (jtag_csr_data_rd_w),
 
         //JTAG memory access interface
         //Inputs
@@ -663,7 +668,14 @@ module riscv_core
         .mmu_sum_o                         (mmu_sum_w)                       ,
         .mmu_mxr_o                         (mmu_mxr_w)                       ,
         .mmu_flush_o                       (mmu_flush_w)                     ,
-        .mmu_satp_o                        (mmu_satp_w)                      
+        .mmu_satp_o                        (mmu_satp_w)                      ,
+
+        //JTAG CSR access interface
+        .jtag_csr_write_i                  (jtag_csr_write_w  ),
+        .jtag_csr_waddr_i                  (jtag_csr_waddr_w  ),
+        .jtag_csr_data_wr_i                (jtag_csr_data_wr_w),
+        .jtag_csr_raddr_i                  (jtag_csr_raddr_w  ),
+        .jtag_csr_data_rd_o                (jtag_csr_data_rd_w)
     );
     
 

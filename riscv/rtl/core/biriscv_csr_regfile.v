@@ -57,6 +57,10 @@ module biriscv_csr_regfile
     input  [11:0]   csr_raddr_i      ,
     output [31:0]   csr_rdata_o      ,
 
+    // JTAG read port
+    input  [ 11:0]  jtag_csr_raddr_i   ,
+    output [ 31:0]  jtag_csr_data_rd_o ,
+
     // CSR write port
     input  [11:0]   csr_waddr_i      ,
     input  [31:0]   csr_wdata_i      ,
@@ -105,6 +109,12 @@ module biriscv_csr_regfile
     reg [31:0]  csr_stval_q;
     reg [31:0]  csr_satp_q;
     reg [31:0]  csr_sscratch_q;
+
+    // CSR - Debug Mode
+    reg [31:0]  csr_dcsr_q;
+    reg [31:0]  csr_dpc_q;
+    reg [31:0]  csr_dscratch0_q;
+    reg [31:0]  csr_dscratch1_q;
 
     //-----------------------------------------------------------------
     // Masked Interrupts
@@ -197,6 +207,13 @@ module biriscv_csr_regfile
         `CSR_STVAL:    rdata_r = SUPPORT_SUPER ? (csr_stval_q    & `CSR_STVAL_MASK)    : 32'b0;
         `CSR_SATP:     rdata_r = SUPPORT_SUPER ? (csr_satp_q     & `CSR_SATP_MASK)     : 32'b0;
         `CSR_SSCRATCH: rdata_r = SUPPORT_SUPER ? (csr_sscratch_q & `CSR_SSCRATCH_MASK) : 32'b0;
+
+        // CSR - Debug Mode
+        `CSR_DCSR:      rdata_r = csr_dcsr_q       & `CSR_DCSR_MASK;
+        `CSR_DPC:       rdata_r = csr_dpc_q        & `CSR_DPC_MASK;
+        `CSR_DSCRATCH0: rdata_r = csr_dscratch0_q  & `CSR_DSCRATCH0_MASK;
+        `CSR_DSCRATCH1: rdata_r = csr_dscratch1_q  & `CSR_DSCRATCH1_MASK;
+
         default:       rdata_r = 32'b0;
         endcase
     end
@@ -205,6 +222,56 @@ module biriscv_csr_regfile
     assign priv_o      = csr_mpriv_q;
     assign status_o    = csr_sr_q;
     assign satp_o      = csr_satp_q;
+
+    //-----------------------------------------------------------------
+    // JTAG CSR Read Port
+    //-----------------------------------------------------------------
+    reg [31:0] jtag_rdata_r;
+
+    always @(*) begin
+        jtag_rdata_r = 32'b0;
+    
+        case (jtag_csr_raddr_i)
+        // CSR - Machine
+        `CSR_MSCRATCH: jtag_rdata_r = csr_mscratch_q & `CSR_MSCRATCH_MASK;
+        `CSR_MEPC:     jtag_rdata_r = csr_mepc_q & `CSR_MEPC_MASK;
+        `CSR_MTVEC:    jtag_rdata_r = csr_mtvec_q & `CSR_MTVEC_MASK;
+        `CSR_MCAUSE:   jtag_rdata_r = csr_mcause_q & `CSR_MCAUSE_MASK;
+        `CSR_MTVAL:    jtag_rdata_r = csr_mtval_q & `CSR_MTVAL_MASK;
+        `CSR_MSTATUS:  jtag_rdata_r = csr_sr_q & `CSR_MSTATUS_MASK;
+        `CSR_MIP:      jtag_rdata_r = csr_mip_q & `CSR_MIP_MASK;
+        `CSR_MIE:      jtag_rdata_r = csr_mie_q & `CSR_MIE_MASK;
+        `CSR_MCYCLE,
+        `CSR_MTIME:    jtag_rdata_r = csr_mcycle_q;
+        `CSR_MTIMEH:   jtag_rdata_r = csr_mcycle_h_q;
+        `CSR_MHARTID:  jtag_rdata_r = cpu_id_i;
+        `CSR_MISA:     jtag_rdata_r = misa_i;
+        `CSR_MEDELEG:  jtag_rdata_r = SUPPORT_SUPER ? (csr_medeleg_q & `CSR_MEDELEG_MASK) : 32'b0;
+        `CSR_MIDELEG:  jtag_rdata_r = SUPPORT_SUPER ? (csr_mideleg_q & `CSR_MIDELEG_MASK) : 32'b0;
+        // Non-std behaviour
+        `CSR_MTIMECMP: jtag_rdata_r = SUPPORT_MTIMECMP ? csr_mtimecmp_q : 32'b0;
+        // CSR - Super
+        `CSR_SSTATUS:  jtag_rdata_r = SUPPORT_SUPER ? (csr_sr_q       & `CSR_SSTATUS_MASK)  : 32'b0;
+        `CSR_SIP:      jtag_rdata_r = SUPPORT_SUPER ? (csr_mip_q      & `CSR_SIP_MASK)      : 32'b0;
+        `CSR_SIE:      jtag_rdata_r = SUPPORT_SUPER ? (csr_mie_q      & `CSR_SIE_MASK)      : 32'b0;
+        `CSR_SEPC:     jtag_rdata_r = SUPPORT_SUPER ? (csr_sepc_q     & `CSR_SEPC_MASK)     : 32'b0;
+        `CSR_STVEC:    jtag_rdata_r = SUPPORT_SUPER ? (csr_stvec_q    & `CSR_STVEC_MASK)    : 32'b0;
+        `CSR_SCAUSE:   jtag_rdata_r = SUPPORT_SUPER ? (csr_scause_q   & `CSR_SCAUSE_MASK)   : 32'b0;
+        `CSR_STVAL:    jtag_rdata_r = SUPPORT_SUPER ? (csr_stval_q    & `CSR_STVAL_MASK)    : 32'b0;
+        `CSR_SATP:     jtag_rdata_r = SUPPORT_SUPER ? (csr_satp_q     & `CSR_SATP_MASK)     : 32'b0;
+        `CSR_SSCRATCH: jtag_rdata_r = SUPPORT_SUPER ? (csr_sscratch_q & `CSR_SSCRATCH_MASK) : 32'b0;
+
+        // CSR - Debug Mode
+        `CSR_DCSR:      jtag_rdata_r = csr_dcsr_q       & `CSR_DCSR_MASK;
+        `CSR_DPC:       jtag_rdata_r = csr_dpc_q        & `CSR_DPC_MASK;
+        `CSR_DSCRATCH0: jtag_rdata_r = csr_dscratch0_q  & `CSR_DSCRATCH0_MASK;
+        `CSR_DSCRATCH1: jtag_rdata_r = csr_dscratch1_q  & `CSR_DSCRATCH1_MASK;
+
+        default:       jtag_rdata_r = 32'b0;
+        endcase
+    end
+
+    assign jtag_csr_data_rd_o = jtag_rdata_r;
     
     //-----------------------------------------------------------------
     // CSR register next state
@@ -236,6 +303,12 @@ module biriscv_csr_regfile
     reg [31:0]  csr_satp_r;
     reg [31:0]  csr_sscratch_r;
 
+    // CSR - Debug Mode
+    reg [31:0]  csr_dcsr_r;
+    reg [31:0]  csr_dpc_r;
+    reg [31:0]  csr_dscratch0_r;
+    reg [31:0]  csr_dscratch1_r;
+
     wire is_exception_w = ((exception_i & `EXCEPTION_TYPE_MASK) == `EXCEPTION_EXCEPTION);
     wire exception_s_w  = SUPPORT_SUPER ? ((csr_mpriv_q <= `PRIV_SUPER) & is_exception_w & csr_medeleg_q[{1'b0, exception_i[`EXCEPTION_SUBTYPE_R]}]) : 1'b0;
 
@@ -265,6 +338,12 @@ module biriscv_csr_regfile
         csr_satp_r      = csr_satp_q;
         csr_sscratch_r  = csr_sscratch_q;
     
+        // CSR - Debug Mode
+        csr_dcsr_r      = csr_dcsr_q     ;
+        csr_dpc_r       = csr_dpc_q      ;
+        csr_dscratch0_r = csr_dscratch0_q;
+        csr_dscratch1_r = csr_dscratch1_q;
+
         // Interrupts
         if ((exception_i & `EXCEPTION_TYPE_MASK) == `EXCEPTION_INTERRUPT)
         begin
@@ -444,6 +523,13 @@ module biriscv_csr_regfile
             `CSR_SSTATUS:  csr_sr_r       = (csr_sr_r & ~`CSR_SSTATUS_MASK) | (csr_wdata_i & `CSR_SSTATUS_MASK);
             `CSR_SIP:      csr_mip_r      = (csr_mip_r & ~`CSR_SIP_MASK) | (csr_wdata_i & `CSR_SIP_MASK);
             `CSR_SIE:      csr_mie_r      = (csr_mie_r & ~`CSR_SIE_MASK) | (csr_wdata_i & `CSR_SIE_MASK);
+
+            // CSR - Debug Mode
+            `CSR_DCSR:      csr_dcsr_r      = csr_wdata_i & `CSR_DCSR_MASK;
+            `CSR_DPC:       csr_dpc_r       = csr_wdata_i & `CSR_DPC_MASK;
+            `CSR_DSCRATCH0: csr_dscratch0_r = csr_wdata_i & `CSR_DSCRATCH0_MASK;
+            `CSR_DSCRATCH1: csr_dscratch1_r = csr_wdata_i & `CSR_DSCRATCH1_MASK;
+
             default:
                 ;
             endcase
@@ -513,6 +599,12 @@ module biriscv_csr_regfile
             csr_satp_q         <= 32'b0;
             csr_sscratch_q     <= 32'b0;
         
+            // CSR - Debug Mode
+            csr_dcsr_q         <= 32'b0;
+            csr_dpc_q          <= 32'b0;
+            csr_dscratch0_q    <= 32'b0;
+            csr_dscratch1_q    <= 32'b0;
+
             csr_mip_next_q     <= 32'b0;
         end
         else begin
@@ -540,6 +632,12 @@ module biriscv_csr_regfile
             csr_satp_q         <= SUPPORT_SUPER ? (csr_satp_r     & `CSR_SATP_MASK)     : 32'b0;
             csr_sscratch_q     <= SUPPORT_SUPER ? (csr_sscratch_r & `CSR_SSCRATCH_MASK) : 32'b0;
         
+            // CSR - Debug Mode
+            csr_dcsr_q         <= csr_dcsr_r     ;
+            csr_dpc_q          <= csr_dpc_r      ;
+            csr_dscratch0_q    <= csr_dscratch0_r;
+            csr_dscratch1_q    <= csr_dscratch1_r;
+
             csr_mip_next_q     <= buffer_mip_w ? csr_mip_next_r : 32'b0;
         
             // Increment upper cycle counter on lower 32-bit overflow
