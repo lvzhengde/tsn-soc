@@ -30,7 +30,7 @@
 -*/
 
 /*+
- * JTAG Transport Module
+ * JTAG Debug Transport Module
 -*/
 
 module jtag_dtm
@@ -127,8 +127,11 @@ module jtag_dtm
 
     //-----------------------------------------------------------------------------------
     // State machine
-    // Regardless of which state TAP is currently in, TAP will definitely return to 
-    // the Test-Logic-Reset state as long as TMS remains high and lasts for 5 TCK clocks
+    // JTAG samples the TMS signal and TDI signal on the rising edge of each TCK signal to
+    // determine whether the state machine state has changed, and outputs the TDO signal on 
+    // the falling edge of each TCK signal. Regardless of which state the TAP is currently
+    // in, as long as the TMS remains high for 5 TCK clocks, the TAP will surely return to 
+    // Test-Logic-Reset state.
     //-----------------------------------------------------------------------------------
     reg   [3:0] next_state_r;
     reg   [3:0] current_state_q;
@@ -137,7 +140,7 @@ module jtag_dtm
     always @(*) begin
         next_state_r = current_state_q;
 
-        case (jtag_state)
+        case (current_state_q)
             TEST_LOGIC_RESET  : next_state_r = tms_i ? TEST_LOGIC_RESET : RUN_TEST_IDLE;
             RUN_TEST_IDLE     : next_state_r = tms_i ? SELECT_DR_SCAN   : RUN_TEST_IDLE;
             SELECT_DR_SCAN    : next_state_r = tms_i ? SELECT_IR_SCAN   : CAPTURE_DR;
@@ -171,8 +174,6 @@ module jtag_dtm
     //-----------------------------------------------
     reg   [SHIFT_REG_W-1:0] shift_reg_q;
     reg   [IR_W-1:0]        ir_reg_q;
-
-    assign busy_w = ??
 
     always @(posedge tck_i) begin
         case (current_state_q)
@@ -210,6 +211,147 @@ module jtag_dtm
             endcase 
         endcase
     end
+
+    //-------------------------------------------------------
+    // DTM request /DM response
+    //-------------------------------------------------------
+    reg   dm_ack_d1, dm_ack_d2; 
+
+    always @(posedge tck_i or negedge rst_n) begin
+        if (!rst_n)
+            {dm_ack_d1, dm_ack_d2} <= 2'b0;
+        else
+            {dm_ack_d1, dm_ack_d2} <= {dm_ack_i, dm_ack_d1};
+    end    
+
+    reg                   dtm_req_q      ;
+    reg [DMI_ADDR_W+33:0] dtm_req_data_q ;
+
+    always @(posedge tck_i or negedge rst_n) begin
+        if (!rst_n) begin
+            dtm_req_q      <= 1'b0;
+            dtm_req_data_q <= {(DMI_ADDR_W+34){1'b0}};
+        end
+        else if(current_state_q == UPDATE_DR && ir_reg_q == DMI_A && (!busy_w)) begin
+            dtm_req_q      <= 1'b1;
+            dtm_req_data_q <= shift_reg_q;
+        end
+        else if (dm_ack_d2 == 1'b1) begin
+            dtm_req_q      <= 1'b0;
+            dtm_req_data_q <= {(DMI_ADDR_W+34){1'b0}};
+        end
+    end    
+
+    reg   dm_resp_d1, dm_resp_d2;
+    reg   dtm_ack_r;
+    reg   dtm_ack_q;
+
+    always @(posedge tck_i or negedge rst_n) begin
+        if (!rst_n)
+            {dm_resp_d1, dm_resp_d2} <= 2'b0;
+        else
+            {dm_resp_d1, dm_resp_d2} <= {dm_resp_i, dm_resp_d1};
+    end    
+
+    always @(*) begin
+        dtm_ack_r = dtm_ack_q;
+
+        if(dm_resp_d2)
+            dtm_ack_r = 1'b1;
+        else if(!dm_resp_d2)
+            dtm_ack_r = 1'b0;
+    end
+
+    always @(posedge tck_i or negedge rst_n) begin
+        if (!rst_n)
+            dtm_ack_q <= 1'b0;
+        else
+            dtm_ack_q <= dtm_ack_r;
+    end    
+
+    always @(posedge tck_i or negedge rst_n) begin
+        if (!rst_n)
+            dm_resp_data_q <= {(DMI_ADDR_W+34){1'b0}};
+        else if (dtm_ack_r & (!dtm_ack_q))
+            dm_resp_data_q <= dm_resp_data_i;
+    end    
+
+    // busy, transaction not finished
+    reg   dm_busy_r;
+    reg   dm_busy_q;
+
+    always @(*) begin
+        dm_buy_r = dm_busy_q;
+
+        if(dtm_req_q)
+            dm_busy_r = 1'b1;
+        else if(dtm_ack_q & (!dtm_ack_r))
+            dm_busy_r = 1'b0;
+    end
+
+    always @(posedge tck_i or negedge rst_n) begin
+        if (!rst_n)
+            dm_busy_q <= 1'b0;
+        else
+            dm_busy_q <= dm_busy_r;
+    end    
+
+    // Sticky error, previous transaction not completed yet.
+    reg   sticky_error_r;
+    reg   sticky_error_q;
+    wire  dmireset_w = shift_reg_q[16];    
+
+    always @(*) begin
+        sticky_error_r = sticky_error_q;
+
+        if(current_state_q == UPDATE_DR && ir_reg_q == DTMCS_A && dmireset_w == 1'b1) begin
+            sticky_error_r = 1'b0;
+        else if(current_state_q == CAPTURE_DR && ir_reg_q == DMI_A)
+            sticky_error_r = busy_w;
+    end
+
+    always @(posedge tck_i or negedge rst_n) begin
+        if (!rst_n)
+            sticky_error_q <= 1'b0;
+        else 
+            sticky_error_q <= sticky_error_r;
+    end    
+
+    assign busy_w = sticky_error_r | dm_busy_r; 
+
+    // TAP IR register
+    always @(negedge tck_i) begin
+        if (current_state_q == TEST_LOGIC_RESET) begin
+            ir_reg_q <= IDCODE_A;
+        end 
+        else if (current_state_q == UPDATE_IR) begin
+            ir_reg_q <= shift_reg_q[IR_W-1:0];
+        end
+    end
+
+    // TDO output
+    reg   tdo_q;
+
+    always @(negedge tck_i) begin
+        if (current_state_q == SHIFT_IR) begin
+            tdo_q <= shift_reg_q[0];
+        end 
+        else if (current_state_q == SHIFT_DR) begin
+            tdo_q <= shift_reg_q[0];
+        end 
+        else begin
+            tdo_q <= 1'b0;
+        end
+    end
+
+    //-------------------------------------------------
+    // Outputs
+    //-------------------------------------------------
+    assign tdo_o          = tdo_q;
+
+    assign dtm_ack_o      = dtm_ack_q;
+    assign dtm_req_o      = dtm_req_q;
+    assign dtm_req_data_o = dtm_req_data_q;
 
 endmodule
 
