@@ -243,7 +243,7 @@ module jtag_dtm
     end    
 
     reg   dm_resp_d1, dm_resp_d2;
-    reg   dtm_ack_r;
+    wire  dtm_ack_w;
     reg   dtm_ack_q;
 
     always @(posedge tck_i or negedge rst_n) begin
@@ -253,14 +253,7 @@ module jtag_dtm
             {dm_resp_d1, dm_resp_d2} <= {dm_resp_i, dm_resp_d1};
     end    
 
-    always @(*) begin
-        dtm_ack_r = dtm_ack_q;
-
-        if(dm_resp_d2)
-            dtm_ack_r = 1'b1;
-        else if(!dm_resp_d2)
-            dtm_ack_r = 1'b0;
-    end
+    assign dtm_ack_w = (dm_resp_d2 == 1'b1) ? 1'b1 : 1'b0;
 
     always @(posedge tck_i or negedge rst_n) begin
         if (!rst_n)

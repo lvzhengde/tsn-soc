@@ -114,9 +114,9 @@ module jtag_core_mux
             mem_d_wr_r         = jtag_mem_d_wr_i         ;
             mem_d_cacheable_r  = jtag_mem_d_cacheable_i  ;
             mem_d_req_tag_r    = jtag_mem_d_req_tag_i    ;
-            mem_d_invalidate_r = jtag_mem_d_invalidate_i ;
-            mem_d_writeback_r  = jtag_mem_d_writeback_i  ;
-            mem_d_flush_r      = jtag_mem_d_flush_i      ;
+            //mem_d_invalidate_r = jtag_mem_d_invalidate_i ;
+            //mem_d_writeback_r  = jtag_mem_d_writeback_i  ;
+            //mem_d_flush_r      = jtag_mem_d_flush_i      ;
         end
         else begin
             mem_d_addr_r       = core_mem_d_addr_i       ;
@@ -125,10 +125,14 @@ module jtag_core_mux
             mem_d_wr_r         = core_mem_d_wr_i         ;
             mem_d_cacheable_r  = core_mem_d_cacheable_i  ;
             mem_d_req_tag_r    = core_mem_d_req_tag_i    ;
-            mem_d_invalidate_r = core_mem_d_invalidate_i ;
-            mem_d_writeback_r  = core_mem_d_writeback_i  ;
-            mem_d_flush_r      = core_mem_d_flush_i      ;
+            //mem_d_invalidate_r = core_mem_d_invalidate_i ;
+            //mem_d_writeback_r  = core_mem_d_writeback_i  ;
+            //mem_d_flush_r      = core_mem_d_flush_i      ;
         end
+
+        mem_d_invalidate_r = core_mem_d_invalidate_i ;
+        mem_d_writeback_r  = core_mem_d_writeback_i  ;
+        mem_d_flush_r      = core_mem_d_flush_i      ;
     end
 
     assign mem_d_addr_o        = mem_d_addr_r       ;
