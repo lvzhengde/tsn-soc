@@ -62,8 +62,8 @@ module jtag_dm
     input  [DMI_ADDR_W+33:0] dtm_req_data_i ,
 
     //JTAG control outputs
-    output                   reset_req_o    ,
-    output                   halt_req_o     ,
+    output                   reset_hart_o   ,
+    output                   halt_hart_o    ,
     output                   bus_req_o      ,
 
     //JTAG GPR access interface
@@ -227,7 +227,7 @@ module jtag_dm
             dmstatus_q        <= 32'h4f0c82;
         else if(!dmactive_w)   //reset DM
             dmstatus_q        <= 32'h4f0c82;
-        else if(reset_req_o)   //reset hart
+        else if(reset_hart_o)   //reset hart
             dmstatus_q[19:18] <= 2'b11
         else if (haltreq_q)   
             //clear allrunning/anyrunning, set allhalted/anyhalted

@@ -57,8 +57,8 @@ module jtag_top
     output           tdo_o              ,
 
     //JTAG control outputs
-    output           reset_req_o        ,
-    output           halt_req_o         ,
+    output           reset_hart_o       ,
+    output           halt_hart_o        ,
     output           bus_req_o          ,
 
     //JTAG GPR access interface
@@ -96,8 +96,8 @@ module jtag_top
     output           mem_d_flush_o       
 );
 
-    assign reset_req_o  = 1'b0;
-    assign halt_req_o   = 1'b0;   
+    assign reset_hart_o = 1'b0;
+    assign halt_hart_o  = 1'b0;   
     assign bus_req_o    = 1'b0;
 
     assign gpr_waddr_o  = 5'd0;

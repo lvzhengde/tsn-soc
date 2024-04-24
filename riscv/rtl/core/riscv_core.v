@@ -438,8 +438,8 @@ module riscv_core
     );
 
     wire            jtag_bus_req_w     ;
-    wire            jtag_reset_req_w   ;
-    wire            jtag_halt_req_w    ;
+    wire            jtag_reset_hart_w  ;
+    wire            jtag_halt_hart_w   ;
     
     wire  [  4:0]   jtag_gpr_waddr_w    ; 
     wire  [ 31:0]   jtag_gpr_data_wr_w  ; 
@@ -470,9 +470,9 @@ module riscv_core
         .tdo_o                (tdo_o),
     
         //JTAG control output
-        .reset_req_o          (jtag_reset_req_w),
-        .halt_req_o           (jtag_halt_req_w ),
-        .bus_req_o            (jtag_bus_req_w  ),
+        .reset_hart_o         (jtag_reset_hart_w),
+        .halt_hart_o          (jtag_halt_hart_w ),
+        .bus_req_o            (jtag_bus_req_w   ),
     
         //JTAG GPR access interface
         .gpr_waddr_o          (jtag_gpr_waddr_w  ),
@@ -633,7 +633,7 @@ module riscv_core
         // Inputs
         .clk                               (clk)                             ,
         .rst_n                             (rst_n)                           ,
-        .jtag_reset_req_i                  (jtag_reset_req_w)                ,
+        .jtag_reset_hart_i                 (jtag_reset_hart_w)               ,
         .intr_i                            (intr_i)                          ,
         .opcode_valid_i                    (csr_opcode_valid_w)              ,
         .opcode_opcode_i                   (csr_opcode_opcode_w)             ,
@@ -871,7 +871,7 @@ module riscv_core
         .interrupt_inhibit_o               (interrupt_inhibit_w)           ,
 
         // JTAG Signals
-        .jtag_halt_req_i                   (jtag_halt_req_w  )             ,             
+        .jtag_halt_hart_i                  (jtag_halt_hart_w  )            ,             
         .jtag_gpr_waddr_i                  (jtag_gpr_waddr_w  )            ,              
         .jtag_gpr_data_wr_i                (jtag_gpr_data_wr_w)            ,              
         .jtag_gpr_raddr_i                  (jtag_gpr_raddr_w  )            ,              

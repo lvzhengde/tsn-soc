@@ -43,7 +43,7 @@ module biriscv_csr
     // Inputs
     input           clk                             ,
     input           rst_n                           ,
-    input           jtag_reset_req_i                ,
+    input           jtag_reset_hart_i               ,
     input           intr_i                          ,
     input           opcode_valid_i                  ,
     input  [ 31:0]  opcode_opcode_i                 ,
@@ -332,7 +332,7 @@ module biriscv_csr
             branch_q        <= 1'b0;
             reset_q         <= 1'b1;
         end
-        else if (jtag_reset_req_i)
+        else if (jtag_reset_hart_i)
         begin
             branch_target_q <= 32'b0;
             branch_q        <= 1'b0;
