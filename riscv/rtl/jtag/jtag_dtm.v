@@ -60,7 +60,9 @@ module jtag_dtm
 
     input                    dm_ack_i       ,
     output                   dtm_req_o      ,
-    output [DMI_ADDR_W+33:0] dtm_req_data_o
+    output [DMI_ADDR_W+33:0] dtm_req_data_o ,
+
+    output                   dmihardreset_o
 );
     //--------------------------------------------
     // local parameters
@@ -312,6 +314,19 @@ module jtag_dtm
 
     assign busy_w = sticky_error_r | dm_busy_r; 
 
+    // DMI hardreset, 1 cycle pulse
+    reg   dmihardreset_q;
+    wire  dmihardreset_w = shift_reg_q[17];    
+
+    always @(posedge tck_i or negedge rst_n) begin
+        if (!rst_n)
+            dmihardreset_q <= 1'b0;
+        else if (current_state_q == UPDATE_DR && ir_reg_q == DTMCS_A && dmihardreset_w == 1'b1)
+            dmihardreset_q <= 1'b1;
+        else
+            dmihardreset_q <= 1'b0;
+    end    
+
     // TAP IR register
     always @(negedge tck_i) begin
         if (current_state_q == TEST_LOGIC_RESET) begin
@@ -345,6 +360,8 @@ module jtag_dtm
     assign dtm_ack_o      = dtm_ack_q;
     assign dtm_req_o      = dtm_req_q;
     assign dtm_req_data_o = dtm_req_data_q;
+
+    assign dmihardreset_o = dmihardreset_q;
 
 endmodule
 

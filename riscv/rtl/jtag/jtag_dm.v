@@ -116,7 +116,10 @@ module jtag_dm
     localparam DMCONTROL_MASK  = 32'h20010003;
     localparam HARTINFO_A      = 7'h12;
     localparam ABSTRACTCS_A    = 7'h16;
+    localparam ABSTRACTCS_MASK = 32'h1F00170F;
     localparam DATA0_A         = 7'h04;
+    localparam DATA1_A         = 7'h05;
+    localparam DATA2_A         = 7'h06;
     localparam SBCS_A          = 7'h38;
     localparam SBADDRESS0_A    = 7'h39;
     localparam SBDATA0_A       = 7'h3C;
@@ -129,8 +132,10 @@ module jtag_dm
     //-------------------------------------
     // Registers / Wires
     // ------------------------------------
-    reg   [31:0]            dmstatus_q ;
+    wire  [31:0]            dmstatus_w ;
     reg   [31:0]            dmcontrol_q;
+    reg   [31:0]            command_q;
+    reg   [31:0]            abstractcs_w;
 
     wire  [ 1:0]            op_w  ;
     wire  [31:0]            data_w;
@@ -154,11 +159,8 @@ module jtag_dm
 
     assign dm_ack_w = (dtm_req_d2 == 1'b1) ? 1'b1 : 1'b0;
 
-    always @(posedge clk or negedge rst_n) begin
-        if (!rst_n)
-            dm_ack_q <= 1'b0;
-        else
-            dm_ack_q <= dm_ack_r;
+    always @(posedge clk) begin
+        dm_ack_q <= dm_ack_r;
     end    
 
     wire dm_ack_pul_w = dm_ack_w & (!dm_ack_q);
@@ -200,12 +202,20 @@ module jtag_dm
             ackhavereset_q <= 1'b0;
         end
         else if(dmcontrol_wrsel_w) begin
-            dmcontrol_q    <= data_w & DMCONTROL_MASK;
-            haltreq_q      <= data_w[31];
-            ackhavereset_q <= data_w[28]
+            if (dmactive_w) begin
+                dmcontrol_q    <= data_w & DMCONTROL_MASK;
+                haltreq_q      <= data_w[31];
+                ackhavereset_q <= data_w[28];
 
-            if (data_w[31] & (!data_w[31]))  //Spec error?? FIXME
-                resumereq_q <= 1'b1;
+                if (data_w[30] & (!data_w[31]) & (!haltreq_q)) 
+                    resumereq_q <= 1'b1;
+            end
+            else begin
+                //per spec, the dmactive bit is the only bit which can 
+                //be written to something other than its reset value 
+                //when dmactive bit is set to 0
+                dmcontrol_q[0]     <= data_w[0];
+            end
         end
         else if(!dmactive_w) begin  //reset DM
             dmcontrol_q    <= 32'h0;
@@ -222,24 +232,142 @@ module jtag_dm
     //-------------------------------------
     // DM status register
     // ------------------------------------
+    reg   hart_halted_q;
+    reg   hart_halted_d1;
+    reg   resumeack_q;
+    reg   havereset_q;
+
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n) begin
+            hart_halted_q <= 1'b0;
+            resumeack_q   <= 1'b1;
+        end
+        else if(!dmactive_w) begin   //reset DM
+            hart_halted_q <= 1'b0;
+            resumeack_q   <= 1'b1;
+        end
+        else if (haltreq_q) begin
+            hart_halted_q <= 1'b1;
+        end
+        else if(resumereq_q) begin
+            hart_halted_q <= 1'b0;
+            resumeack_q   <= 1'b0;
+        end
+        else if (hart_halted_d1 & (!hart_halted_q)) begin
+            resumeack_q   <= 1'b1;
+        end
+    end
+
+    always @(posedge clk) begin
+        hart_halted_d1 <= hart_halted_q;
+    end
+
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) 
-            dmstatus_q        <= 32'h4f0c82;
+            havereset_q <= 1'b1;
         else if(!dmactive_w)   //reset DM
-            dmstatus_q        <= 32'h4f0c82;
-        else if(reset_hart_o)   //reset hart
-            dmstatus_q[19:18] <= 2'b11
-        else if (haltreq_q)   
-            //clear allrunning/anyrunning, set allhalted/anyhalted
-            dmstatus_q[11:8]  <= 4'h3;
-        else if (!haltreq_q)   
-            //set allrunning/anyrunning, clear allhalted/anyhalted
-            dmstatus_q[11:8]  <= 4'hc;
-        else if (resumereq_q)
-            dmstatus_q[17:16] <= 2'b0
+            havereset_q <= 1'b1;
         else if (ackhavereset_q)
-            dmstatus_q[19:18] <= 2'b0
-    end    
+            havereset_q <= 1'b0;
+    end
+
+    assign dmstatus_w[31:20] = 12'h4;
+    assign dmstatus_w[15:12] = 4'h0;
+    assign dmstatus_w[7:0]   = 8'h82;
+    assign dmstatus_w[19:18] = {havereset_q, havereset_q};
+    assign dmstatus_w[17:16] = {resumeack_q, resumeack_q};
+    assign dmstatus_w[11:10] = {~hart_halted_q, ~hart_halted_q};
+    assign dmstatus_w[9:8]   = {hart_halted_q, hart_halted_q};
+
+    //-----------------------------------------
+    // DM Abstract Command (command) register
+    // ----------------------------------------
+    reg          busy_q;
+    reg  [ 2:0]  cmderr_q;
+
+    reg          issue_command_q;
+    wire [ 7:0]  cmdtype_w = command_q[31:24];
+    wire [23:0]  control_w = command_q[23:0];
+    wire         write_w    = control_w[16];
+
+    //for abstract register access
+    wire [ 2:0]  aarsize_w  = control_w[22:20];
+    wire         aarpostincrement_w = control_w[19];
+    wire         postexec_w = control_w[18];
+    wire         transfer_w = control_w[17];
+    wire [15:0]  regno_w    = control_w[15:0];
+
+    //for absctract memory access
+    wire         aamvirtual_w = control_w[23];
+    wire [ 2:0]  aamsize_w    = control_w[22:20];
+    wire         aampostincrement_w = control_w[19];
+    wire [ 1:0]  target_specific_w  = control_w[15:14];
+
+    wire command_wrsel_w = (op_w == DTM_OP_WRITE && addr_w == COMMAND_A && dm_ack_pul_q == 1'b1);
+
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n) begin
+            issue_command_q <= 1'b0;
+            command_q       <= 32'h0;
+        end
+        else if(!dmactive_w) begin   //reset DM
+            issue_command_q <= 1'b0;
+            command_q       <= 32'h0;
+        end
+        else if (command_wrsel_w && cmderr_q == 3'h0) begin
+            issue_command_q <= 1'b1;
+            command_q       <= data_w;
+        end
+        else begin
+            issue_command_q <= 1'b0;
+        end
+    end
+    
+    //-----------------------------------------
+    // DM Abstract Control and Status register
+    // ----------------------------------------
+
+    wire abstractcs_wrsel_w = (op_w == DTM_OP_WRITE && addr_w == ABSTRACTCS_A && dm_ack_pul_q == 1'b1);
+    wire data0_wrsel_w      = (op_w == DTM_OP_WRITE && addr_w == DATA0_A && dm_ack_pul_q == 1'b1);
+    wire data1_wrsel_w      = (op_w == DTM_OP_WRITE && addr_w == DATA1_A && dm_ack_pul_q == 1'b1);
+    wire data2_wrsel_w      = (op_w == DTM_OP_WRITE && addr_w == DATA2_A && dm_ack_pul_q == 1'b1);
+    wire data0_rdsel_w      = (op_w == DTM_OP_READ && addr_w == DATA0_A && dm_ack_pul_q == 1'b1);
+    wire data1_rdsel_w      = (op_w == DTM_OP_READ && addr_w == DATA1_A && dm_ack_pul_q == 1'b1);
+    wire data2_rdsel_w      = (op_w == DTM_OP_READ && addr_w == DATA2_A && dm_ack_pul_q == 1'b1);
+
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n) 
+            busy_q <= 1'b0 
+        else if(!dmactive_w)    //reset DM
+            busy_q <= 1'b0 
+        else if (issue_command_q) 
+            busy_q <= 1'b1;
+        //command completed to release busy
+
+    end
+
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n) 
+            cmderr_q <= 3'h0; 
+        else if(!dmactive_w)    //reset DM
+            cmderr_q <= 3'h0; 
+        else if (cmderr_q == 3'h0 && busy_q && (abstractcs_wrsel_w | command_wrsel_w)) 
+            cmderr_q <= 3'h1; 
+        else if (cmderr_q == 3'h0 && busy_q && (data0_wrsel_w | data1_wrsel_w | data2_wrsel_w | data0_rdsel_w | data1_rdsel_w | data2_rdsel_w)) 
+            cmderr_q <= 3'h1; 
+        else if (abstractcs_wrsel_w) begin //write 1 to clear
+            cmderr_q[0] <= data_w[ 8] ? 0 : cmderr_q[0];
+            cmderr_q[1] <= data_w[ 9] ? 0 : cmderr_q[1];
+            cmderr_q[2] <= data_w[10] ? 0 : cmderr_q[2];
+        end
+
+    end
+
+    assign abstractcs_w[31:13] = 19'h0;
+    assign abstractcs_w[12:11] = {busy_q, 1'b0};
+    assign abstractcs_w[10: 8] = cmderr_q;
+    assign abstractcs_w[ 7: 0] = 8'h3;
+
 
 endmodule
 
