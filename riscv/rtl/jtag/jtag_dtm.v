@@ -318,10 +318,8 @@ module jtag_dtm
     reg   dmihardreset_q;
     wire  dmihardreset_w = shift_reg_q[17];    
 
-    always @(posedge tck_i or negedge rst_n) begin
-        if (!rst_n)
-            dmihardreset_q <= 1'b0;
-        else if (current_state_q == UPDATE_DR && ir_reg_q == DTMCS_A && dmihardreset_w == 1'b1)
+    always @(posedge tck_i) begin
+        if (current_state_q == UPDATE_DR && ir_reg_q == DTMCS_A && dmihardreset_w == 1'b1)
             dmihardreset_q <= 1'b1;
         else
             dmihardreset_q <= 1'b0;

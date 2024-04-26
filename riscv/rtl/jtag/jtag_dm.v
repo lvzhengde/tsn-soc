@@ -114,20 +114,11 @@ module jtag_dm
     localparam DMSTATUS_A      = 7'h11;
     localparam DMCONTROL_A     = 7'h10;
     localparam DMCONTROL_MASK  = 32'h20010003;
-    localparam HARTINFO_A      = 7'h12;
     localparam ABSTRACTCS_A    = 7'h16;
-    localparam ABSTRACTCS_MASK = 32'h1F00170F;
     localparam DATA0_A         = 7'h04;
     localparam DATA1_A         = 7'h05;
     localparam DATA2_A         = 7'h06;
-    localparam SBCS_A          = 7'h38;
-    localparam SBADDRESS0_A    = 7'h39;
-    localparam SBDATA0_A       = 7'h3C;
     localparam COMMAND_A       = 7'h17;
-
-    //RISC-V Debug Mode CSR address
-    localparam DCSR_A       = 12'h7b0;
-    localparam DPC_A        = 12'h7b1;
 
     //-------------------------------------
     // Registers / Wires
@@ -136,6 +127,9 @@ module jtag_dm
     reg   [31:0]            dmcontrol_q;
     reg   [31:0]            command_q;
     reg   [31:0]            abstractcs_w;
+    wire  [31:0]            data0_q;
+    wire  [31:0]            data1_q;
+    wire  [31:0]            data2_q;
 
     wire  [ 1:0]            op_w  ;
     wire  [31:0]            data_w;
@@ -180,6 +174,8 @@ module jtag_dm
     assign op_w   = dtm_req_data_q[1:0];
     assign data_w = dtm_req_data_q[33:2];
     assign addr_w = dtm_req_data_q[DMI_ADDR_W+33:34];
+
+    assign dm_ack_o = dm_ack_q;
 
     //-------------------------------------
     // DM control register
@@ -279,15 +275,23 @@ module jtag_dm
     assign dmstatus_w[11:10] = {~hart_halted_q, ~hart_halted_q};
     assign dmstatus_w[9:8]   = {hart_halted_q, hart_halted_q};
 
+    assign reset_hart_o = hartreset_w | ndmreset_w;
+    assign halt_hart_o  = hart_halted_q ;
+
     //-----------------------------------------
     // DM Abstract Command (command) register
+    // ++
+    // DM Abstract Control and Status register
     // ----------------------------------------
     reg          busy_q;
     reg  [ 2:0]  cmderr_q;
-
     reg          issue_command_q;
-    wire [ 7:0]  cmdtype_w = command_q[31:24];
-    wire [23:0]  control_w = command_q[23:0];
+
+    wire         command_wrsel_w = (op_w == DTM_OP_WRITE && addr_w == COMMAND_A && dm_ack_pul_q == 1'b1);
+    wire [31:0]  command_w = (command_wrsel_w) ? data_w : command_q;
+    wire [ 7:0]  cmdtype_w = command_w[31:24];
+    wire [23:0]  control_w = command_w[23:0];
+
     wire         write_w    = control_w[16];
 
     //for abstract register access
@@ -302,31 +306,7 @@ module jtag_dm
     wire [ 2:0]  aamsize_w    = control_w[22:20];
     wire         aampostincrement_w = control_w[19];
     wire [ 1:0]  target_specific_w  = control_w[15:14];
-
-    wire command_wrsel_w = (op_w == DTM_OP_WRITE && addr_w == COMMAND_A && dm_ack_pul_q == 1'b1);
-
-    always @(posedge clk or negedge rst_n) begin
-        if (!rst_n) begin
-            issue_command_q <= 1'b0;
-            command_q       <= 32'h0;
-        end
-        else if(!dmactive_w) begin   //reset DM
-            issue_command_q <= 1'b0;
-            command_q       <= 32'h0;
-        end
-        else if (command_wrsel_w && cmderr_q == 3'h0) begin
-            issue_command_q <= 1'b1;
-            command_q       <= data_w;
-        end
-        else begin
-            issue_command_q <= 1'b0;
-        end
-    end
     
-    //-----------------------------------------
-    // DM Abstract Control and Status register
-    // ----------------------------------------
-
     wire abstractcs_wrsel_w = (op_w == DTM_OP_WRITE && addr_w == ABSTRACTCS_A && dm_ack_pul_q == 1'b1);
     wire data0_wrsel_w      = (op_w == DTM_OP_WRITE && addr_w == DATA0_A && dm_ack_pul_q == 1'b1);
     wire data1_wrsel_w      = (op_w == DTM_OP_WRITE && addr_w == DATA1_A && dm_ack_pul_q == 1'b1);
@@ -337,36 +317,237 @@ module jtag_dm
 
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) 
-            busy_q <= 1'b0 
+            busy_q <= 1'b0;
         else if(!dmactive_w)    //reset DM
-            busy_q <= 1'b0 
+            busy_q <= 1'b0; 
         else if (issue_command_q) 
             busy_q <= 1'b1;
         //command completed to release busy
+        //non-memory access command completed immediately
+        else if (cmdtype_w != 8'h2)
+            busy_q <= 1'b0
 
     end
 
     always @(posedge clk or negedge rst_n) begin
-        if (!rst_n) 
-            cmderr_q <= 3'h0; 
-        else if(!dmactive_w)    //reset DM
-            cmderr_q <= 3'h0; 
-        else if (cmderr_q == 3'h0 && busy_q && (abstractcs_wrsel_w | command_wrsel_w)) 
-            cmderr_q <= 3'h1; 
-        else if (cmderr_q == 3'h0 && busy_q && (data0_wrsel_w | data1_wrsel_w | data2_wrsel_w | data0_rdsel_w | data1_rdsel_w | data2_rdsel_w)) 
-            cmderr_q <= 3'h1; 
-        else if (abstractcs_wrsel_w) begin //write 1 to clear
-            cmderr_q[0] <= data_w[ 8] ? 0 : cmderr_q[0];
-            cmderr_q[1] <= data_w[ 9] ? 0 : cmderr_q[1];
-            cmderr_q[2] <= data_w[10] ? 0 : cmderr_q[2];
+        if (!rst_n) begin 
+            cmderr_q        <= 3'h0;
+            issue_command_q <= 1'b0;
+            command_q       <= 32'h0;
+        end 
+        else if(!dmactive_w) begin   //reset DM
+            cmderr_q        <= 3'h0; 
+            issue_command_q <= 1'b0;
+            command_q       <= 32'h0;
         end
+        else if ((cmderr_q == 3'h0) && busy_q && (abstractcs_wrsel_w | command_wrsel_w)) begin 
+            cmderr_q        <= 3'h1; 
+            issue_command_q <= 1'b0;
+        end
+        else if ((cmderr_q == 3'h0) && busy_q && (data0_wrsel_w | data1_wrsel_w | data2_wrsel_w | data0_rdsel_w | data1_rdsel_w | data2_rdsel_w)) begin
+            cmderr_q        <= 3'h1; 
+            issue_command_q <= 1'b0;
+        end
+        else if (abstractcs_wrsel_w) begin //write 1 to clear
+            cmderr_q[0]     <= data_w[ 8] ? 0 : cmderr_q[0];
+            cmderr_q[1]     <= data_w[ 9] ? 0 : cmderr_q[1];
+            cmderr_q[2]     <= data_w[10] ? 0 : cmderr_q[2];
+            issue_command_q <= 1'b0;
+        end
+        else if ((cmderr_q == 3'h0) && command_wrsel_w) begin
+            command_q       <= data_w;
 
+            if (cmdtype_w == 8'h0) begin       //Access register
+                if (aarsize_w > 3'h2 || postexec_w == 1'b1 || aarpostincrement_w == 1'b1) begin
+                    cmderr_q        <= 3'h2; 
+                    issue_command_q <= 1'b0;
+                end
+                else begin
+                    issue_command_q <= 1'b1;
+                end
+            end
+            else if (cmdtype_w == 8'h2) begin  //Access memory
+            
+            end
+            else begin  //not supported
+                cmderr_q        <= 3'h2; 
+                issue_command_q <= 1'b0;
+            end
+        end
+        else begin  //issue_command keep active only 1 cycle
+            issue_command_q <= 1'b0;
+        end
     end
 
     assign abstractcs_w[31:13] = 19'h0;
     assign abstractcs_w[12:11] = {busy_q, 1'b0};
     assign abstractcs_w[10: 8] = cmderr_q;
     assign abstractcs_w[ 7: 0] = 8'h3;
+
+    //-----------------------------------------
+    // DM DATA registers
+    // ----------------------------------------
+
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n) 
+            data0_q <= 32'h0; 
+        else if(!dmactive_w)    //reset DM
+            data0_q <= 32'h0; 
+        else if (data0_wrsel_w & (!busy_q)) 
+            data0_q <= data_w; 
+        //changed by abstract access register/memory
+        else if (is_gpr_read_q)
+            data0_q <= gpr_data_rd_i;
+        else if (is_csr_read_q)
+            data0_q <= csr_data_rd_i;
+    end
+
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n) 
+            data1_q <= 32'h0; 
+        else if(!dmactive_w)    //reset DM
+            data1_q <= 32'h0; 
+        else if (data1_wrsel_w & (!busy_q)) 
+            data1_q <= data_w; 
+        //changed by abstract access register/memory
+    end
+
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n) 
+            data2_q <= 32'h0; 
+        else if(!dmactive_w)    //reset DM
+            data2_q <= 32'h0; 
+        else if (data2_wrsel_w & (!busy_q)) 
+            data2_q <= data_w; 
+        //changed by abstract access register/memory
+    end
+
+    //-----------------------------------------
+    // DMI read DM register data
+    // ----------------------------------------
+    reg   [31:0]  read_data_r;
+
+    always @(*) begin
+        read_data_r = 32'h0;
+
+        if (op_w == DTM_OP_READ) begin
+            case (addr_w)
+                DMSTATUS_A:
+                    read_data_r = dmstatus_w;
+                DMCONTROL_A:
+                    read_data_r = dmcontrol_q;
+                ABSTRACTCS_A:
+                    read_data_r = abstractcs_w;
+                DATA0_A:
+                    read_data_r = data0_q;
+                DATA1_A:
+                    read_data_r = data1_q;
+                DATA2_A:
+                    read_data_r = data2_q;
+                default:
+                    read_data_r = 32'h0;
+            endcase
+        end
+    end
+
+    //-----------------------------------------
+    // DM abstract command -- access register
+    // ----------------------------------------
+    reg  [  4:0]     gpr_waddr_q    ;
+    reg  [ 31:0]     gpr_data_wr_q  ;
+    reg  [  4:0]     gpr_raddr_q    ;
+    reg              is_gpr_read_q  ;
+
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n) begin
+            gpr_waddr_q   <= 5'h0;
+            gpr_data_wr_q <= 32'h0;
+            gpr_raddr_q   <= 5'h0;
+            is_gpr_read_q <= 1'b0;
+        end
+        else if(!dmactive_w) begin   //reset DM
+            gpr_waddr_q   <= 5'h0;
+            gpr_data_wr_q <= 32'h0;
+            gpr_raddr_q   <= 5'h0;
+            is_gpr_read_q <= 1'b0;
+        end
+        else if (issue_command_q && (cmdtype_w == 8'h0) && (regno_w >= 16'h1000) && (regno_w <= 16'h101f)) begin 
+            if (transfer_w && write_w) begin          //write GPR register
+                /* verilator lint_off WIDTH */
+                gpr_waddr_q   <= regno_w - 16'h1000;
+                /* verilator lint_on WIDTH */
+                gpr_data_wr_q <= data0_q;
+            end
+            else if (transfer_w && (!write_w)) begin   //read GPR register
+                /* verilator lint_off WIDTH */
+                gpr_raddr_q   <= regno_w - 16'h1000;
+                /* verilator lint_on WIDTH */
+                is_gpr_read_q <= 1'b1;
+            end
+        end
+        else begin
+            gpr_waddr_q   <= 5'h0;
+            gpr_data_wr_q <= 32'h0;
+            gpr_raddr_q   <= 5'h0;
+            is_gpr_read_q <= 1'b0;
+        end
+    end
+
+    assign gpr_waddr_o   = gpr_waddr_q   ;
+    assign gpr_data_wr_o = gpr_data_wr_q ;
+    assign gpr_raddr_o   = gpr_raddr_q   ;
+
+    reg              csr_write_q    ;
+    reg [ 11:0]      csr_waddr_q    ;
+    reg [ 31:0]      csr_data_wr_q  ;
+    reg [ 11:0]      csr_raddr_q    ;
+    reg              is_csr_read_q  ;
+
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n) begin
+            csr_write_q   <= 1'b0;
+            csr_waddr_q   <= 12'h0;
+            csr_data_wr_q <= 32'h0;
+            csr_raddr_q   <= 12'h0;
+            is_csr_read_q <= 1'b0;
+        end
+        else if(!dmactive_w) begin   //reset DM
+            csr_write_q   <= 1'b0;
+            csr_waddr_q   <= 12'h0;
+            csr_data_wr_q <= 32'h0;
+            csr_raddr_q   <= 12'h0;
+            is_csr_read_q <= 1'b0;
+        end
+        else if (issue_command_q && (cmdtype_w == 8'h0) && (regno_w >= 16'h0) && (regno_w <= 16'h0fff)) begin 
+            if (transfer_w && write_w) begin          //write CSR register
+                csr_write_q   <= 1'b1;
+                /* verilator lint_off WIDTH */
+                csr_waddr_q   <= regno_w ;
+                /* verilator lint_on WIDTH */
+                csr_data_wr_q <= data0_q;
+            end
+            else if (transfer_w && (!write_w)) begin   //read CSR register
+                /* verilator lint_off WIDTH */
+                csr_raddr_q   <= regno_w;
+                /* verilator lint_on WIDTH */
+                is_csr_read_q <= 1'b1;
+            end
+        end
+        else begin
+            csr_write_q   <= 1'b0;
+            csr_waddr_q   <= 12'h0;
+            csr_data_wr_q <= 32'h0;
+            csr_raddr_q   <= 12'h0;
+            is_csr_read_q <= 1'b0;
+        end
+    end
+
+    assign csr_write_o   = csr_write_q   ;
+    assign csr_waddr_o   = csr_waddr_q   ;
+    assign csr_data_wr_o = csr_data_wr_q ;
+    assign csr_raddr_o   = csr_raddr_q   ;
+
+
 
 
 endmodule
