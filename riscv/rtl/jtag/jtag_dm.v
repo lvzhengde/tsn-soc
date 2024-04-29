@@ -111,6 +111,7 @@ module jtag_dm
     localparam DTM_OP_READ  = 2'b01;
     localparam DTM_OP_WRITE = 2'b10;
     localparam OP_SUCCESS   = 2'b00;
+    localparam OP_FAIL      = 2'b10;
 
     //DM register address
     localparam DMSTATUS_A      = 7'h11;
@@ -119,7 +120,6 @@ module jtag_dm
     localparam ABSTRACTCS_A    = 7'h16;
     localparam DATA0_A         = 7'h04;
     localparam DATA1_A         = 7'h05;
-    localparam DATA2_A         = 7'h06;
     localparam COMMAND_A       = 7'h17;
 
     //-------------------------------------
@@ -131,7 +131,6 @@ module jtag_dm
     reg   [31:0]            abstractcs_w;
     wire  [31:0]            data0_q;
     wire  [31:0]            data1_q;
-    wire  [31:0]            data2_q;
 
     wire  [ 1:0]            op_w  ;
     wire  [31:0]            data_w;
@@ -156,7 +155,7 @@ module jtag_dm
     assign dm_ack_w = (dtm_req_d2 == 1'b1) ? 1'b1 : 1'b0;
 
     always @(posedge clk) begin
-        dm_ack_q <= dm_ack_r;
+        dm_ack_q <= dm_ack_w;
     end    
 
     wire dm_ack_pul_w = dm_ack_w & (!dm_ack_q);
@@ -290,6 +289,7 @@ module jtag_dm
     reg          busy_q;
     reg  [ 2:0]  cmderr_q;
     reg          issue_command_q;
+    reg          is_mem_access_q;
 
     wire         command_wrsel_w = (op_w == DTM_OP_WRITE && addr_w == COMMAND_A && dm_ack_pul_q == 1'b1);
     wire [31:0]  command_w = (command_wrsel_w) ? data_w : command_q;
@@ -314,10 +314,8 @@ module jtag_dm
     wire abstractcs_wrsel_w = (op_w == DTM_OP_WRITE && addr_w == ABSTRACTCS_A && dm_ack_pul_q == 1'b1);
     wire data0_wrsel_w      = (op_w == DTM_OP_WRITE && addr_w == DATA0_A && dm_ack_pul_q == 1'b1);
     wire data1_wrsel_w      = (op_w == DTM_OP_WRITE && addr_w == DATA1_A && dm_ack_pul_q == 1'b1);
-    wire data2_wrsel_w      = (op_w == DTM_OP_WRITE && addr_w == DATA2_A && dm_ack_pul_q == 1'b1);
     wire data0_rdsel_w      = (op_w == DTM_OP_READ && addr_w == DATA0_A && dm_ack_pul_q == 1'b1);
     wire data1_rdsel_w      = (op_w == DTM_OP_READ && addr_w == DATA1_A && dm_ack_pul_q == 1'b1);
-    wire data2_rdsel_w      = (op_w == DTM_OP_READ && addr_w == DATA2_A && dm_ack_pul_q == 1'b1);
 
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) 
@@ -333,8 +331,6 @@ module jtag_dm
         else if (is_mem_access_q && mem_wb_valid) 
             busy_q <= 1'b0;
     end
-
-    reg   is_mem_access_q;
 
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin 
@@ -354,7 +350,7 @@ module jtag_dm
             issue_command_q <= 1'b0;
             is_mem_access_q <= 1'b0;
         end
-        else if ((cmderr_q == 3'h0) && busy_q && (data0_wrsel_w | data1_wrsel_w | data2_wrsel_w | data0_rdsel_w | data1_rdsel_w | data2_rdsel_w)) begin
+        else if ((cmderr_q == 3'h0) && busy_q && (data0_wrsel_w | data1_wrsel_w | data0_rdsel_w | data1_rdsel_w )) begin
             cmderr_q        <= 3'h1; 
             issue_command_q <= 1'b0;
             is_mem_access_q <= 1'b0;
@@ -413,7 +409,8 @@ module jtag_dm
     assign abstractcs_w[31:13] = 19'h0;
     assign abstractcs_w[12:11] = {busy_q, 1'b0};
     assign abstractcs_w[10: 8] = cmderr_q;
-    assign abstractcs_w[ 7: 0] = 8'h3;
+    assign abstractcs_w[ 7: 0] = 8'h2;
+
 
     //-----------------------------------------
     // DM DATA registers
@@ -427,11 +424,11 @@ module jtag_dm
         else if (data0_wrsel_w & (!busy_q)) 
             data0_q <= data_w; 
         //changed by abstract access register/memory
-        else if (is_gpr_read_q)
+        else if (gpr_read_valid_q)
             data0_q <= gpr_data_rd_i;
-        else if (is_csr_read_q)
+        else if (csr_read_valid_q)
             data0_q <= csr_data_rd_i;
-        else if (is_mem_access_q && !write_w && mem_wb_valid)
+        else if (is_mem_access_q && !write_w && mem_wb_valid) //read from memory
             data0_q <= mem_wb_value;
     end
 
@@ -453,18 +450,8 @@ module jtag_dm
         end
     end
 
-    always @(posedge clk or negedge rst_n) begin
-        if (!rst_n) 
-            data2_q <= 32'h0; 
-        else if(!dmactive_w)    //reset DM
-            data2_q <= 32'h0; 
-        else if (data2_wrsel_w & (!busy_q)) 
-            data2_q <= data_w; 
-        //changed by abstract access register/memory
-    end
-
     //-----------------------------------------
-    // DMI read DM register data
+    // DMI read DM register data output
     // ----------------------------------------
     reg   [31:0]  read_data_r;
 
@@ -483,34 +470,32 @@ module jtag_dm
                     read_data_r = data0_q;
                 DATA1_A:
                     read_data_r = data1_q;
-                DATA2_A:
-                    read_data_r = data2_q;
                 default:
                     read_data_r = 32'h0;
             endcase
         end
     end
 
-    //-----------------------------------------
-    // DM abstract command -- access register
-    // ----------------------------------------
-    reg  [  4:0]     gpr_waddr_q    ;
-    reg  [ 31:0]     gpr_data_wr_q  ;
-    reg  [  4:0]     gpr_raddr_q    ;
-    reg              is_gpr_read_q  ;
+    //-----------------------------------------------------
+    // DM abstract command -- access hart GPR/CSR register
+    // ----------------------------------------------------
+    reg  [  4:0]     gpr_waddr_q       ;
+    reg  [ 31:0]     gpr_data_wr_q     ;
+    reg  [  4:0]     gpr_raddr_q       ;
+    reg              gpr_read_valid_q  ;
 
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
-            gpr_waddr_q   <= 5'h0;
-            gpr_data_wr_q <= 32'h0;
-            gpr_raddr_q   <= 5'h0;
-            is_gpr_read_q <= 1'b0;
+            gpr_waddr_q      <= 5'h0;
+            gpr_data_wr_q    <= 32'h0;
+            gpr_raddr_q      <= 5'h0;
+            gpr_read_valid_q <= 1'b0;
         end
         else if(!dmactive_w) begin   //reset DM
-            gpr_waddr_q   <= 5'h0;
-            gpr_data_wr_q <= 32'h0;
-            gpr_raddr_q   <= 5'h0;
-            is_gpr_read_q <= 1'b0;
+            gpr_waddr_q      <= 5'h0;
+            gpr_data_wr_q    <= 32'h0;
+            gpr_raddr_q      <= 5'h0;
+            gpr_read_valid_q <= 1'b0;
         end
         else if (issue_command_q && (cmdtype_w == 8'h0) && (regno_w >= 16'h1000) && (regno_w <= 16'h101f)) begin 
             if (transfer_w && write_w) begin          //write GPR register
@@ -521,16 +506,16 @@ module jtag_dm
             end
             else if (transfer_w && (!write_w)) begin   //read GPR register
                 /* verilator lint_off WIDTH */
-                gpr_raddr_q   <= regno_w - 16'h1000;
+                gpr_raddr_q      <= regno_w - 16'h1000;
                 /* verilator lint_on WIDTH */
-                is_gpr_read_q <= 1'b1;
+                gpr_read_valid_q <= 1'b1;
             end
         end
         else begin
             gpr_waddr_q   <= 5'h0;
             gpr_data_wr_q <= 32'h0;
             gpr_raddr_q   <= 5'h0;
-            is_gpr_read_q <= 1'b0;
+            gpr_read_valid_q <= 1'b0;
         end
     end
 
@@ -538,26 +523,26 @@ module jtag_dm
     assign gpr_data_wr_o = gpr_data_wr_q ;
     assign gpr_raddr_o   = gpr_raddr_q   ;
 
-    reg              csr_write_q    ;
-    reg [ 11:0]      csr_waddr_q    ;
-    reg [ 31:0]      csr_data_wr_q  ;
-    reg [ 11:0]      csr_raddr_q    ;
-    reg              is_csr_read_q  ;
+    reg              csr_write_q       ;
+    reg [ 11:0]      csr_waddr_q       ;
+    reg [ 31:0]      csr_data_wr_q     ;
+    reg [ 11:0]      csr_raddr_q       ;
+    reg              csr_read_valid_q  ;
 
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
-            csr_write_q   <= 1'b0;
-            csr_waddr_q   <= 12'h0;
-            csr_data_wr_q <= 32'h0;
-            csr_raddr_q   <= 12'h0;
-            is_csr_read_q <= 1'b0;
+            csr_write_q      <= 1'b0;
+            csr_waddr_q      <= 12'h0;
+            csr_data_wr_q    <= 32'h0;
+            csr_raddr_q      <= 12'h0;
+            csr_read_valid_q <= 1'b0;
         end
         else if(!dmactive_w) begin   //reset DM
-            csr_write_q   <= 1'b0;
-            csr_waddr_q   <= 12'h0;
-            csr_data_wr_q <= 32'h0;
-            csr_raddr_q   <= 12'h0;
-            is_csr_read_q <= 1'b0;
+            csr_write_q      <= 1'b0;
+            csr_waddr_q      <= 12'h0;
+            csr_data_wr_q    <= 32'h0;
+            csr_raddr_q      <= 12'h0;
+            csr_read_valid_q <= 1'b0;
         end
         else if (issue_command_q && (cmdtype_w == 8'h0) && (regno_w >= 16'h0) && (regno_w <= 16'h0fff)) begin 
             if (transfer_w && write_w) begin          //write CSR register
@@ -569,17 +554,17 @@ module jtag_dm
             end
             else if (transfer_w && (!write_w)) begin   //read CSR register
                 /* verilator lint_off WIDTH */
-                csr_raddr_q   <= regno_w;
+                csr_raddr_q      <= regno_w;
                 /* verilator lint_on WIDTH */
-                is_csr_read_q <= 1'b1;
+                csr_read_valid_q <= 1'b1;
             end
         end
         else begin
-            csr_write_q   <= 1'b0;
-            csr_waddr_q   <= 12'h0;
-            csr_data_wr_q <= 32'h0;
-            csr_raddr_q   <= 12'h0;
-            is_csr_read_q <= 1'b0;
+            csr_write_q      <= 1'b0;
+            csr_waddr_q      <= 12'h0;
+            csr_data_wr_q    <= 32'h0;
+            csr_raddr_q      <= 12'h0;
+            csr_read_valid_q <= 1'b0;
         end
     end
 
@@ -588,10 +573,10 @@ module jtag_dm
     assign csr_data_wr_o = csr_data_wr_q ;
     assign csr_raddr_o   = csr_raddr_q   ;
 
-    //-----------------------------------------
-    // DM abstract command -- access memory
+    //-------------------------------------------
+    // DM abstract command -- access hart memory
     // Reference design: biriscv_lsu.v
-    // ----------------------------------------
+    // ------------------------------------------
     reg [ 31:0]  mem_addr_q;
     reg [ 31:0]  mem_data_wr_q;
     reg          mem_rd_q;
@@ -728,7 +713,7 @@ module jtag_dm
             mem_data_wr_q      <= mem_data_r;
             mem_rd_q           <= mem_rd_r;
             mem_wr_q           <= mem_wr_r;
-            mem_load_q         <= write_w & is_mem_access_q & issue_command_q;
+            mem_load_q         <= (!write_w) & is_mem_access_q & issue_command_q;
             mem_xb_q           <= aamsize_w == 3'h0;
             mem_xh_q           <= aamsize_w == 3'h1;
         
@@ -829,6 +814,132 @@ module jtag_dm
     wire        mem_wb_valid = mem_d_ack_i;
     wire [31:0] mem_wb_value = wb_result_r;    
 
+
+    //-----------------------------------------
+    // DM response to DTM 
+    // ----------------------------------------
+    localparam IDLE         = 4'h0;
+    localparam DMI_OP       = 4'h1;
+    localparam DM_REG       = 4'h2;
+    localparam COMMAND      = 4'h3;
+    localparam HART_REG     = 4'h4;
+    localparam HART_MEM     = 4'h5;
+    localparam CMD_ERR      = 4'h6;
+    localparam MEM_DONE     = 4'h7;
+    localparam PAUSE        = 4'h8;
+    localparam RESPONSE     = 4'h9;
+
+    //Sync dtm_ack_i
+    reg   dtm_ack_d1, dtm_ack_d2;
+
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n)
+            {dtm_ack_d1, dtm_ack_d2} <= 2'b0;
+        else
+            {dtm_ack_d1, dtm_ack_d2} <= {dtm_ack_i, dtm_ack_d1};
+    end    
+
+    //delay mem_ack_i
+    reg   mem_d_ack_d1, mem_d_ack_d2;
+
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n)
+            {mem_d_ack_d1, mem_d_ack_d2} <= 2'b0;
+        else
+            {mem_d_ack_d1, mem_d_ack_d2} <= {mem_d_ack_i, mem_d_ack_d1};
+    end    
+
+    //DM response state machine
+    reg   [3:0] next_state_r;
+    reg   [3:0] current_state_q;
+    reg   [3:0] prev_state_q;
+
+    // Next state logic
+    always @(*) begin
+        next_state_r = current_state_q;
+
+        case (current_state_q)
+            IDLE:
+                if (dm_ack_pul_q)
+                    next_state_r = DMI_OP;
+            DMI_OP:
+                if (op_w == DTM_OP_WRITE && addr_w == COMMAND_A)
+                    next_state_r = COMMAND;
+                else
+                    next_state_r = DM_REG;
+            DM_REG:
+                next_state_r = PAUSE;
+            COMMAND:
+                if (|cmderr_q)
+                    next_state_r = CMD_ERR;
+                else if (is_mem_access_q)
+                    next_state_r = HART_MEM;
+                else
+                    next_state_r = HART_REG;
+            CMD_ERR:
+                next_state_r = PAUSE;
+            HART_REG:
+                next_state_r = PAUSE;
+            HART_MEM:
+                if (mem_d_ack_i | mem_d_ack_d1 | mem_d_ack_d2)
+                    next_state_r = MEM_DONE;
+            MEM_DONE:
+                next_state_r = PAUSE;
+            PAUSE:
+                next_state_r = RESPONSE;
+            RESPONSE:
+                if (dtm_ack_d2)
+                    next_state_r = IDLE;
+            default: ;
+        endcase
+    end
+
+    // Update current state
+    always @(posedge tck_i or negedge rst_n) begin
+        if (!rst_n) begin
+            current_state_q   <= IDLE;
+            prev_state_q      <= IDLE;
+        end
+        else begin
+            current_state_q   <= next_state_r;
+            prev_state_q      <= current_state_q;
+        end
+    end    
+
+    // Generate response 
+    reg [DMI_ADDR_W+33:0] dm_resp_data_q;
+    reg                   dm_resp_q;
+
+    always @(posedge tck_i or negedge rst_n) begin
+        if (!rst_n) 
+            dm_resp_data_q <= {(DMI_ADDR_W+34){1'b0}};
+        else if (current_state_q == PAUSE) begin
+            if (prev_state_q == DM_REG) 
+                dm_resp_data_q <= {addr_w, read_data_r, OP_SUCCESS};
+            else if (prev_state_q == HART_REG) 
+                dm_resp_data_q <= {addr_w, 32'h0, OP_SUCCESS};
+            else if (prev_state_q == CMD_ERR) 
+                dm_resp_data_q <= {addr_w, 32'h0, OP_FAIL};
+            else if (prev_state_q == MEM_DONE && (|cmderr_q)) 
+                dm_resp_data_q <= {addr_w, 32'h0, OP_FAIL};
+            else 
+                dm_resp_data_q <= {addr_w, 32'h0, OP_SUCCESS};
+        end
+        else if (current_state_q == IDLE)
+            dm_resp_data_q <= {(DMI_ADDR_W+34){1'b0}};
+    end    
+
+    always @(posedge tck_i or negedge rst_n) begin
+        if (!rst_n) 
+            dm_resp_q <= 1'b0;
+        else if (current_state_q == PAUSE && next_state_r == RESPONSE)
+            dm_resp_q <= 1'b1;
+        else if (dtm_ack_d2 || current_state_q == IDLE) 
+            dm_resp_q <= 1'b0;
+    end    
+
+    assign dm_resp_o      = dm_resp_q; 
+    assign dm_resp_data_o = dm_resp_data_q; 
 
 endmodule
 
