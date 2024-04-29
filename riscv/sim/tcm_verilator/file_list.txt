@@ -40,6 +40,8 @@
 
 ../../rtl/jtag/jtag_top.v
 ../../rtl/jtag/jtag_core_mux.v
+../../rtl/jtag/jtag_dtm.v
+../../rtl/jtag/jtag_dm.v
 
 //../../rtl/top/riscv_tcm_top.v
 //../../rtl/top/riscv_top.v

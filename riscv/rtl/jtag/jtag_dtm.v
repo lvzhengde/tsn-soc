@@ -69,7 +69,7 @@ module jtag_dtm
     //--------------------------------------------
     localparam IDCODE_VERSION     = 4'h1;
     localparam IDCODE_PART_NUMBER = 16'h1588;
-    localparam IDCODE_MANUFLD     = 11'h801;
+    localparam IDCODE_MANUFLD     = 11'h301;
 
     localparam DTM_VERSION  = 4'h1;
     localparam IR_W         = 5;
@@ -183,7 +183,7 @@ module jtag_dtm
         CAPTURE_IR: 
             shift_reg_q <= {{(SHIFT_REG_W-1){1'b0}}, 1'b1}; //It must be b01 per JTAG spec 
         SHIFT_IR  : 
-            shift_reg_q <= {{(SHIFT_REG_W-IR_W){1'b0}}, tdi_i, shift_reg[IR_W-1:1]}; // right shift 1 bit, IR_W bit register
+            shift_reg_q <= {{(SHIFT_REG_W-IR_W){1'b0}}, tdi_i, shift_reg_q[IR_W-1:1]}; // right shift 1 bit, IR_W bit register
         // DR
         CAPTURE_DR: 
             case (ir_reg_q) 
@@ -211,6 +211,7 @@ module jtag_dtm
             default:
                 shift_reg_q <= {{(SHIFT_REG_W-1){1'b0}} , tdi_i}; //bypass
             endcase 
+        default: ;
         endcase
     end
 
@@ -227,7 +228,6 @@ module jtag_dtm
     end    
 
     reg                   dtm_req_q      ;
-    reg [DMI_ADDR_W+33:0] dtm_req_data_q ;
 
     always @(posedge tck_i or negedge rst_n) begin
         if (!rst_n) begin
@@ -261,13 +261,13 @@ module jtag_dtm
         if (!rst_n)
             dtm_ack_q <= 1'b0;
         else
-            dtm_ack_q <= dtm_ack_r;
+            dtm_ack_q <= dtm_ack_w;
     end    
 
     always @(posedge tck_i or negedge rst_n) begin
         if (!rst_n)
             dm_resp_data_q <= {(DMI_ADDR_W+34){1'b0}};
-        else if (dtm_ack_r & (!dtm_ack_q))
+        else if (dtm_ack_w & (!dtm_ack_q))
             dm_resp_data_q <= dm_resp_data_i;
     end    
 
@@ -276,11 +276,11 @@ module jtag_dtm
     reg   dm_busy_q;
 
     always @(*) begin
-        dm_buy_r = dm_busy_q;
+        dm_busy_r = dm_busy_q;
 
         if(dtm_req_q)
             dm_busy_r = 1'b1;
-        else if(dtm_ack_q & (!dtm_ack_r))
+        else if(dtm_ack_q & (!dtm_ack_w))
             dm_busy_r = 1'b0;
     end
 
@@ -299,7 +299,7 @@ module jtag_dtm
     always @(*) begin
         sticky_error_r = sticky_error_q;
 
-        if(current_state_q == UPDATE_DR && ir_reg_q == DTMCS_A && dmireset_w == 1'b1) begin
+        if(current_state_q == UPDATE_DR && ir_reg_q == DTMCS_A && dmireset_w == 1'b1) 
             sticky_error_r = 1'b0;
         else if(current_state_q == CAPTURE_DR && ir_reg_q == DMI_A)
             sticky_error_r = busy_w;
@@ -312,7 +312,7 @@ module jtag_dtm
             sticky_error_q <= sticky_error_r;
     end    
 
-    assign busy_w = sticky_error_r | dm_busy_r; 
+    assign busy_w = sticky_error_q | dm_busy_r; 
 
     // DMI hardreset, 1 cycle pulse
     reg   dmihardreset_q;

@@ -128,9 +128,9 @@ module jtag_dm
     wire  [31:0]            dmstatus_w ;
     reg   [31:0]            dmcontrol_q;
     reg   [31:0]            command_q;
-    reg   [31:0]            abstractcs_w;
-    wire  [31:0]            data0_q;
-    wire  [31:0]            data1_q;
+    wire  [31:0]            abstractcs_w;
+    reg   [31:0]            data0_q;
+    reg   [31:0]            data1_q;
 
     wire  [ 1:0]            op_w  ;
     wire  [31:0]            data_w;
@@ -399,7 +399,7 @@ module jtag_dm
             is_mem_access_q <= 1'b0;
 
             if (mem_d_error_i)
-                cmderr_q <= 3'h5
+                cmderr_q <= 3'h5;
         end
         else begin  //issue command keep active only 1 cycle
             issue_command_q <= 1'b0;
@@ -497,7 +497,9 @@ module jtag_dm
             gpr_raddr_q      <= 5'h0;
             gpr_read_valid_q <= 1'b0;
         end
+        /* verilator lint_off UNSIGNED */
         else if (issue_command_q && (cmdtype_w == 8'h0) && (regno_w >= 16'h1000) && (regno_w <= 16'h101f)) begin 
+        /* verilator lint_on UNSIGNED */
             if (transfer_w && write_w) begin          //write GPR register
                 /* verilator lint_off WIDTH */
                 gpr_waddr_q   <= regno_w - 16'h1000;
@@ -544,7 +546,9 @@ module jtag_dm
             csr_raddr_q      <= 12'h0;
             csr_read_valid_q <= 1'b0;
         end
+        /* verilator lint_off UNSIGNED */
         else if (issue_command_q && (cmdtype_w == 8'h0) && (regno_w >= 16'h0) && (regno_w <= 16'h0fff)) begin 
+        /* verilator lint_on UNSIGNED */
             if (transfer_w && write_w) begin          //write CSR register
                 csr_write_q   <= 1'b1;
                 /* verilator lint_off WIDTH */
@@ -629,12 +633,12 @@ module jtag_dm
     
         mem_rd_r = (issue_command_q && is_mem_access_q && !write_w && !mem_unaligned_r);
     
-        if (issue_command_q && is_mem_access_q && (write && aamsize_w == 3'h2) && !mem_unaligned_r)
+        if (issue_command_q && is_mem_access_q && (write_w && aamsize_w == 3'h2) && !mem_unaligned_r)
         begin
             mem_data_r  = data0_q;
             mem_wr_r    = 4'hf;
         end
-        else if (issue_command_q && is_mem_access_q && (write && aamsize_w == 3'h1) && !mem_unaligned_r)
+        else if (issue_command_q && is_mem_access_q && (write_w && aamsize_w == 3'h1) && !mem_unaligned_r)
         begin
             case (mem_addr_r[1:0])
             2'h2 :
@@ -649,7 +653,7 @@ module jtag_dm
             end
             endcase
         end
-        else if (issue_command_q && is_mem_access_q && write && aamsize_w == 3'h0)
+        else if (issue_command_q && is_mem_access_q && write_w && aamsize_w == 3'h0)
         begin
             case (mem_addr_r[1:0])
             2'h3 :
@@ -895,7 +899,7 @@ module jtag_dm
     end
 
     // Update current state
-    always @(posedge tck_i or negedge rst_n) begin
+    always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
             current_state_q   <= IDLE;
             prev_state_q      <= IDLE;
@@ -910,7 +914,7 @@ module jtag_dm
     reg [DMI_ADDR_W+33:0] dm_resp_data_q;
     reg                   dm_resp_q;
 
-    always @(posedge tck_i or negedge rst_n) begin
+    always @(posedge clk or negedge rst_n) begin
         if (!rst_n) 
             dm_resp_data_q <= {(DMI_ADDR_W+34){1'b0}};
         else if (current_state_q == PAUSE) begin
@@ -929,7 +933,7 @@ module jtag_dm
             dm_resp_data_q <= {(DMI_ADDR_W+34){1'b0}};
     end    
 
-    always @(posedge tck_i or negedge rst_n) begin
+    always @(posedge clk or negedge rst_n) begin
         if (!rst_n) 
             dm_resp_q <= 1'b0;
         else if (current_state_q == PAUSE && next_state_r == RESPONSE)

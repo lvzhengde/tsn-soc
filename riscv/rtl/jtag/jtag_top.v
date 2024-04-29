@@ -96,15 +96,105 @@ module jtag_top
     output           mem_d_flush_o       
 );
 
-    assign reset_hart_o = 1'b0;
-    assign halt_hart_o  = 1'b0;   
-    assign bus_req_o    = 1'b0;
+    parameter DMI_ADDR_W = 7;
 
-    assign gpr_waddr_o  = 5'd0;
-    assign gpr_raddr_o  = 5'd0;
+    // DMI interface
+    wire                   dm_resp_w      ;
+    wire [DMI_ADDR_W+33:0] dm_resp_data_w ;
+    wire                   dtm_ack_w      ;
+    
+    wire                   dm_ack_w       ;
+    wire                   dtm_req_w      ;
+    wire [DMI_ADDR_W+33:0] dtm_req_data_w ;
+    
+    wire                   dmihardreset_w ;
 
-    assign csr_write_o  = 1'b0 ;
-    assign csr_waddr_o  = 12'b0;
-    assign csr_raddr_o  = 12'b0;
+    wire dtm_rst_n = rst_n & (~dmihardreset_w);
+
+    jtag_dtm
+    #(
+        .DMI_ADDR_W   (DMI_ADDR_W)
+    )
+    u_dtm
+    (
+        .rst_n              (dtm_rst_n),
+    
+        // JTAG ports
+        .tck_i              (tck_i    ), 
+        .tms_i              (tms_i    ), 
+        .tdi_i              (tdi_i    ), 
+        .tdo_o              (tdo_o    ),
+    
+        // DMI interface
+        .dm_resp_i          (dm_resp_w     ),
+        .dm_resp_data_i     (dm_resp_data_w),
+        .dtm_ack_o          (dtm_ack_w     ),
+    
+        .dm_ack_i           (dm_ack_w      ),
+        .dtm_req_o          (dtm_req_w     ),
+        .dtm_req_data_o     (dtm_req_data_w),
+    
+        .dmihardreset_o     (dmihardreset_w)
+    );
+
+
+    jtag_dm
+    #(
+        .DMI_ADDR_W            (DMI_ADDR_W        ), 
+        .MEM_CACHE_ADDR_MIN    (MEM_CACHE_ADDR_MIN), 
+        .MEM_CACHE_ADDR_MAX    (MEM_CACHE_ADDR_MAX) 
+    )
+    u_dm
+    (
+        .clk                (clk       ),
+        .rst_n              (rst_n     ),
+        .cpu_id_i           (cpu_id_i  ),
+    
+        // DMI interface
+        .dm_resp_o          (dm_resp_w     ),
+        .dm_resp_data_o     (dm_resp_data_w),
+        .dtm_ack_i          (dtm_ack_w     ),
+                                           
+        .dm_ack_o           (dm_ack_w      ),
+        .dtm_req_i          (dtm_req_w     ),
+        .dtm_req_data_i     (dtm_req_data_w),
+    
+        //JTAG control outputs
+        .reset_hart_o       (reset_hart_o  ),
+        .halt_hart_o        (halt_hart_o   ),
+        .bus_req_o          (bus_req_o     ),
+    
+        //JTAG GPR access interface
+        .gpr_waddr_o        (gpr_waddr_o   ),
+        .gpr_data_wr_o      (gpr_data_wr_o ),
+        .gpr_raddr_o        (gpr_raddr_o   ),
+        .gpr_data_rd_i      (gpr_data_rd_i ),
+    
+        //JTAG CSR access interface
+        .csr_write_o        (csr_write_o   ),
+        .csr_waddr_o        (csr_waddr_o   ),
+        .csr_data_wr_o      (csr_data_wr_o ),
+        .csr_raddr_o        (csr_raddr_o   ),
+        .csr_data_rd_i      (csr_data_rd_i ),
+    
+        //JTAG memory access interface
+        .mem_d_data_rd_i    (mem_d_data_rd_i   ),
+        .mem_d_accept_i     (mem_d_accept_i    ),
+        .mem_d_ack_i        (mem_d_ack_i       ),
+        .mem_d_error_i      (mem_d_error_i     ),
+        .mem_d_resp_tag_i   (mem_d_resp_tag_i  ),
+        .mem_load_fault_i   (mem_load_fault_i  ),
+        .mem_store_fault_i  (mem_store_fault_i ),
+    
+        .mem_d_addr_o       (mem_d_addr_o      ),
+        .mem_d_data_wr_o    (mem_d_data_wr_o   ),
+        .mem_d_rd_o         (mem_d_rd_o        ),
+        .mem_d_wr_o         (mem_d_wr_o        ),
+        .mem_d_cacheable_o  (mem_d_cacheable_o ),
+        .mem_d_req_tag_o    (mem_d_req_tag_o   ),
+        .mem_d_invalidate_o (mem_d_invalidate_o),
+        .mem_d_writeback_o  (mem_d_writeback_o ),
+        .mem_d_flush_o      (mem_d_flush_o     ) 
+    );
 
 endmodule

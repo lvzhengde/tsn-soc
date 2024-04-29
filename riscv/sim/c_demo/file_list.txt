@@ -47,6 +47,8 @@
 ../../tb/core_icarus/tb_top.v
 ../../tb/core_icarus/tcm_mem_ram.v
 ../../tb/core_icarus/tcm_mem.v
+../../rtl/jtag/jtag_dtm.v
+../../rtl/jtag/jtag_dm.v
 
 //testcase file
 ../../tc/c_demo/tc_cdemo.v
