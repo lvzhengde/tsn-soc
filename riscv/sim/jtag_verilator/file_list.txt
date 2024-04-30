@@ -1,0 +1,60 @@
+//rtl files
+../../rtl/core/biriscv_alu.v
+../../rtl/core/biriscv_csr_regfile.v
+../../rtl/core/biriscv_csr.v
+../../rtl/core/biriscv_decoder.v
+../../rtl/core/biriscv_decode.v
+../../rtl/core/biriscv_defs.v
+../../rtl/core/biriscv_divider.v
+../../rtl/core/biriscv_exec.v
+../../rtl/core/biriscv_fetch.v
+../../rtl/core/biriscv_frontend.v
+../../rtl/core/biriscv_issue.v
+../../rtl/core/biriscv_lsu.v
+../../rtl/core/biriscv_mmu.v
+../../rtl/core/biriscv_multiplier.v
+../../rtl/core/biriscv_npc.v
+../../rtl/core/biriscv_pipe_ctrl.v
+../../rtl/core/biriscv_regfile.v
+../../rtl/core/biriscv_trace_sim.v
+../../rtl/core/riscv_core.v
+
+../../rtl/dcache/dcache_axi_axi.v
+../../rtl/dcache/dcache_axi.v
+../../rtl/dcache/dcache_core_data_ram.v
+../../rtl/dcache/dcache_core_tag_ram.v
+../../rtl/dcache/dcache_core.v
+../../rtl/dcache/dcache_if_pmem.v
+../../rtl/dcache/dcache_mux.v
+../../rtl/dcache/dcache_pmem_mux.v
+../../rtl/dcache/dcache.v
+
+../../rtl/icache/icache_data_ram.v
+../../rtl/icache/icache_tag_ram.v
+../../rtl/icache/icache.v
+
+//../../rtl/tcm/dport_axi.v
+//../../rtl/tcm/dport_mux.v
+//../../rtl/tcm/tcm_mem_pmem.v
+//../../rtl/tcm/tcm_mem_ram.v
+//../../rtl/tcm/tcm_mem.v
+
+../../rtl/jtag/jtag_top.v
+../../rtl/jtag/jtag_core_mux.v
+../../rtl/jtag/jtag_dtm.v
+../../rtl/jtag/jtag_dm.v
+
+//../../rtl/top/riscv_tcm_top.v
+//../../rtl/top/riscv_top.v
+
+//testbench files
+//../../tb/core_icarus/tb_top.v
+//../../tb/core_icarus/tcm_mem_ram.v
+//../../tb/core_icarus/tcm_mem.v
+
+//testcase file
+//../../tc/core_icarus/tc_basic.v
+
+//include directories
++incdir+../../rtl/core
+//+define+verilator //verilator internal macro already defined = 1

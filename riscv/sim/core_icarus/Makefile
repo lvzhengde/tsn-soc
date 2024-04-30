@@ -56,5 +56,5 @@ view:
 	gtkwave waveform.fst  
 
 clean:
-	rm -rf $(BUILD_DIR) *.vcd *.fst
+	@rm -rf $(BUILD_DIR) *.vcd *.fst
 
