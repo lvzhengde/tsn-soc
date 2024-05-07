@@ -23,6 +23,49 @@ void sim_print(const char *str)
 #endif
 }
 
+char int2asc(int i)
+{
+    char c;
+    int j = i % 10;
+
+    switch (j) {
+        case 0: 
+            c = '0';
+            break;
+        case 1:
+            c = '1';
+            break;
+        case 2:
+            c = '2';
+            break;
+        case 3:
+            c = '3';
+            break;
+        case 4:
+            c = '4';
+            break;
+        case 5:
+            c = '5';
+            break;
+        case 6:
+            c = '6';
+            break;
+        case 7:
+            c = '7';
+            break;
+        case 8:
+            c = '8';
+            break;
+        case 9:
+            c = '9';
+            break;
+        default:
+            c = 'x';
+    }
+
+    return c;
+}
+
 int g_mul = 3;
 int g_div = 3;
 
@@ -30,59 +73,50 @@ int main()
 {
     int i;
     int sum;
+    int count;
+    char disp[] = {'i', ' ', '=', ' ', 0, 0};
 
-    g_mul = 6;
-    sum = 0;
+    sim_print("After reset, enter main program!");
+    count = 0;
 
-    sim_print("ADD Test");
-    // sum = 5050
-    for (i = 0; i <= 100; i++)
-        sum += i;
+    for (;;) {
+        g_mul = 6;
+        sum = 0;
 
-    sim_print("SUB Test");
-    // sum = 3775
-    for (i = 0; i <= 50; i++)
-        sum -= i;
+        // sum = 5050
+        for (i = 0; i <= 100; i++)
+            sum += i;
 
-    sim_print("MUL Test");
-    // sum = 22650
-    sum = sum * g_mul;
+        // sum = 3775
+        for (i = 0; i <= 50; i++)
+            sum -= i;
 
-    sim_print("DIV Test");
-    // sum = 7550, i.e 0x1d7e
-    sum = sum / g_div;
+        // sum = 22650
+        sum = sum * g_mul;
 
-    int t4;
+        // sum = 7550, i.e 0x1d7e
+        sum = sum / g_div;
 
-    sim_print("Shift Right Test");
-    //t4 = 0x1d7
-    t4 = sum >> 4;
+        int t4;
 
-    sim_print("Shift Left Test");
-    //t4 = 0x1d70
-    t4 = t4 << 4;
+        //t4 = 0x1d7
+        t4 = sum >> 4;
 
-    sim_print("Logic OR Test");
-    //t4 = 0x1d73
-    t4 = t4 | 0x3;
+        //t4 = 0x1d70
+        t4 = t4 << 4;
 
-    sim_print("Logic AND Test");
-    //t4 = 0xd50, i.e. 3408
-    t4 = t4 & 0xfd0;
+        //t4 = 0x1d73
+        t4 = t4 | 0x3;
 
-    //display result in C program
-    if (t4 == 3408)
-        sim_print("Print in C program, demo test PASS!\n");
-    else
-        sim_print("Print in C program, demo test FAIL!\n");
+        //t4 = 0xd50, i.e. 3408
+        t4 = t4 & 0xfd0;
 
-    //display result in Verilog testbench
-    if (t4 == 3408)
-        asm("li t3, 0x01");
-    else
-        asm("li t3, 0x00");
+        sim_print("Infinite loop, press CTRL+C to exit!\n");
+        disp[4] = int2asc(count);
+        sim_print(disp);
 
-    asm volatile ("addi t4, %0, 0" :: "r"(t4));
+        count++;
+    }
 
     return 0;
 }
