@@ -19,7 +19,7 @@ RISCV_MCMODEL := medlow
 
 #C program setting
 TARGET = c_demo.elf
-SW_DIR = ../../tc/c_demo/sw
+SW_DIR = ../../tc/jtag_verilator/sw
 TC_DIR = ../../tc/jtag_verilator
 
 C_SRCS := $(SW_DIR)/demo.c
@@ -28,7 +28,7 @@ ASM_SRCS += $(SW_DIR)/trap_entry.S
 C_SRCS += $(SW_DIR)/init.c
 C_SRCS += $(SW_DIR)/trap_handler.c
 
-LINKER_SCRIPT := $(TC_DIR)/link.lds
+LINKER_SCRIPT := $(SW_DIR)/link.lds
 
 INCLUDES += -I$(SW_DIR)
 LDFLAGS += -T $(LINKER_SCRIPT) -nostartfiles -Wl,--gc-sections -Wl,--check-sections
