@@ -71,10 +71,11 @@ riscv_top::riscv_top(sc_module_name name): sc_module(name)
     m_rtl->axi_d_arlen_o(m_axi_d_arlen_out);
     m_rtl->axi_d_arburst_o(m_axi_d_arburst_out);
     m_rtl->axi_d_rready_o(m_axi_d_rready_out);
-    m_rtl->tck_i(m_tck);  
-    m_rtl->tms_i(m_tms);  
-    m_rtl->tdi_i(m_tdi);  
-    m_rtl->tdo_o(m_tdo); 
+
+    m_rtl->tck_i(tck_i);  
+    m_rtl->tms_i(tms_i);  
+    m_rtl->tdi_i(tdi_i);  
+    m_rtl->tdo_o(tdo_o); 
 
     SC_METHOD(async_outputs);
     sensitive << clk_in;

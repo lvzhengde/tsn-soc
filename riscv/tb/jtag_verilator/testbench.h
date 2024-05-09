@@ -6,6 +6,7 @@
 #include "riscv_top.h"
 #include "Vriscv_top.h"
 #include "tb_axi4_mem.h"
+#include "jtag_debugger.h"
 
 #include "verilated.h"
 #include "verilated_vcd_sc.h"
@@ -45,6 +46,7 @@ public:
     riscv_top                   *m_dut;
     tb_axi4_mem                 *m_icache_mem;
     tb_axi4_mem                 *m_dcache_mem;
+    jtag_debugger               *m_jtag_debugger;
 
     int                          m_argc;
     char**                       m_argv;
@@ -58,6 +60,11 @@ public:
     sc_signal < bool >          intr_in;
 
     sc_signal < uint32_t >  reset_vector_in;
+
+    sc_signal<bool>  m_tck; 
+    sc_signal<bool>  m_tms; 
+    sc_signal<bool>  m_tdi; 
+    sc_signal<bool>  m_tdo;
 
     //-----------------------------------------------------------------
     // process: Main loop for CPU execution
@@ -155,6 +162,10 @@ public:
         m_dut->axi_d_in(mem_d_in);
         m_dut->intr_in(intr_in);
         m_dut->reset_vector_in(reset_vector_in);
+        m_dut->tck_i(m_tck); 
+        m_dut->tms_i(m_tms); 
+        m_dut->tdi_i(m_tdi); 
+        m_dut->tdo_o(m_tdo);
 
         // Instruction Cache Memory
         m_icache_mem = new tb_axi4_mem("ICACHE_MEM");
@@ -169,6 +180,14 @@ public:
         m_dcache_mem->rst_in(rst_n);
         m_dcache_mem->axi_in(mem_d_out);
         m_dcache_mem->axi_out(mem_d_in);
+
+        // JTAG Debugger
+        m_jtag_debugger = new jtag_debugger("JTAG_DEBUGEER");
+        m_jtag_debugger->rst_n(rst_n);
+        m_jtag_debugger->tck_o(m_tck);
+        m_jtag_debugger->tms_o(m_tms);
+        m_jtag_debugger->tdi_o(m_tdi);
+        m_jtag_debugger->tdo_i(m_tdo);
     }
 
     //-----------------------------------------------------------------

@@ -361,5 +361,46 @@ module jtag_dtm
 
     assign dmihardreset_o = dmihardreset_q;
 
+`ifdef verilator
+    /* verilator lint_off UNDRIVEN */
+    /* verilator lint_off WIDTH */
+
+    export "DPI-C" function get_ir;
+    
+    //-------------------------------------------------------------
+    // get the value of Instruction Register
+    //-------------------------------------------------------------
+    function byte get_ir; 
+    begin
+        get_ir = ir_reg_q;
+    end
+    endfunction
+    
+    export "DPI-C" function get_shift_lo;
+    
+    //-------------------------------------------------------------
+    // get lower 32 bit of shift register
+    //-------------------------------------------------------------
+    function int get_shift_lo; 
+    begin
+        get_shift_lo = shift_reg_q[31:0];
+    end
+    endfunction
+
+    export "DPI-C" function get_shift_hi;
+
+    //-------------------------------------------------------------
+    // get higher SHIFT_REG_W-32 bit of shift register
+    //-------------------------------------------------------------
+    function int get_shift_hi; 
+    begin
+        get_shift_hi = shift_reg_q[SHIFT_REG_W-1:32];
+    end
+    endfunction
+
+    /* verilator lint_on WIDTH */
+    /* verilator lint_on UNDRIVEN */  
+`endif
+
 endmodule
 

@@ -37,6 +37,7 @@
 #define __JTAG_DEBUGGER_H__
 
 #include <systemc.h>
+#include "Vriscv_top__Dpi.h"
 
 class jtag_debugger : public sc_module
 {
@@ -76,13 +77,22 @@ public:
     //-------------------------------------------------------------
     // Tasks / Functions
     //-------------------------------------------------------------
-    void write_ir(uint32_t ir);
+    void write_ir(char ir);
 
     void write_dmi(uint32_t abits, uint32_t data, uint32_t op);
 
     void read_dmi(uint32_t& abits, uint32_t& data, uint32_t& op);
 
     uint64_t read_dr(uint32_t ir);
+
+    //set DPI scope
+    void set_dpi_scope(const std::string dpi_scope)
+    {
+        //set scope for DPI functions
+        const svScope scope = svGetScopeFromName(dpi_scope.c_str());
+        assert(scope); // Check for nullptr if scope not found
+        svSetScope(scope);
+    }
 
     //-------------------------------------------------------------
     // Signals / Variables

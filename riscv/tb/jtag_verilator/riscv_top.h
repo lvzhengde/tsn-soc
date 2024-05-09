@@ -25,6 +25,11 @@ public:
     sc_in  <axi4_slave>  axi_d_in;
     sc_out <axi4_master> axi_d_out;
 
+    sc_in<bool>  tck_i; 
+    sc_in<bool>  tms_i; 
+    sc_in<bool>  tdi_i; 
+    sc_out<bool> tdo_o;
+
     //-------------------------------------------------------------
     // Constructor
     //-------------------------------------------------------------
@@ -120,10 +125,6 @@ private:
     sc_signal <uint32_t> m_axi_d_arburst_out;
     sc_signal <bool> m_axi_d_rready_out;
 
-    sc_signal<bool> m_tck; 
-    sc_signal<bool> m_tms; 
-    sc_signal<bool> m_tdi; 
-    sc_signal<bool> m_tdo;
 public:
     Vriscv_top *m_rtl;
 #if VM_TRACE

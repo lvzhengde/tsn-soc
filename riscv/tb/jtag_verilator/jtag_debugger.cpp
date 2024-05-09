@@ -41,12 +41,101 @@ jtag_debugger::jtag_debugger(sc_module_name name): sc_module(name)
 
 void jtag_debugger::jtag_test(void)
 {
+    set_dpi_scope("tb.DUT.Vriscv_top.riscv_top.u_riscv_core.u_jtag_top.u_dtm");
+    
+    //initialize
+    tck_o.write(1);
+    tms_o.write(1);
+    tdi_o.write(1);
+
+    //wait reset release
+    wait(1, SC_NS);
+    wait(rst_n.posedge_event());
+
+    //Set TAP to Test-Logic-Reset state
+    tck_o.write(0);
+    for (int i = 0; i < 8; i++) {
+        tms_o.write(1);
+
+        wait(100, SC_NS);
+        tck_o.write(1);
+        wait(100, SC_NS);
+        tck_o.write(0);
+    }
+
+    sc_stop();
 
 }
 
-void jtag_debugger::write_ir(uint32_t ir)
+void jtag_debugger::write_ir(char ir)
 {
+    char shift_reg = ir;
 
+    // Run-Test/Idle 
+    tms_o.write(0);
+    tck_o.write(0);
+
+    wait(100, SC_NS);
+    tck_o.write(1);
+    wait(100, SC_NS);
+    tck_o.write(0);
+
+    // Select-DR-Scan
+    tms_o.write(1);
+    tck_o.write(0);
+
+    wait(100, SC_NS);
+    tck_o.write(1);
+    wait(100, SC_NS);
+    tck_o.write(0);
+
+    // Select-IR-Scan
+    tms_o.write(1);
+    tck_o.write(0);
+
+    wait(100, SC_NS);
+    tck_o.write(1);
+    wait(100, SC_NS);
+    tck_o.write(0);
+
+    // Capture-IR
+    tms_o.write(0);
+    tck_o.write(0);
+
+    wait(100, SC_NS);
+    tck_o.write(1);
+    wait(100, SC_NS);
+    tck_o.write(0);
+
+    // Shift-IR
+    tms_o.write(0);
+    tck_o.write(0);
+
+    wait(100, SC_NS);
+    tck_o.write(1);
+    wait(100, SC_NS);
+    tck_o.write(0);
+
+    // Shift-IR & Exit-1-IR
+    for (int i = 5; i > 0; i--) {
+        if (shift_reg & 0x1)
+            tdi_o.write(1);
+        else
+            tdi_o.write(1);
+
+        if (i == 1)
+            tms_o.write(1);
+
+        tck_o.write(0);
+
+        wait(100, SC_NS);
+        char in = tdo_i.read();
+        tck_o.write(1);
+        wait(100, SC_NS);
+        tck_o.write(0);
+
+        shift_reg = ((shift_reg >> 1) & 0xf) | ((in << 4) & 0x10);
+    }
 }
 
 void jtag_debugger::write_dmi(uint32_t abits, uint32_t data, uint32_t op)
