@@ -31,6 +31,21 @@
 
 #include "jtag_debugger.h"
 
+#define DMI_ADDR_W  7
+
+// DTM TAP register addresses
+#define BYPASS_A    0x1f
+#define IDCODE_A    0x01
+#define DMI_A       0x11
+#define DTMCS_A     0x10
+
+// DTM OPCODE
+#define DTM_OP_NOP   0 
+#define DTM_OP_READ  1 
+#define DTM_OP_WRITE 2 
+#define OP_SUCCESS   0 
+#define OP_FAIL      2 
+
 //-------------------------------------------------------------
 // Constructor
 //-------------------------------------------------------------
@@ -48,11 +63,11 @@ void jtag_debugger::jtag_test(void)
     tms_o.write(1);
     tdi_o.write(1);
 
-    //wait reset release
+    // wait reset release
     wait(1, SC_NS);
     wait(rst_n.posedge_event());
 
-    //Set TAP to Test-Logic-Reset state
+    // Set TAP to Test-Logic-Reset 
     tck_o.write(0);
     for (int i = 0; i < 8; i++) {
         tms_o.write(1);
@@ -61,6 +76,15 @@ void jtag_debugger::jtag_test(void)
         tck_o.write(1);
         wait(100, SC_NS);
         tck_o.write(0);
+    }
+
+    // Set IR (DTM register address)
+    char addr = DMI_A;
+    printf("Set JTAG DTM IR address: %#x \n", addr);
+    write_ir(addr);
+    char rd_ir = get_ir();
+    if (rd_ir != addr) {
+        printf("IR is not set correctly! read IR = %#x \n", rd_ir);
     }
 
     sc_stop();
@@ -73,7 +97,6 @@ void jtag_debugger::write_ir(char ir)
 
     // Run-Test/Idle 
     tms_o.write(0);
-    tck_o.write(0);
 
     wait(100, SC_NS);
     tck_o.write(1);
@@ -82,7 +105,6 @@ void jtag_debugger::write_ir(char ir)
 
     // Select-DR-Scan
     tms_o.write(1);
-    tck_o.write(0);
 
     wait(100, SC_NS);
     tck_o.write(1);
@@ -91,7 +113,6 @@ void jtag_debugger::write_ir(char ir)
 
     // Select-IR-Scan
     tms_o.write(1);
-    tck_o.write(0);
 
     wait(100, SC_NS);
     tck_o.write(1);
@@ -100,7 +121,6 @@ void jtag_debugger::write_ir(char ir)
 
     // Capture-IR
     tms_o.write(0);
-    tck_o.write(0);
 
     wait(100, SC_NS);
     tck_o.write(1);
@@ -109,24 +129,21 @@ void jtag_debugger::write_ir(char ir)
 
     // Shift-IR
     tms_o.write(0);
-    tck_o.write(0);
 
     wait(100, SC_NS);
     tck_o.write(1);
     wait(100, SC_NS);
     tck_o.write(0);
 
-    // Shift-IR & Exit-1-IR
+    // Shift-IR / Exit-1-IR
     for (int i = 5; i > 0; i--) {
         if (shift_reg & 0x1)
             tdi_o.write(1);
         else
-            tdi_o.write(1);
+            tdi_o.write(0);
 
         if (i == 1)
             tms_o.write(1);
-
-        tck_o.write(0);
 
         wait(100, SC_NS);
         char in = tdo_i.read();
@@ -136,19 +153,155 @@ void jtag_debugger::write_ir(char ir)
 
         shift_reg = ((shift_reg >> 1) & 0xf) | ((in << 4) & 0x10);
     }
+
+    // Pause-IR
+    tms_o.write(0);
+
+    wait(100, SC_NS);
+    tck_o.write(1);
+    wait(100, SC_NS);
+    tck_o.write(0);
+
+    // Exit-2-IR
+    tms_o.write(1);
+
+    wait(100, SC_NS);
+    tck_o.write(1);
+    wait(100, SC_NS);
+    tck_o.write(0);
+
+    // Update-IR
+    tms_o.write(1);
+
+    wait(100, SC_NS);
+    tck_o.write(1);
+    wait(100, SC_NS);
+    tck_o.write(0);
+
+    // Run-Test/Idle 
+    tms_o.write(0);
+
+    wait(100, SC_NS);
+    tck_o.write(1);
+    wait(100, SC_NS);
+    tck_o.write(0);
+
+    // stay in IDLE state
+    // generate extra TCK pulses
+    for (int i = 0; i < 8; i++) {
+        wait(100, SC_NS);
+        tck_o.write(1);
+        wait(100, SC_NS);
+        tck_o.write(0);
+    }
 }
 
-void jtag_debugger::write_dmi(uint32_t abits, uint32_t data, uint32_t op)
+// Set IR = DMI_A before call 
+uint64_t jtag_debugger::access_dmi(uint64_t addr, uint64_t data, uint64_t op)
 {
+    uint64_t shift_reg;
+    op = op & 0x3;
+    data = data & 0xffffffff;
+    addr = addr & 0x7f;
+    shift_reg = op | (data << 2) | (addr << 34);
 
+    // Run-Test/Idle 
+    tms_o.write(0);
+
+    wait(100, SC_NS);
+    tck_o.write(1);
+    wait(100, SC_NS);
+    tck_o.write(0);
+
+    // Select-DR-Scan
+    tms_o.write(1);
+
+    wait(100, SC_NS);
+    tck_o.write(1);
+    wait(100, SC_NS);
+    tck_o.write(0);
+
+    // Capture-DR
+    tms_o.write(0);
+
+    wait(100, SC_NS);
+    tck_o.write(1);
+    wait(100, SC_NS);
+    tck_o.write(0);
+
+    // Shift-DR
+    tms_o.write(0);
+
+    wait(100, SC_NS);
+    tck_o.write(1);
+    wait(100, SC_NS);
+    tck_o.write(0);
+
+    // Shift-DR / Exit-1-DR
+    for (int i = (DMI_ADDR_W+34); i > 0; i--) {
+        if (shift_reg & 0x1)
+            tdi_o.write(1);
+        else
+            tdi_o.write(0);
+
+        if (i == 1)
+            tms_o.write(1);
+
+        wait(100, SC_NS);
+        uint64_t in = tdo_i.read();
+        tck_o.write(1);
+        wait(100, SC_NS);
+        tck_o.write(0);
+
+        shift_reg = (shift_reg >> 1) | (in << (DMI_ADDR_W+34-1));
+    }
+
+    // Pause-DR
+    tms_o.write(0);
+
+    wait(100, SC_NS);
+    tck_o.write(1);
+    wait(100, SC_NS);
+    tck_o.write(0);
+
+    // Exit-2-DR
+    tms_o.write(1);
+
+    wait(100, SC_NS);
+    tck_o.write(1);
+    wait(100, SC_NS);
+    tck_o.write(0);
+
+    // Update-DR
+    tms_o.write(1);
+
+    wait(100, SC_NS);
+    tck_o.write(1);
+    wait(100, SC_NS);
+    tck_o.write(0);
+
+    // Run-Test/Idle 
+    tms_o.write(0);
+
+    wait(100, SC_NS);
+    tck_o.write(1);
+    wait(100, SC_NS);
+    tck_o.write(0);
+
+    // stay in IDLE state
+    // generate extra TCK pulses
+    for (int i = 0; i < 8; i++) {
+        wait(100, SC_NS);
+        tck_o.write(1);
+        wait(100, SC_NS);
+        tck_o.write(0);
+    }
+
+    return shift_reg;
 }
 
-void jtag_debugger::read_dmi(uint32_t& abits, uint32_t& data, uint32_t& op)
-{
-
-}
-
-uint64_t jtag_debugger::read_dr(uint32_t ir)
+// Set related IR before call 
+uint64_t jtag_debugger::read_dr(char ir)
 {
 
     return 0;

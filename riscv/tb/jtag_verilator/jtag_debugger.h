@@ -79,11 +79,9 @@ public:
     //-------------------------------------------------------------
     void write_ir(char ir);
 
-    void write_dmi(uint32_t abits, uint32_t data, uint32_t op);
+    uint64_t access_dmi(uint64_t addr, uint64_t data, uint64_t op);
 
-    void read_dmi(uint32_t& abits, uint32_t& data, uint32_t& op);
-
-    uint64_t read_dr(uint32_t ir);
+    uint64_t read_dr(char ir);
 
     //set DPI scope
     void set_dpi_scope(const std::string dpi_scope)
