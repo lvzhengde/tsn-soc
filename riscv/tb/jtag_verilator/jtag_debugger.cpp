@@ -46,6 +46,26 @@
 #define OP_SUCCESS   0 
 #define OP_FAIL      2 
 
+//DM register address
+#define DMSTATUS_A   0x11
+#define DMCONTROL_A  0x10
+#define ABSTRACTCS_A 0x16
+#define DATA0_A      0x04
+#define DATA1_A      0x05
+#define COMMAND_A    0x17
+
+//CSR register address
+#define CSR_DCSR           0x7b0
+#define CSR_DPC            0x7b1
+#define CSR_DSCRATCH0      0x7b2
+#define CSR_DSCRATCH1      0x7b3
+
+//--------------------------------------------------------------------
+// CSR Registers - Simulation control
+//--------------------------------------------------------------------
+#define CSR_DSCRATCH       0x7b2
+#define CSR_SIM_CTRL       0x8b2
+
 //-------------------------------------------------------------
 // Constructor
 //-------------------------------------------------------------
@@ -79,16 +99,44 @@ void jtag_debugger::jtag_test(void)
     }
 
     // Set IR (DTM register address)
-    char addr = DMI_A;
-    printf("Set JTAG DTM IR address: %#x \n", addr);
-    write_ir(addr);
+    char ir = DMI_A;
+    printf("Set JTAG DTM IR address: %#x \n", ir);
+    write_ir(ir);
     char rd_ir = get_ir();
-    if (rd_ir != addr) {
+    if (rd_ir != ir) {
         printf("IR is not set correctly! read IR = %#x \n", rd_ir);
     }
 
-    sc_stop();
+    // Read IDCODE
+    write_ir(IDCODE_A);
+    uint64_t idcode = read_dr(IDCODE_A);
+    if (idcode != 0x11588603) {
+        printf("Read idcode error! expected : 0x11588603, read : 0x%lx \n", idcode);
+    } 
+    else {
+        printf("Read idcode = 0x%lx \n", idcode);
+    }
 
+    uint32_t addr;
+    uint32_t value;
+    uint32_t ret;
+
+    // Write & Read CSR register
+    addr = CSR_DSCRATCH1;
+    value = 0xfedc1234;
+
+    printf("Write CSR register, addr: %#x value: %#x \n", addr, value);
+    write_csr(addr, value);
+
+    ret = read_csr(addr);
+    printf("Read CSR register, addr: %#x ret: %#x \n", addr, ret);
+
+    if (ret != value) {
+        printf("Error: Read / Write CSR Mismatch!! \n");
+    }
+
+    //write CSR_SIM_CTRL to exit simulation
+    write_csr(CSR_SIM_CTRL, 0);
 }
 
 void jtag_debugger::write_ir(char ir)
@@ -303,6 +351,199 @@ uint64_t jtag_debugger::access_dmi(uint64_t addr, uint64_t data, uint64_t op)
 // Set related IR before call 
 uint64_t jtag_debugger::read_dr(char ir)
 {
+    int shift_len;
+    
+    switch (ir) {
+        case IDCODE_A: 
+        case DTMCS_A:
+            shift_len = 32;
+            break;
+        case DMI_A:
+            shift_len = DMI_ADDR_W+34;
+            break;
+        default:
+            shift_len = 1;
+    }
 
-    return 0;
+    uint64_t shift_reg = 0;
+
+    // Run-Test/Idle 
+    tms_o.write(0);
+
+    wait(100, SC_NS);
+    tck_o.write(1);
+    wait(100, SC_NS);
+    tck_o.write(0);
+
+    // Select-DR-Scan
+    tms_o.write(1);
+
+    wait(100, SC_NS);
+    tck_o.write(1);
+    wait(100, SC_NS);
+    tck_o.write(0);
+
+    // Capture-DR
+    tms_o.write(0);
+
+    wait(100, SC_NS);
+    tck_o.write(1);
+    wait(100, SC_NS);
+    tck_o.write(0);
+
+    // Shift-DR
+    tms_o.write(0);
+
+    wait(100, SC_NS);
+    tck_o.write(1);
+    wait(100, SC_NS);
+    tck_o.write(0);
+
+    // Shift-DR / Exit-1-DR
+    for (int i = shift_len; i > 0; i--) {
+        if (shift_reg & 0x1)
+            tdi_o.write(1);
+        else
+            tdi_o.write(0);
+
+        if (i == 1)
+            tms_o.write(1);
+
+        wait(100, SC_NS);
+        uint64_t in = tdo_i.read();
+        tck_o.write(1);
+        wait(100, SC_NS);
+        tck_o.write(0);
+
+        shift_reg = (shift_reg >> 1) | (in << (shift_len-1));
+    }
+
+    // Pause-DR
+    tms_o.write(0);
+
+    wait(100, SC_NS);
+    tck_o.write(1);
+    wait(100, SC_NS);
+    tck_o.write(0);
+
+    // Exit-2-DR
+    tms_o.write(1);
+
+    wait(100, SC_NS);
+    tck_o.write(1);
+    wait(100, SC_NS);
+    tck_o.write(0);
+
+    // Update-DR
+    tms_o.write(1);
+
+    wait(100, SC_NS);
+    tck_o.write(1);
+    wait(100, SC_NS);
+    tck_o.write(0);
+
+    // Run-Test/Idle 
+    tms_o.write(0);
+
+    wait(100, SC_NS);
+    tck_o.write(1);
+    wait(100, SC_NS);
+    tck_o.write(0);
+
+    // stay in IDLE state
+    // generate extra TCK pulses
+    for (int i = 0; i < 8; i++) {
+        wait(100, SC_NS);
+        tck_o.write(1);
+        wait(100, SC_NS);
+        tck_o.write(0);
+    }
+
+    return shift_reg;
 }
+
+void jtag_debugger::write_csr(uint32_t addr, uint32_t value)
+{
+    uint64_t ret; 
+    write_ir(DMI_A);
+
+    // read DM abstractcs register
+    ret = access_dmi(ABSTRACTCS_A, 0, DTM_OP_READ);
+    if (ret & 0x3) {
+        printf("Access DMI busy / error ret = 0x%lx \n", ret);
+        return ;
+    }
+    ret = read_dr(DMI_A);
+    uint64_t busy = (ret >> 12) & 0x1;
+    uint64_t cmderr = (ret >> 8) & 0x7;
+    if (busy != 0 || cmderr != 0) {
+        printf("DM busy / error ret = 0x%lx \n", ret);
+        return ;
+    }
+
+    // write data0
+    ret = access_dmi(DATA0_A, value, DTM_OP_WRITE);
+
+    // issue command
+    uint32_t cmdtype = 0;
+    uint32_t aarsize = 2;
+    uint32_t transfer = 1;
+    uint32_t write = 1;
+    uint32_t regno = addr;
+
+    uint32_t command = (cmdtype << 24) | (aarsize << 20) | (transfer << 17) | (write << 16) | regno ;
+    ret = access_dmi(COMMAND_A, command, DTM_OP_WRITE);
+
+    if (ret & 0x3)
+        printf("Write DM command error, ret = 0x%lx \n", ret);
+
+    return ;
+}
+
+uint32_t jtag_debugger::read_csr(uint32_t addr)
+{
+    uint64_t ret; 
+    write_ir(DMI_A);
+
+    // read DM abstractcs register
+    ret = access_dmi(ABSTRACTCS_A, 0, DTM_OP_READ);
+    if (ret & 0x3) {
+        printf("Access DMI busy / error ret = 0x%lx \n", ret);
+        return 0;
+    }
+    ret = read_dr(DMI_A);
+    uint64_t busy = (ret >> 12) & 0x1;
+    uint64_t cmderr = (ret >> 8) & 0x7;
+    if (busy != 0 || cmderr != 0) {
+        printf("DM busy / error ret = 0x%lx \n", ret);
+        return 0;
+    }
+
+    // issue command
+    uint32_t cmdtype = 0;
+    uint32_t aarsize = 2;
+    uint32_t transfer = 1;
+    uint32_t write = 0;
+    uint32_t regno = addr;
+
+    uint32_t command = (cmdtype << 24) | (aarsize << 20) | (transfer << 17) | (write << 16) | regno ;
+    ret = access_dmi(COMMAND_A, command, DTM_OP_WRITE);
+
+    if (ret & 0x3) {
+        printf("Write DM command error, ret = 0x%lx \n", ret);
+        return 0;
+    }
+
+    // read data0
+    ret = access_dmi(DATA0_A, 0, DTM_OP_READ);
+    ret = read_dr(DMI_A);
+    if (ret & 0x3) {
+        printf("Read DM data0 error, ret = 0x%lx \n", ret);
+        return 0;
+    }
+
+    ret = (ret >> 2) & 0xffffffff;
+
+    return ret;
+}
+

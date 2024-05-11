@@ -83,6 +83,10 @@ public:
 
     uint64_t read_dr(char ir);
 
+    void write_csr(uint32_t addr, uint32_t value);
+
+    uint32_t read_csr(uint32_t addr);
+
     //set DPI scope
     void set_dpi_scope(const std::string dpi_scope)
     {
