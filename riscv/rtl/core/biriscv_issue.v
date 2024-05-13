@@ -740,7 +740,7 @@ module biriscv_issue
     assign fetch0_accept_o      = ((slot0_valid_r & opcode_a_accept_r) | slot1_valid_r) & ~take_interrupt_i;
     assign fetch1_accept_o      = ((slot1_valid_r & opcode_a_accept_r) | (opcode_b_accept_r)) & ~take_interrupt_i;
     
-    assign stall_w              = pipe0_stall_raw_w | pipe1_stall_raw_w | jtag_halt_hart_i;
+    assign stall_w              = pipe0_stall_raw_w | pipe1_stall_raw_w; // | jtag_halt_hart_i;
 
     //-------------------------------------------------------------
     // Register File

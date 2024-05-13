@@ -104,7 +104,8 @@ void jtag_debugger::jtag_test(void)
     write_ir(ir);
     char rd_ir = get_ir();
     if (rd_ir != ir) {
-        printf("IR is not set correctly! read IR = %#x \n", rd_ir);
+        printf("Error: IR is not set correctly! read IR = %#x \n", rd_ir);
+        sc_stop();
     }
 
     // Read IDCODE
@@ -112,6 +113,7 @@ void jtag_debugger::jtag_test(void)
     uint64_t idcode = read_dr(IDCODE_A);
     if (idcode != 0x11588603) {
         printf("Read idcode error! expected : 0x11588603, read : 0x%lx \n", idcode);
+        sc_stop();
     } 
     else {
         printf("Read idcode = 0x%lx \n", idcode);
@@ -133,7 +135,76 @@ void jtag_debugger::jtag_test(void)
 
     if (ret != value) {
         printf("Error: Read / Write CSR Mismatch!! \n");
+        sc_stop();
     }
+
+    // Write & Read GPR register
+    addr = 0x1f;
+    value = 0xabcd5678;
+
+    printf("Write GPR register, addr: %#x value: %#x \n", addr, value);
+    write_gpr(addr, value);
+
+    ret = read_gpr(addr);
+    printf("Read GPR register, addr: %#x ret: %#x \n", addr, ret);
+
+    if (ret != value) {
+        printf("Error: Read / Write GPR Mismatch!! \n");
+        sc_stop();
+    }
+
+    uint32_t haltreq;
+    uint32_t resumereq;
+    uint32_t hartreset;
+    uint32_t dmactive;
+    uint32_t dmcontrol;
+    uint64_t dmi_ret;
+
+    // Halt hart execution
+    haltreq = 1;
+    resumereq = 0;
+    hartreset = 0;
+    dmactive = 1;
+    dmcontrol = (haltreq << 31) | (resumereq << 30) | (hartreset << 29) | dmactive;
+
+    printf("\n Write to halt hart execution, dmcontrol = %#x \n", dmcontrol);
+    dmi_ret = access_dmi(DMCONTROL_A, dmcontrol, DTM_OP_WRITE);
+    if (dmi_ret & 0x3) {
+        printf("Halt hart: access DMI busy / error ret = 0x%lx \n", dmi_ret);
+        sc_stop();
+    }
+
+    // Should release haltreq
+    haltreq = 0;
+    dmcontrol = (haltreq << 31) | (resumereq << 30) | (hartreset << 29) | dmactive;
+
+    printf("\n Write to release halt-request, dmcontrol = %#x \n", dmcontrol);
+    dmi_ret = access_dmi(DMCONTROL_A, dmcontrol, DTM_OP_WRITE);
+    if (dmi_ret & 0x3) {
+        printf("Release halt-request: access DMI busy / error ret = 0x%lx \n", dmi_ret);
+        sc_stop();
+    }
+
+    wait(10, SC_US);
+
+    // Resume hart exectution
+    haltreq = 0;
+    resumereq = 1;
+    hartreset = 0;
+    dmactive = 1;
+    dmcontrol = (haltreq << 31) | (resumereq << 30) | (hartreset << 29) | dmactive;
+
+    printf("\n Write to resume hart execution, dmcontrol = %#x \n", dmcontrol);
+    dmi_ret = access_dmi(DMCONTROL_A, dmcontrol, DTM_OP_WRITE);
+    if (dmi_ret & 0x3) {
+        printf("Resume hart: access DMI busy / error ret = 0x%lx \n", dmi_ret);
+        sc_stop();
+    }
+
+    wait(50, SC_US);
+
+
+    printf("\n\n      TEST PASS!!!     \n");
 
     //write CSR_SIM_CTRL to exit simulation
     write_csr(CSR_SIM_CTRL, 0);
@@ -547,3 +618,87 @@ uint32_t jtag_debugger::read_csr(uint32_t addr)
     return ret;
 }
 
+void jtag_debugger::write_gpr(uint32_t addr, uint32_t value)
+{
+    uint64_t ret; 
+    write_ir(DMI_A);
+
+    // read DM abstractcs register
+    ret = access_dmi(ABSTRACTCS_A, 0, DTM_OP_READ);
+    if (ret & 0x3) {
+        printf("Access DMI busy / error ret = 0x%lx \n", ret);
+        return ;
+    }
+    ret = read_dr(DMI_A);
+    uint64_t busy = (ret >> 12) & 0x1;
+    uint64_t cmderr = (ret >> 8) & 0x7;
+    if (busy != 0 || cmderr != 0) {
+        printf("DM busy / error ret = 0x%lx \n", ret);
+        return ;
+    }
+
+    // write data0
+    ret = access_dmi(DATA0_A, value, DTM_OP_WRITE);
+
+    // issue command
+    uint32_t cmdtype = 0;
+    uint32_t aarsize = 2;
+    uint32_t transfer = 1;
+    uint32_t write = 1;
+    uint32_t regno = addr + 0x1000;
+
+    uint32_t command = (cmdtype << 24) | (aarsize << 20) | (transfer << 17) | (write << 16) | regno ;
+    ret = access_dmi(COMMAND_A, command, DTM_OP_WRITE);
+
+    if (ret & 0x3)
+        printf("Write DM command error, ret = 0x%lx \n", ret);
+
+    return ;
+}
+
+uint32_t jtag_debugger::read_gpr(uint32_t addr)
+{
+    uint64_t ret; 
+    write_ir(DMI_A);
+
+    // read DM abstractcs register
+    ret = access_dmi(ABSTRACTCS_A, 0, DTM_OP_READ);
+    if (ret & 0x3) {
+        printf("Access DMI busy / error ret = 0x%lx \n", ret);
+        return 0;
+    }
+    ret = read_dr(DMI_A);
+    uint64_t busy = (ret >> 12) & 0x1;
+    uint64_t cmderr = (ret >> 8) & 0x7;
+    if (busy != 0 || cmderr != 0) {
+        printf("DM busy / error ret = 0x%lx \n", ret);
+        return 0;
+    }
+
+    // issue command
+    uint32_t cmdtype = 0;
+    uint32_t aarsize = 2;
+    uint32_t transfer = 1;
+    uint32_t write = 0;
+    uint32_t regno = addr + 0x1000;
+
+    uint32_t command = (cmdtype << 24) | (aarsize << 20) | (transfer << 17) | (write << 16) | regno ;
+    ret = access_dmi(COMMAND_A, command, DTM_OP_WRITE);
+
+    if (ret & 0x3) {
+        printf("Write DM command error, ret = 0x%lx \n", ret);
+        return 0;
+    }
+
+    // read data0
+    ret = access_dmi(DATA0_A, 0, DTM_OP_READ);
+    ret = read_dr(DMI_A);
+    if (ret & 0x3) {
+        printf("Read DM data0 error, ret = 0x%lx \n", ret);
+        return 0;
+    }
+
+    ret = (ret >> 2) & 0xffffffff;
+
+    return ret;
+}

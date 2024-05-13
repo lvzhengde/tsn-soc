@@ -54,6 +54,7 @@ module biriscv_fetch
     input  [  1:0]  branch_priv_i        ,
     input  [ 31:0]  next_pc_f_i          ,
     input  [  1:0]  next_taken_f_i       ,
+    input           jtag_halt_hart_i     , 
 
     // Outputs
     output          fetch_valid_o        ,
@@ -77,7 +78,7 @@ module biriscv_fetch
     reg         active_q;
     
     wire        icache_busy_w;
-    wire        stall_w       = !fetch_accept_i || icache_busy_w || !icache_accept_i;
+    wire        stall_w       = !fetch_accept_i || icache_busy_w || !icache_accept_i || jtag_halt_hart_i;
     
     //-------------------------------------------------------------
     // Buffered branch

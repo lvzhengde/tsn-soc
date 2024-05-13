@@ -303,6 +303,7 @@ module riscv_core
         .branch_info_is_ret_i          (branch_info_is_ret_w)       ,
         .branch_info_is_jmp_i          (branch_info_is_jmp_w)       ,
         .branch_info_pc_i              (branch_info_pc_w)           ,
+        .jtag_halt_hart_i              (jtag_halt_hart_w), 
     
         // Outputs
         .icache_rd_o                   (mmu_ifetch_rd_w)            ,

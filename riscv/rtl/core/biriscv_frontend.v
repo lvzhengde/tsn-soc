@@ -73,6 +73,7 @@ module biriscv_frontend
     input           branch_info_is_ret_i       ,
     input           branch_info_is_jmp_i       ,
     input  [ 31:0]  branch_info_pc_i           ,
+    input           jtag_halt_hart_i           , 
 
     // Outputs
     output          icache_rd_o                ,
@@ -231,6 +232,7 @@ module biriscv_frontend
         .branch_priv_i          (branch_priv_i)       ,
         .next_pc_f_i            (next_pc_f_w)         ,
         .next_taken_f_i         (next_taken_f_w)      ,
+        .jtag_halt_hart_i       (jtag_halt_hart_i)    , 
     
         // Outputs
         .fetch_valid_o          (fetch_valid_w)       ,
