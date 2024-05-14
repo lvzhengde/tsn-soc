@@ -187,6 +187,21 @@ void jtag_debugger::jtag_test(void)
 
     wait(10, SC_US);
 
+    // Write & Read memory location
+    addr = 0x80000600;
+    value = 0x9a8bf532;
+
+    printf("Write memory, addr: %#x value: %#x \n", addr, value);
+    write_mem(addr, value);
+
+    ret = read_mem(addr);
+    printf("Read memory, addr: %#x ret: %#x \n", addr, ret);
+
+    if (ret != value) {
+        printf("Error: Read / Write memory Mismatch!! \n");
+        sc_stop();
+    }
+
     // Resume hart exectution
     haltreq = 0;
     resumereq = 1;
@@ -203,6 +218,32 @@ void jtag_debugger::jtag_test(void)
 
     wait(50, SC_US);
 
+    // Reset hart execution
+    haltreq = 0;
+    resumereq = 0;
+    hartreset = 1;
+    dmactive = 1;
+    dmcontrol = (haltreq << 31) | (resumereq << 30) | (hartreset << 29) | dmactive;
+
+    printf("\n\n Write to reset hart execution, dmcontrol = %#x \n", dmcontrol);
+    dmi_ret = access_dmi(DMCONTROL_A, dmcontrol, DTM_OP_WRITE);
+    if (dmi_ret & 0x3) {
+        printf("Reset hart: access DMI busy / error ret = 0x%lx \n", dmi_ret);
+        sc_stop();
+    }
+
+    // Deassert reset hart
+    hartreset = 0;
+    dmcontrol = (haltreq << 31) | (resumereq << 30) | (hartreset << 29) | dmactive;
+
+    printf("\n Write to deassert reset, dmcontrol = %#x \n\n", dmcontrol);
+    dmi_ret = access_dmi(DMCONTROL_A, dmcontrol, DTM_OP_WRITE);
+    if (dmi_ret & 0x3) {
+        printf("Deassert reset: access DMI busy / error ret = 0x%lx \n", dmi_ret);
+        sc_stop();
+    }
+
+    wait(100, SC_US);
 
     printf("\n\n      TEST PASS!!!     \n");
 
@@ -685,6 +726,92 @@ uint32_t jtag_debugger::read_gpr(uint32_t addr)
     uint32_t command = (cmdtype << 24) | (aarsize << 20) | (transfer << 17) | (write << 16) | regno ;
     ret = access_dmi(COMMAND_A, command, DTM_OP_WRITE);
 
+    if (ret & 0x3) {
+        printf("Write DM command error, ret = 0x%lx \n", ret);
+        return 0;
+    }
+
+    // read data0
+    ret = access_dmi(DATA0_A, 0, DTM_OP_READ);
+    ret = read_dr(DMI_A);
+    if (ret & 0x3) {
+        printf("Read DM data0 error, ret = 0x%lx \n", ret);
+        return 0;
+    }
+
+    ret = (ret >> 2) & 0xffffffff;
+
+    return ret;
+}
+
+void jtag_debugger::write_mem(uint32_t addr, uint32_t value)
+{
+    uint64_t ret; 
+    write_ir(DMI_A);
+
+    // read DM abstractcs register
+    ret = access_dmi(ABSTRACTCS_A, 0, DTM_OP_READ);
+    if (ret & 0x3) {
+        printf("Access DMI busy / error ret = 0x%lx \n", ret);
+        return ;
+    }
+    ret = read_dr(DMI_A);
+    uint64_t busy = (ret >> 12) & 0x1;
+    uint64_t cmderr = (ret >> 8) & 0x7;
+    if (busy != 0 || cmderr != 0) {
+        printf("DM busy / error ret = 0x%lx \n", ret);
+        return ;
+    }
+
+    // write data0--value
+    ret = access_dmi(DATA0_A, value, DTM_OP_WRITE);
+
+    // write data1--address
+    ret = access_dmi(DATA1_A, addr, DTM_OP_WRITE);
+
+    // issue command
+    uint32_t cmdtype = 2;
+    uint32_t aamsize = 2;
+    uint32_t write = 1;
+
+    uint32_t command = (cmdtype << 24) | (aamsize << 20) | (write << 16);
+    ret = access_dmi(COMMAND_A, command, DTM_OP_WRITE);
+
+    if (ret & 0x3)
+        printf("Write DM command error, ret = 0x%lx \n", ret);
+
+    return ;
+}
+
+uint32_t jtag_debugger::read_mem(uint32_t addr)
+{
+    uint64_t ret; 
+    write_ir(DMI_A);
+
+    // read DM abstractcs register
+    ret = access_dmi(ABSTRACTCS_A, 0, DTM_OP_READ);
+    if (ret & 0x3) {
+        printf("Access DMI busy / error ret = 0x%lx \n", ret);
+        return 0;
+    }
+    ret = read_dr(DMI_A);
+    uint64_t busy = (ret >> 12) & 0x1;
+    uint64_t cmderr = (ret >> 8) & 0x7;
+    if (busy != 0 || cmderr != 0) {
+        printf("DM busy / error ret = 0x%lx \n", ret);
+        return 0;
+    }
+
+    // write data1--address
+    ret = access_dmi(DATA1_A, addr, DTM_OP_WRITE);
+
+    // issue command
+    uint32_t cmdtype = 2;
+    uint32_t aamsize = 2;
+    uint32_t write = 0;
+
+    uint32_t command = (cmdtype << 24) | (aamsize << 20) | (write << 16);
+    ret = access_dmi(COMMAND_A, command, DTM_OP_WRITE);
     if (ret & 0x3) {
         printf("Write DM command error, ret = 0x%lx \n", ret);
         return 0;

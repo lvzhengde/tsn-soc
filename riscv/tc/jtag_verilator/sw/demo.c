@@ -76,7 +76,7 @@ int main()
     int count;
     char disp[] = {'i', ' ', '=', ' ', 0, 0};
 
-    sim_print("After reset, enter main program!");
+    sim_print("\n\n After Reset, Enter Main Program!!! \n\n");
     count = 0;
 
     for (;;) {
