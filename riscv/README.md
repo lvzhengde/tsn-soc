@@ -30,7 +30,6 @@ sim: Directory for simulation runs<br>
 doc: Reference documentation<br>
 </blockquote>
 <br>
-<br>
 RTL simulation is based on Linux, and before using it, ensure that the following tools have been installed: <br>
 * Icarus Verilog <br>
 * Verilator <br>
@@ -39,47 +38,45 @@ RTL simulation is based on Linux, and before using it, ensure that the following
 * Python <br>
 Better to use the latest verision that can work properly. <br>
 <br>
-<br>
 For different parts of the design, different simulation tests need to be run. <br>
 1. Basic function test
 <blockquote>
 cd /path/to/riscv/sim/core_icarus <br>
-make <br>
+make 
 </blockquote>
 <br>
 2. RISC-V compliance test
 <blockquote>
 cd /path/to/riscv/sim/riscv-compliance <br>
-python3 riscv_compliance_test.py <br>
+python3 riscv_compliance_test.py 
 </blockquote>
 <br>
 3. Test for C language SW development using riscv-gnu-toolchain
 <blockquote>
 cd /path/to/riscv/sim/c_demo <br>
-python3 run_demo.py <br>
+python3 run_demo.py 
 </blockquote>
 <br>
 4. Test for RISC-V system with TCM option
 <blockquote>
 cd /path/to/riscv/sim/tcm_verilator <br>
-python3 run_tcm_verilator.py <br>
+python3 run_tcm_verilator.py 
 </blockquote>
 <br>
 5. Test for RISC-V system with cache option
 <blockquote>
 cd /path/to/riscv/sim/cache_verilator <br>
-python3 run_cache_verilator.py <br>
+python3 run_cache_verilator.py 
 </blockquote>
 <br>
 6. Test for RISC-V JTAG debug module
 <blockquote>
 cd /path/to/riscv/sim/jtag_verilator <br>
-python3 run_jtag_verilator.py <br>
+python3 run_jtag_verilator.py 
 </blockquote>
 <br>
-<br>
-###### FAQ
-If encounter an error similar to the following when running a Verilator program with CMake: <br>
+##### FAQ
+<br>If encounter an error similar to the following when running a Verilator program with CMake: <br>
 <blockquote>
 """
 CMake Error at CMakeLists.txt:46 (target_link_libraries):
@@ -93,9 +90,10 @@ CMake Error at CMakeLists.txt:46 (target_link_libraries):
 """
 </blockquote>
 Open the corresponding file through the following command: <br>
+<blockquote>
 $ sudo vim /usr/local/share/verilator/verilator-config.cmake <br>
+</blockquote>
 Locate the relevant "target_link_libraries" line and comment it out.<br>
-<br>
 <br>
 This project basically focuses on the overall architecture design and the establishment of open-source design processes. <br>
 Currently, it is enough to ensure that basic function tests pass for developer. <br>
