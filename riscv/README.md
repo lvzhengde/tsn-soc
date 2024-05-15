@@ -30,13 +30,15 @@ sim: Directory for simulation runs<br>
 doc: Reference documentation<br>
 </blockquote>
 <br>
-RTL simulation is based on Linux, and before using it, ensure that the following tools have been installed: <br>
+RTL simulation is based on Linux, and before using it, ensure that the following tools have been installed: 
+
 * Icarus Verilog 
 * Verilator 
 * riscv-gnu-toolchain 
 * CMake 
 * Python 
-Better to use the latest verision that can work properly. <br>
+
+Better to use the latest verision that can work properly. 
 <br>
 For different parts of the design, different simulation tests need to be run. <br>
 1. Basic function test
