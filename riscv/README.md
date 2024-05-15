@@ -31,11 +31,11 @@ doc: Reference documentation<br>
 </blockquote>
 <br>
 RTL simulation is based on Linux, and before using it, ensure that the following tools have been installed: <br>
-* Icarus Verilog <br>
-* Verilator <br>
-* riscv-gnu-toolchain <br>
-* CMake <br>
-* Python <br>
+* Icarus Verilog 
+* Verilator 
+* riscv-gnu-toolchain 
+* CMake 
+* Python 
 Better to use the latest verision that can work properly. <br>
 <br>
 For different parts of the design, different simulation tests need to be run. <br>
@@ -74,9 +74,10 @@ python3 run_cache_verilator.py
 cd /path/to/riscv/sim/jtag_verilator <br>
 python3 run_jtag_verilator.py 
 </blockquote>
-<br>
+
 ##### FAQ
-<br>If encounter an error similar to the following when running a Verilator program with CMake: <br>
+
+If encounter an error similar to the following when running a Verilator program with CMake: <br>
 <blockquote>
 """
 CMake Error at CMakeLists.txt:46 (target_link_libraries):
