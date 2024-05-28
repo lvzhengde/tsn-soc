@@ -317,7 +317,7 @@ module emac_registers (
         .data_i         (bus2ip_data_i[16]),
         .data_o         (tx_pause[16]) 
     );
-    assign r_TxPauseTV_o   = tx_pause[16];
+    assign r_TxPauseRq_o   = tx_pause[16];
     assign tx_pause[31:17] = 0;
 
     //Broadcast filter leaky bucket register
