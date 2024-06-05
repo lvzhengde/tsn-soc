@@ -21,15 +21,16 @@ Github: http://github.com/ultraembedded/biriscv <br>
 
 #### Instructions for Use
 
-The contents of the subdirectories under the riscv directory are as follows: <br>
-<blockquote>
+The contents of the subdirectories under the riscv directory are as follows: 
+```
 rtl:    RTL design files<br>
 tb:     Testbench design files<br>
 tc:     Test case files<br>
 sim:    Directory for simulation runs<br>
+isac:   Instruction set simulator for RISC-V
 doc:    Reference documentation<br>
-</blockquote>
-<br>
+```
+
 RTL simulation is based on Linux, and before using it, ensure that the following tools have been installed: 
 
 * Icarus Verilog 
