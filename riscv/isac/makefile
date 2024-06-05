@@ -13,6 +13,7 @@ RUN_OPTS   ?= "-b 0x80000000 -s 33554432"
 MMU        ?= yes
 
 CFLAGS	    = -O2 -fPIC
+CFLAGS	   += -g 
 ifeq ($(MMU), yes)
 CFLAGS     += -DCONFIG_MMU
 endif

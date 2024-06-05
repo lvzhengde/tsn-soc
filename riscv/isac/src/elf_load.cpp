@@ -1,4 +1,9 @@
 //-----------------------------------------------------------------
+//
+// Copyright (c) 2022-2024 Zhengde
+// All rights reserved.
+//
+//-----------------------------------------------------------------
 //                     RISC-V ISA Simulator 
 //                            V1.0
 //                     Ultra-Embedded.com
@@ -62,6 +67,8 @@ int elf_load(const char *filename, cb_mem_create fn_create, cb_mem_load fn_load,
     Elf32_Shdr *shdr;
     size_t shstrndx;
 
+    long _data_lma = elf_get_symbol(filename, "_data_lma");
+
     if (elf_version ( EV_CURRENT ) == EV_NONE)
         return 0;
 
@@ -92,12 +99,10 @@ int elf_load(const char *filename, cb_mem_create fn_create, cb_mem_load fn_load,
     {
         shdr = elf32_getshdr(scn);
 
-        //printf("Memory: 0x%x - 0x%x (Size=%dKB) [%s]\n", shdr->sh_addr, shdr->sh_addr + shdr->sh_size - 1, shdr->sh_size / 1024, elf_strptr(e, shstrndx, shdr->sh_name));
         const char *sec_name = elf_strptr(e, shstrndx, shdr->sh_name);
 
         // Section which need allocating
         if ((shdr->sh_flags & SHF_ALLOC) && (shdr->sh_size > 0))
-        //if ((shdr->sh_flags & (SHF_ALLOC | SHF_STRINGS)) && (shdr->sh_size > 0))
         {
             data = elf_getdata(scn, NULL);
 
@@ -111,17 +116,37 @@ int elf_load(const char *filename, cb_mem_create fn_create, cb_mem_load fn_load,
             }
 
             if (shdr->sh_type == SHT_PROGBITS)
-            //if (shdr->sh_type == SHT_PROGBITS || shdr->sh_type == SHT_STRTAB || shdr->sh_type == SHT_SYMTAB)
             {                
-                printf("Load byte to memory, section name = %s \n", sec_name);
                 int i;
-                for (i=0;i<shdr->sh_size;i++)
-                {                    
-                    if (!fn_load(arg, shdr->sh_addr + i, ((uint8_t*)data->d_buf)[i]))
-                    {
-                        fprintf(stderr, "ERROR: Cannot write byte to 0x%08x\n", shdr->sh_addr + i);
-                        close (fd);
+
+                // Check if the section name is .data and loaded from flash
+                if (strcmp(sec_name, ".data") == 0 && _data_lma != -1) {
+                    if (!fn_create(arg, _data_lma, shdr->sh_size)) {
+                        fprintf(stderr, "ERROR: Cannot allocate flash memory region for .data section\n");
+                        close(fd);
                         return 0;
+                    }
+
+                    //write flash memory
+                    for (i=0;i<shdr->sh_size;i++)
+                    {                    
+                        if (!fn_load(arg, _data_lma + i, ((uint8_t*)data->d_buf)[i]))
+                        {
+                            fprintf(stderr, "ERROR: Cannot write byte to flash memory 0x%08x\n", uint32_t(_data_lma + i));
+                            close (fd);
+                            return 0;
+                        }
+                    }
+                } 
+                else {
+                    for (i=0;i<shdr->sh_size;i++)
+                    {                    
+                        if (!fn_load(arg, shdr->sh_addr + i, ((uint8_t*)data->d_buf)[i]))
+                        {
+                            fprintf(stderr, "ERROR: Cannot write byte to 0x%08x\n", shdr->sh_addr + i);
+                            close (fd);
+                            return 0;
+                        }
                     }
                 }
             }
@@ -157,7 +182,7 @@ long elf_get_symbol(const char *filename, const char *symname)
 
     if (!bfd_check_format_matches(ibfd, bfd_object, &matching)) 
     {
-        printf("format_matches\n");
+        printf("format mismatches\n");
         return -1;
     }
 
