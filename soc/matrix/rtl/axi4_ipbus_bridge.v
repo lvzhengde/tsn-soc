@@ -130,11 +130,256 @@ module axi4_ipbus_bridge
         endcase
     end
 
+    //-----------------------------------------------------------------
+    // AXI write case, write first
+    // AXI write state machine
+    //-----------------------------------------------------------------
+    localparam STW_IDLE        = 3'h0,
+               STW_RUN         = 3'h1,
+               STW_WRITE0      = 3'h2,
+               STW_WRITE1      = 3'h3,
+               STW_WRITE       = 3'h4,
+               STW_RSP         = 3'h5;
+
+    reg  [ 31:0]  axi_awaddr_q ; 
+    reg  [  3:0]  axi_awid_q   ; 
+    reg  [  7:0]  axi_awlen_q  ; 
+    reg  [  1:0]  axi_awburst_q; 
+           
+    reg           axi_awready_q; 
+    reg           axi_wready_q ; 
+    reg           axi_bvalid_q ; 
+    reg  [  1:0]  axi_bresp_q  ; 
+    reg  [  3:0]  axi_bid_q    ; 
+
+    reg  [  7:0]  wbeat_q      ;
+    reg  [  2:0]  wstate_q     ;
+    reg  [  2:0]  next_wstate_r;
+
+    always @(*) begin
+        next_wstate_r = wstate_q;
+    
+        case (wstate_q)
+            STW_IDLE :
+            begin
+                if (axi_awvalid_i == 1'b1 && grant_read_q == 1'b0)
+                    next_wstate_r = STW_RUN;
+            end    
+            STW_RUN :
+            begin
+                next_wstate_r = STW_WRITE0;
+            end
+            STW_WRITE0 :
+            begin
+                if (axi_wvalid_i==1'b1) 
+                    next_wstate_r = STW_WRITE1;
+            end
+            STW_WRITE1 :
+            begin
+                if (ack_q == 1'b1) 
+                begin
+                    if (wbeat_q >= axi_awlen_q)
+                        next_wstate_r = STW_RSP;
+                    else
+                        next_wstate_r = STW_WRITE;
+                end
+            end
+            STW_WRITE: 
+            begin
+                if (ack_q == 1'b0) 
+                begin
+                    next_wstate_r = STW_WRITE0;
+                end
+            end 
+            STW_RSP: 
+            begin
+                if (ack_q == 1'b0) 
+                begin
+                    if (axi_bready_i == 1'b1 && axi_bvalid_q == 1'b1) 
+                        next_wstate_r = STW_IDLE;
+                end
+            end 
+        endcase
+    end
+
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n)
+            wstate_q   <= STW_IDLE;
+        else
+            wstate_q   <= next_wstate_r;
+    end
+
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n)
+            grant_write_q   <= 1'b0;
+        else if (wstate_q == STW_IDLE && next_wstate_r == STW_RUN)
+            grant_write_q   <= 1'b1;
+        else if (wstate_q == STW_RSP && ack_q == 1'b0)
+            grant_write_q   <= 1'b0;
+    end
+
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n)
+            axi_awready_q   <= 1'b0;
+        else if (wstate_q == STW_IDLE && next_wstate_r == STW_RUN)
+            axi_awready_q   <= 1'b1;
+        else if (wstate_q == STW_RUN)
+            axi_awready_q   <= 1'b0;
+    end
+
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n)
+            axi_wready_q   <= 1'b0;
+        else if (wstate_q == STW_RUN)
+            axi_wready_q   <= 1'b1;
+        else if (wstate_q == STW_WRITE0 && axi_wvalid_i==1'b1)
+            axi_wready_q   <= 1'b0;
+        else if (wstate_q == STW_WRITE && ack_q==1'b0)
+            axi_wready_q   <= 1'b1;
+    end
+
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n) begin
+            axi_awaddr_q  <= 32'h0; 
+            axi_awid_q    <= 4'h0; 
+            axi_awlen_q   <= 8'h0; 
+            axi_awburst_q <= 2'h0; 
+        end
+        else if (wstate_q == STW_IDLE && next_wstate_r == STW_RUN) begin
+            axi_awaddr_q  <= axi_awaddr_i ; 
+            axi_awid_q    <= axi_awid_i   ; 
+            axi_awlen_q   <= axi_awlen_i  ; 
+            axi_awburst_q <= axi_awburst_i; 
+        end
+    end
+
+    reg  [31:0]  next_waddr_q ;
+
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n) begin
+            next_waddr_q   <= 32'h0;
+            wbeat_q        <= 8'h0 ;
+        end
+        else if (wstate_q == STW_RUN) begin
+            next_waddr_q   <= axi_awaddr_q;
+            wbeat_q        <= 8'h0 ;
+        end
+        else if (wstate_q == STW_WRITE1 && ack_q == 1'b1) begin
+            next_waddr_q   <= calculate_addr_next(next_waddr_q, axi_awburst_q, axi_awlen_q);
+            wbeat_q        <= wbeat_q + 1;
+        end
+    end
+
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n) begin
+            t_waddr_q <= 32'h0;
+            t_wdata_q <= 32'h0;
+            t_wstrb_q <= 4'h0 ;
+            t_wen_q   <= 1'b0 ;
+        end
+        else if (wstate_q == STW_WRITE0 && axi_wvalid_i==1'b1) begin
+            t_waddr_q <= next_waddr_q;
+            t_wdata_q <= axi_wdata_i;
+            t_wstrb_q <= axi_wstrb_i;
+            t_wen_q   <= 1'b1 ;
+        end
+        else if (wstate_q == STW_WRITE1 && ack_q == 1'b1) begin
+            t_wen_q   <= 1'b0 ;
+        end
+        else if(wstate_q == STW_RSP && next_wstate_r == STW_IDLE) begin
+            t_waddr_q <= 32'h0;
+            t_wdata_q <= 32'h0;
+            t_wstrb_q <= 4'h0 ;
+            t_wen_q   <= 1'b0 ;
+        end
+    end
+
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n) 
+            axi_bid_q    <= 4'h0; 
+        else if (wstate_q == STW_WRITE1 && ack_q == 1'b1 && wbeat_q >= axi_awlen_q) 
+            axi_bid_q    <= axi_awid_q; 
+    end
+
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n) 
+            axi_bresp_q  <= 2'b10;    // Slave Error 
+        end
+        else if (wstate_q == STW_RUN) 
+            axi_bresp_q  <= 2'b00;    // Okay 
+        else if (wstate_q == STW_WRITE0 && axi_wvalid_i==1'b1) begin
+            if (wbeat_q >= axi_awlen_q) begin
+                if (axi_wlast_i == 1'b0)  axi_bresp_q  <= 2'b10;    // Slave Error - missing last
+            end
+        end
+    end
+
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n) 
+            axi_bvalid_q <= 1'b0; 
+        else if (wstate_q == STW_RSP && ack_q == 1'b0) begin
+            if (axi_bready_i == 1'b1 && axi_bvalid_q == 1'b1)
+                axi_bvalid_q <= 1'b0;
+            else
+                axi_bvalid_q <= 1'b1;
+        end 
+    end
+
+    //AXI write outputs
+    assign axi_awready_o   =  axi_awready_q ;
+    assign axi_wready_o    =  axi_wready_q  ;
+    assign axi_bvalid_o    =  axi_bvalid_q  ;
+    assign axi_bresp_o     =  axi_bresp_q   ;
+    assign axi_bid_o       =  axi_bid_q     ;
+
+
+    //-----------------------------------------------------------------
+    // AXI read case
+    // AXI read state machine
+    //-----------------------------------------------------------------
+
+
 
 
 
     assign bus2ip_clk     = clk;
     assign bus2ip_rst_n   = rst_n;
     assign bus2ip_rd_ce_o = 1'b1;  //always read active
+
+    //-------------------------------------------------------------
+    // calculate_addr_next
+    //-------------------------------------------------------------
+    function [31:0] calculate_addr_next;
+        input [31:0] addr;
+        input [1:0]  axtype;
+        input [7:0]  axlen;
+    
+        reg [31:0]   mask;
+    begin
+        mask = 0;
+    
+        case (axtype)
+            2'd0: // AXI4_BURST_FIXED
+            begin
+                calculate_addr_next = addr;
+            end
+            2'd2: // AXI4_BURST_WRAP
+            begin
+                case (axlen)
+                8'd0:      mask = 32'h03;
+                8'd1:      mask = 32'h07;
+                8'd3:      mask = 32'h0F;
+                8'd7:      mask = 32'h1F;
+                8'd15:     mask = 32'h3F;
+                default:   mask = 32'h3F;
+                endcase
+    
+                calculate_addr_next = (addr & ~mask) | ((addr + 4) & mask);
+            end
+            default: // AXI4_BURST_INCR
+                calculate_addr_next = addr + 4;
+        endcase
+    end
+    endfunction
 
 endmodule
