@@ -31,6 +31,7 @@
 
 /*+
  * AXI4 to IPBUS conversion bridge
+ * TODO: optimize state machine, improve throughput.
 -*/
 
 module axi4_ipbus_bridge
@@ -97,7 +98,7 @@ module axi4_ipbus_bridge
 
     reg  [31:0]  t_raddr_q ;
     wire [31:0]  t_rdata_w = rdata_r;
-    reg  [ 3:0]  t_rstrb_q ;
+    wire [ 3:0]  t_rstrb_w = 4'hf;
     reg          t_ren_q   ;
 
     always @(*) begin
@@ -116,7 +117,7 @@ module axi4_ipbus_bridge
                    addr_r  = t_raddr_q;
                    wr_r    = 1'b0  ;
                    wdata_r = 32'h0 ;
-                   be_r    = t_rstrb_q;
+                   be_r    = t_rstrb_w;
             end
             2'b00, 
             2'b11: 
@@ -337,6 +338,195 @@ module axi4_ipbus_bridge
     // AXI read case
     // AXI read state machine
     //-----------------------------------------------------------------
+    localparam STR_IDLE    = 3'h0,
+               STR_RUN     = 3'h1,
+               STR_WAIT    = 3'h2,
+               STR_READ0   = 3'h3,
+               STR_READ1   = 3'h4,
+               STR_END     = 3'h5;
+
+    reg  [  7:0]  axi_arlen_q   ; 
+    reg  [  1:0]  axi_arburst_q ; 
+
+    reg           axi_arready_q ; 
+    reg           axi_rvalid_q  ; 
+    reg  [ 31:0]  axi_rdata_q   ; 
+    reg  [  1:0]  axi_rresp_q   ; 
+    reg  [  3:0]  axi_rid_q     ; 
+    reg           axi_rlast_q   ; 
+
+    reg  [  7:0]  rbeat_q       ;
+    reg  [  2:0]  rstate_q      ;
+    reg  [  2:0]  next_rstate_r ;
+
+    always @(*) begin
+        next_rstate_r = rstate_q;
+    
+        case (rstate_q)
+            STR_IDLE :
+            begin
+                if (axi_arvalid_i == 1'b1 && axi_awvalid_i == 1'b0 && grant_write_q == 1'b0)
+                    next_rstate_r = STR_RUN;
+            end    
+            STR_RUN :
+            begin
+                next_rstate_r = STR_WAIT;
+            end
+            STR_WAIT :
+            begin
+                if (ack_q == 1'b1)
+                    next_rstate_r = STR_READ0;
+
+            end
+            STR_READ0 :
+            begin
+                if (ack_q == 1'b0) begin
+                    if (rbeat_q >= axi_arlen_q)
+                        next_rstate_r = STR_END;
+                    else
+                        next_rstate_r = STR_READ1;
+                end
+            end
+            STR_READ1 :
+            begin
+                if (axi_rready_i == 1'b1)
+                    next_rstate_r = STR_WAIT;
+            end
+            STR_END :
+            begin
+                if (axi_rready_i == 1'b1)
+                    next_rstate_r = STR_IDLE;
+            end
+        endcase
+    end
+
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n)
+            rstate_q   <= STR_IDLE;
+        else
+            rstate_q   <= next_rstate_r;
+    end
+
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n)
+            grant_read_q   <= 1'b0;
+        else if (rstate_q == STR_IDLE && next_rstate_r == STR_RUN)
+            grant_read_q   <= 1'b1;
+        else if (rstate_q == STR_READ0 && ack_q == 1'b0 && rbeat_q >= axi_arlen_q)
+            grant_read_q   <= 1'b0;
+    end
+
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n)
+            axi_arready_q   <= 1'b0;
+        else if (rstate_q == STR_IDLE && next_rstate_r == STR_RUN)
+            axi_arready_q   <= 1'b1;
+        else if (rstate_q == STR_RUN)
+            axi_arready_q   <= 1'b0;
+    end
+
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n) begin
+            axi_arlen_q   <= 8'h0; 
+            axi_arburst_q <= 2'h0; 
+        end
+        else if (rstate_q == STR_IDLE && next_rstate_r == STR_RUN) begin
+            axi_arlen_q   <= axi_arlen_i  ; 
+            axi_arburst_q <= axi_arburst_i; 
+        end
+    end
+
+    reg  [31:0]  next_raddr_q ;
+
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n) 
+            next_raddr_q   <= 32'h0;
+        else if (rstate_q == STR_IDLE && next_rstate_r == STR_RUN) 
+            next_raddr_q   <= axi_araddr_i;
+        else if (rstate_q == STR_WAIT && ack_q == 1'b1) 
+            next_raddr_q   <= calculate_addr_next(next_raddr_q, axi_arburst_q, axi_arlen_q);
+    end
+
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n) 
+            rbeat_q        <= 8'h0 ;
+        else if (rstate_q == STR_RUN) 
+            rbeat_q        <= 8'h0 ;
+        else if (rstate_q == STR_READ1 && axi_rready_i == 1'b1) 
+            rbeat_q        <= rbeat_q + 1;
+    end
+
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n) begin
+            t_raddr_q <= 32'h0;
+            t_ren_q   <= 1'b0;
+        end
+        else if (rstate_q == STR_RUN) begin
+            t_raddr_q <= next_raddr_q;
+            t_ren_q   <= 1'b1;
+        end
+        else if (rstate_q == SRT_WAIT && ack_q == 1'b1) begin
+            t_ren_q   <= 1'b0;
+        end
+        else if (rstate_q == STR_READ1 && axi_rready_i == 1'b1) begin
+            t_raddr_q <= next_raddr_q;
+            t_ren_q   <= 1'b1;
+        end
+        else if(rstate_q == STR_END && next_rstate_r == STR_IDLE) begin
+            t_raddr_q <= 32'h0;
+            t_ren_q   <= 1'b0;
+        end
+    end
+
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n) begin
+            axi_rvalid_q  <= 1'b0; 
+            axi_rdata_q   <= 32'h0; 
+            axi_rresp_q   <= 2'b01;  //Slave Error 
+            axi_rid_q     <= 4'h0; 
+            axi_rlast_q   <= 1'b0; 
+        end
+        else if (rstate_q == STR_RUN) begin
+            axi_rdata_q   <= 32'h0; 
+            axi_rid_q     <= axi_arid_i; 
+        end
+        else if (rstate_q == STR_WAIT && ack_q == 1'b1) begin
+            axi_rdata_q   <= t_rdata_w; 
+        end
+        else if (rstate_q == STR_READ0 && ack_q == 1'b0) begin
+            if (rbeat_q >= axi_arlen_q) begin
+                axi_rvalid_q  <= 1'b1; 
+                axi_rresp_q   <= 2'b0; 
+                axi_rlast_q   <= 1'b1; 
+            end else begin
+                axi_rvalid_q  <= 1'b1; 
+                axi_rresp_q   <= 2'b0; 
+                axi_rlast_q   <= 1'b0; 
+            end
+        end
+        else if (rstate_q == STR_READ1 && axi_rready_i == 1'b1) begin
+            axi_rvalid_q  <= 1'b0; 
+            axi_rdata_q   <= 32'h0; 
+        end
+        else if (rstate_q == STR_END && axi_rready_i == 1'b1) begin
+            axi_rvalid_q  <= 1'b0; 
+            axi_rlast_q   <= 1'b0; 
+        end
+    end
+
+    //AXI read outputs
+    assign axi_arready_o <= axi_arready_q ; 
+    assign axi_rvalid_o  <= axi_rvalid_q  ; 
+    assign axi_rdata_o   <= axi_rdata_q   ; 
+    assign axi_rresp_o   <= axi_rresp_q   ; 
+    assign axi_rid_o     <= axi_rid_q     ; 
+    assign axi_rlast_o   <= axi_rlast_q   ; 
+
+
+
+
+
+
 
 
 
