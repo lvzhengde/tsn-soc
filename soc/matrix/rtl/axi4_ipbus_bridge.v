@@ -30,7 +30,7 @@
 -*/
 
 /*+
- * AXI4 to IPBUS conversion bridge
+ * AXI4 to IPBus conversion bridge
  * TODO: optimize state machine, improve throughput.
 -*/
 
@@ -77,7 +77,6 @@ module axi4_ipbus_bridge
     output          bus2ip_rd_ce_o  ,  //active high
     output          bus2ip_wr_ce_o  ,  //active high
     input  [ 31:0]  ip2bus_data_i       
-
 );
 
     reg          grant_write_q;
@@ -88,7 +87,7 @@ module axi4_ipbus_bridge
     reg  [31:0]  addr_r;
     reg          wr_r;
     reg  [31:0]  wdata_r;  
-    reg  [31:0]  rdata_r; 
+    reg  [31:0]  rdata_q; 
     reg  [ 3:0]  be_r;
 
     reg  [31:0]  t_waddr_q ;
@@ -97,7 +96,7 @@ module axi4_ipbus_bridge
     reg          t_wen_q   ;
 
     reg  [31:0]  t_raddr_q ;
-    wire [31:0]  t_rdata_w = rdata_r;
+    wire [31:0]  t_rdata_w = rdata_q;
     wire [ 3:0]  t_rstrb_w = 4'hf;
     reg          t_ren_q   ;
 
@@ -125,8 +124,8 @@ module axi4_ipbus_bridge
                    req_r   = 1'b0  ;
                    addr_r  = 32'h0 ;
                    wr_r    = 1'b0  ;
-                   wdata_r = 32'h0; // WDATA (AXI)
-                   be_r    = 1'b0;
+                   wdata_r = 32'h0 ; 
+                   be_r    = 4'b0  ;
             end
         endcase
     end
@@ -523,18 +522,119 @@ module axi4_ipbus_bridge
     assign axi_rlast_o   <= axi_rlast_q   ; 
 
 
+    //-----------------------------------------------------------------
+    // IPBus read/write
+    // IPBus state machine
+    //-----------------------------------------------------------------
+    localparam ST_IDLE  = 2'h0,
+               ST_ADDR  = 2'h1,
+               ST_WAIT  = 2'h2,
+               ST_END   = 2'h3;
 
+    reg  [  1:0]  pstate_q      ;
+    reg  [  1:0]  next_pstate_r ;
 
+    reg  [ 31:0]  bus2ip_addr_q ; 
+    reg  [ 31:0]  bus2ip_data_q ; 
+    reg           bus2ip_wr_ce_q; 
 
+    always @(*) begin
+        next_pstate_r = pstate_q;
+    
+        case (pstate_q)
+            ST_IDLE :
+            begin
+                if (req_r == 1'b1)
+                    next_pstate_r = ST_ADDR;
+            end
+            ST_ADDR :
+            begin
+                next_pstate_r = ST_WAIT;
+            end
+            ST_WAIT :
+            begin
+                next_pstate_r = ST_END; 
+            end
+            ST_END :
+            begin
+                if (req_r == 1'b0) 
+                    next_pstate_r = ST_IDLE;
+            end
+        endcase
+    end
 
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n)
+            pstate_q   <= ST_IDLE;
+        else
+            pstate_q   <= next_pstate_r;
+    end
 
+    //address
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n)
+            bus2ip_addr_q <= 32'h0;
+        else if (pstate_q == ST_IDLE && req_r == 1'b1)
+            bus2ip_addr_q <= addr_r;
+        else if (pstate_q == ST_END && req_r == 1'b0)
+            bus2ip_addr_q <= 32'h0;
+    end
 
+    //write data
+    wire [ 31:0] pwdata_r;
 
+    //Notes: read the corresponding data firstly
+    always @(*) begin
+        pwdata_r = wdata_r;
 
+        if (!be_r[0]) pwdata_r[  7:0 ] = ip2bus_data_i[  7:0 ];
+        if (!be_r[1]) pwdata_r[ 15:8 ] = ip2bus_data_i[ 15:8 ];
+        if (!be_r[2]) pwdata_r[ 23:16] = ip2bus_data_i[ 23:16];
+        if (!be_r[3]) pwdata_r[ 31:24] = ip2bus_data_i[ 31:24];
+    end
 
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n) begin
+            bus2ip_data_q  <= 32'h0;
+            bus2ip_wr_ce_q <= 1'b0;
+        end
+        else if (pstate_q == ST_WAIT && wr_r == 1'b1) begin
+            bus2ip_data_q  <= pwdata_r;
+            bus2ip_wr_ce_q <= 1'b1;
+        end
+        else if (pstate_q == ST_END && req_r == 1'b0) begin
+            bus2ip_data_q  <= 32'h0;
+            bus2ip_wr_ce_q <= 1'b0;
+        end
+    end
+
+    //IPBus read data
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n)
+            rdata_q <= 32'h0;
+        else if (pstate_q == ST_WAIT)
+            rdata_q <= ip2bus_data_i;
+        else if (pstate_q == ST_END && req_r == 1'b0)
+            rdata_q <= 32'h0;
+    end
+
+    //acknowledge
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n)
+            ack_q <= 1'b0;
+        else if (pstate_q == ST_WAIT)
+            ack_q <= 1'b1;
+        else if (pstate_q == ST_END && req_r == 1'b0)
+            ack_q <= 1'b0;
+    end
+
+    //IPBus outputs
     assign bus2ip_clk     = clk;
     assign bus2ip_rst_n   = rst_n;
-    assign bus2ip_rd_ce_o = 1'b1;  //always read active
+    assign bus2ip_addr_o  = bus2ip_addr_q ;
+    assign bus2ip_data_o  = bus2ip_data_q ;
+    assign bus2ip_rd_ce_o = 1'b1;            //always read active
+    assign bus2ip_wr_ce_o = bus2ip_wr_ce_q;  
 
     //-------------------------------------------------------------
     // calculate_addr_next
