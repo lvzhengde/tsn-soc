@@ -68,11 +68,50 @@ module axi4_master
     output reg  [  3:0]  axi_arid_o      ,
     output reg  [  7:0]  axi_arlen_o     ,
     output reg  [  1:0]  axi_arburst_o   ,
-    output reg           axi_rready_o    
-);
-     reg  [ 31:0]  rdata[0:1023]; 
-     reg  [ 31:0]  wdata[0:1023]; 
+    output reg           axi_rready_o    ,
 
+    input wire           busy_i          ,
+    output reg           busy_o
+);
+    `include "axi4_master_tasks.v"
+    `include "mem_test_tasks.v"
+    
+    reg  [ 31:0]  rdata[0:1023]; 
+    reg  [ 31:0]  wdata[0:1023]; 
+
+    reg  done = 1'b0;
+
+    initial begin
+        axi_awvalid_o = 0 ;
+        axi_awaddr_o  = ~0 ;
+        axi_awid_o    = 0 ;
+        axi_awlen_o   = 0 ;
+        axi_awburst_o = 0 ;
+        axi_wvalid_o  = 0 ;
+        axi_wdata_o   = ~0 ;
+        axi_wstrb_o   = 0 ;
+        axi_wlast_o   = 0 ;
+        axi_bready_o  = 0 ;
+        axi_arvalid_o = 0 ;
+        axi_araddr_o  = ~0 ;
+        axi_arid_o    = 0 ;
+        axi_arlen_o   = 0 ;
+        axi_arburst_o = 0 ;
+        axi_rready_o  = 0 ;
+
+        busy_o = 0;
+
+        wait (rst_n == 1'b0);
+        wait (rst_n == 1'b1);
+        repeat (5) @ (posedge clk);
+
+        while (busy_i == 1'b1) @(posedge clk);
+
+        repeat (5) @(posedge clk);
+
+        done = 1'b1;
+        axi_statistics(AXI_ID);
+    end
 
 endmodule
 
