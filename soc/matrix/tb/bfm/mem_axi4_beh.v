@@ -189,7 +189,7 @@ module mem_axi4_beh
                             mem[waddr_q[ADDR_LENGTH-1:2]][8*idz +: 8] <= axi_wdata_i[8*idz +: 8];
                     end
                     wbeat_q  <= wbeat_q + 1;
-                    waddr_q  <= get_next_addr_wr(waddr_q, axi_awburst_q, axi_awlen_q);
+                    waddr_q  <= get_next_addr(waddr_q, axi_awburst_q, axi_awlen_q);
 
                     if (wbeat_q >= axi_awlen_q) begin
                         axi_wready_q  <= 1'b0 ;
@@ -211,7 +211,7 @@ module mem_axi4_beh
             STW_RSP: 
             begin
                 if (axi_bready_i == 1'b1) begin
-                    axi_bvalid_q  <= 1'b1 ;
+                    axi_bvalid_q  <= 1'b0 ;
                     axi_awready_q <= 1'b1 ;
                     wbeat_q       <= 'h0; 
                     wstate_q      <= STW_IDLE;
@@ -269,15 +269,134 @@ module mem_axi4_beh
 
     reg  [ 1:0]  rstate_q;
 
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n) begin
+            axi_araddr_q  <= 32'h0  ;
+            axi_arlen_q   <= 8'h0  ;
+            axi_arburst_q <= 2'b0  ;
 
+            axi_arready_q <= 1'b0  ;
+            axi_rvalid_q  <= 1'b0  ;
+            axi_rdata_q   <= 32'h0  ;
+            axi_rresp_q   <= 2'b10  ; //Slave Error
+            axi_rid_q     <= 4'h0  ;
+            axi_rlast_q   <= 1'b0  ;
 
+            raddr_q       <= 'h0; 
+            rbeat_q       <= 8'h0; 
+            rdelay_q      <= 8'h0;
 
+            rstate_q      <= STR_IDLE;
+        end 
+        else begin
+            case (rstate_q)
+            STR_IDLE: 
+            begin
+                if ((axi_arvalid_i == 1'b1) && (axi_arready_q == 1'b1)) begin
+                    axi_araddr_q  <= axi_araddr_i  ;
+                    axi_arlen_q   <= axi_arlen_i   ;
+                    axi_arburst_q <= axi_arburst_i ;
+                    axi_arready_q <= 1'b0;
+                    axi_rresp_q   <= 2'b00  ; //Okay 
+                    axi_rid_q     <= axi_rid_i  ;
+                    raddr_q       <= axi_araddr_i[ADDR_LENGTH-1:0]; 
+                    if (P_DELAY_READ_SETUP == 0) begin
+                        axi_rdata_q  <= mem[axi_araddr_i[ADDR_LENGTH-1:2]];
+                        axi_rvalid_q <= 1'b1;
+                        axi_rlast_q  <= (axi_arlen_i == 'h0) ? 1'b1 : 1'b0;
+                        rbeat_q      <=  'h1;
+                        raddr_q      <= get_next_addr(axi_araddr_i[ADDR_LENGTH-1:0], axi_arburst_i, axi_arlen_i);
+                        rdelay_q     <= P_DELAY_READ_BURST;
+                        rstate_q     <= (axi_arlen_i == 'h0) ? STR_END : STR_READ;
+                    end 
+                    else begin
+                        rbeat_q      <= 'h0;
+                        rdelay_q     <= P_DELAY_READ_SETUP - 1;
+                        axi_rvalid_q <= 1'b0;
+                        rstate_q     <= STR_DELAY;
+                    end
+                end 
+                else begin
+                    axi_arready_q <= 1'b1;
+                end
+            end // STR_IDLE
+            STR_DELAY: 
+            begin
+                rdelay_q <= rdelay_q - 1;
+                if (rdelay_q == 0) begin
+                    axi_rdata_q  <= mem[raddr_q[ADDR_LENGTH-1:2]];
+                    axi_rvalid_q <= 1'b1;
+                    rbeat_q      <= rbeat_q + 1;
+                    raddr_q      <= get_next_addr(raddr_q[ADDR_LENGTH-1:0], axi_arburst_q, axi_arlen_q);
+                    if (rbeat_q == axi_arlen_q) begin
+                        axi_rlast_q  <= 1'b1;
+                        rstate_q     <= STR_END;
+                    end 
+                    else begin
+                        rstate_q     <= STR_READ;
+                    end
+                end
+            end // STR_DELAY
+            STR_READ: 
+            begin // address only
+                if (axi_rready_i == 1'b1) begin
+                    if (P_DELAY_READ_BURST == 0) begin
+                        axi_rdata_q  <= mem[raddr_q[ADDR_LENGTH-1:2]];
+                        axi_rvalid_q <= 1'b1;
+                        rbeat_q      <= rbeat_q + 1;
+                        raddr_q      <= get_next_addr(raddr_q[ADDR_LENGTH-1:0], axi_arburst_q, axi_arlen_q);
+                        if (rbeat_q == axi_arlen_q) begin
+                            axi_rlast_q  <= 1'b1;
+                            rstate_q     <= STR_END;
+                        end 
+                    end 
+                    else begin
+                        axi_rvalid_q <= 1'b0;
+                        rdelay_q     <= P_DELAY_READ_BURST - 1;
+                        rstate_q     <= STR_DELAY;
+                    end
+                end
+            end // STR_READ
+            STR_END: 
+            begin // data only
+                if (axi_rready_i == 1'b1) begin
+                    axi_rdata_q   <=  'h0;
+                    axi_rresp_q   <= 2'b10; // SLVERR
+                    axi_rlast_q   <= 1'b0;
+                    axi_rvalid_q  <= 1'b0;
+                    axi_arready_q <= 1'b1;
+                    rdelay_q      <=  'h0;
+                    rbeat_q       <=  'h0;
+                    rstate_q      <= STR_IDLE;
+                end
+            end // STR_END
+            endcase
+        end // if
+    end // always
 
+    // AXI read outputs
+    assign axi_arready_o <=  axi_arready_q ;
+    assign axi_rvalid_o  <=  axi_rvalid_q  ;
+    assign axi_rdata_o   <=  axi_rdata_q   ;
+    assign axi_rresp_o   <=  axi_rresp_q   ;
+    assign axi_rid_o     <=  axi_rid_q     ;
+    assign axi_rlast_o   <=  axi_rlast_q   ;
 
+     // synthesis translate_off
+     reg  [8*10-1:0] rstate_ascii="IDLE";
 
+     always @(*) begin
+         case (rstate_q)
+             STR_IDLE : rstate_ascii = "IDLE   ";
+             STR_DELAY: rstate_ascii = "DELAY  ";
+             STR_READ : rstate_ascii = "READ   ";
+             STR_END  : rstate_ascii = "END    ";
+             default  : rstate_ascii = "UNKNOWN";
+         endcase
+     end
+     // synthesis translate_on
 
-
-    function [ADDR_LENGTH-1:0] get_next_addr_wr;
+    function [ADDR_LENGTH-1:0] get_next_addr;
         input [ADDR_LENGTH-1:0] addr ;
         input [ 1:0]            burst; // burst type
         input [ 7:0]            len  ; // burst length
@@ -286,12 +405,12 @@ module mem_axi4_beh
         reg   [ADDR_LENGTH-1:0]   mask ;
     begin
         case (burst)
-            2'b00: get_next_addr_wr = addr;
+            2'b00: get_next_addr = addr;
             2'b01: 
             begin
                 naddr = addr[ADDR_LENGTH-1:2];
                 naddr = naddr + 1;
-                get_next_addr_wr = {naddr,2'b00};
+                get_next_addr = {naddr,2'b00};
             end
             2'b10: 
             begin
@@ -306,7 +425,7 @@ module mem_axi4_beh
             end
             2'b11: 
             begin
-                get_next_addr_wr = addr + 4;
+                get_next_addr = addr + 4;
                 // synopsys translate_off
                 $display($time,,"%m ERROR un-defined BURST %01x", burst);
                 // synopsys translate_on
@@ -314,7 +433,4 @@ module mem_axi4_beh
         endcase
     end
     endfunction
-
-
-
 endmodule
