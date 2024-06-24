@@ -304,7 +304,6 @@ module axi4_ipbus_bridge
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) 
             axi_bresp_q  <= 2'b10;    // Slave Error 
-        end
         else if (wstate_q == STW_RUN) 
             axi_bresp_q  <= 2'b00;    // Okay 
         else if (wstate_q == STW_WRITE0 && axi_wvalid_i==1'b1) begin

@@ -18,7 +18,6 @@
 // size of memory in byte: 1<<ADDR_LENGTH
 // requires: 'WIDTH_DS' 8-bit BRAM of depth 1<<(ADDR_LENGTH-WIDTH_DSB)
 //----------------------------------------------------------------
-`timescale 1ns/1ns
 
 module mem_axi_dpram_sync
      #(parameter WIDTH_AD =10 // size of memory in byte
