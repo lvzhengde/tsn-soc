@@ -34,6 +34,7 @@
  *    BURST_TYPE_WRAPP_ENABLED   - Burst wrapping type enabled
  * PARAMETERS:
  *    SIZE_IN_BYTES - size of memory in bytes
+ *    ID
 -*/
 
 module mem_axi4
@@ -41,7 +42,8 @@ module mem_axi4
 // Params
 //-----------------------------------------------------------------
 #(
-    parameter SIZE_IN_BYTES      = 1024 
+    parameter SIZE_IN_BYTES      = 1024, 
+    parameter ID                 = 0 
 )
 //-----------------------------------------------------------------
 // Ports
@@ -78,26 +80,28 @@ module mem_axi4
     output [ 31:0]  axi_rdata_o     ,
     output [  1:0]  axi_rresp_o     ,
     output [  3:0]  axi_rid_o       ,
-    output          axi_rlast_o     
+    output          axi_rlast_o     ,
 
+    input           csys_req_i      ,
+    output          csys_ack_o      ,
+    output          c_active_o      
 );
     localparam ADDR_LENGTH = clogb2(SIZE_IN_BYTES);
+
+    assign csys_ack_o = csys_req_i;
+    assign c_active_o = 1'b1;
 
     integer num_reads ;
     integer num_writes;
 
-    reg  [ADDR_LENGTH-1:0]  t_waddr_q ;
-    reg  [31:0] t_wdata_q ;
-    reg  [ 3:0] t_wstrb_q ;
-    reg         t_wen_q   ;
-    reg  [ADDR_LENGTH-1:0]  t_raddr_q ;
-    wire [31:0] t_rdata_w ;
-    reg  [ 3:0] t_rstrb_q ;
-    reg         t_ren_q   ; 
-
     //-----------------------------------------------------------
     // write case
     //-----------------------------------------------------------
+    reg  [ADDR_LENGTH-1:0]  t_waddr_q ;
+    reg  [31:0]   t_wdata_q ;
+    reg  [ 3:0]   t_wstrb_q ;
+    reg           t_wen_q   ;
+
     reg  [ 31:0]  axi_awaddr_q    ;
     reg  [  3:0]  axi_awid_q      ;
     reg  [  7:0]  axi_awlen_q     ;
@@ -217,8 +221,15 @@ module mem_axi4
     //-----------------------------------------------------------
     // read case
     //-----------------------------------------------------------
+    reg  [ADDR_LENGTH-1:0]  t_raddr_q ;
+    wire [31:0]   t_rdata_w ;
+    reg  [ 3:0]   t_rstrb_q ;
+    reg           t_ren_q   ; 
+    reg  [ADDR_LENGTH-1:0]  t_raddr ;
+    reg  [ 3:0]   t_rstrb ;
+    reg           t_ren   ; 
+
     reg  [ 31:0]  axi_araddr_q    ;
-    reg  [  3:0]  axi_arid_q      ;
     reg  [  7:0]  axi_arlen_q     ;
     reg  [  1:0]  axi_arburst_q   ;
     
@@ -230,46 +241,177 @@ module mem_axi4
     reg           axi_rlast_q     ;
     
     reg  [ADDR_LENGTH-1:0] raddr_q; // address of each transfer within a burst
-    reg  [31:0]   rdata_q;
-    reg  [ 3:0]   rstrb_q; // strobe
     reg  [ 7:0]   rbeat_q; // keeps num of transfers within a burst
 
     localparam STR_IDLE   = 2'h0,
-               STR_READ0  = 2'h1,
-               STR_READ1  = 2'h2,
-               STR_END    = 2'h3;
+               STR_READ   = 2'h1,
+               STR_END    = 2'h2;
     
     reg  [ 1:0]   rstate_q;
 
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
-            axi_araddr_q  <= 32'h0  ;
-            axi_arid_q    <= 4'h0  ;
+            axi_araddr_q  <= 32'h0 ;
             axi_arlen_q   <= 8'h0  ;
             axi_arburst_q <= 2'b0  ;
             axi_arready_q <= 1'b0  ;
             axi_rvalid_q  <= 1'b0  ;
-            axi_rdata_q   <= 32'h0  ;
-            axi_rresp_q   <= 2'b0  ;
+            axi_rdata_q   <= 32'h0 ;
+            axi_rresp_q   <= 2'b10 ; //Slave Error
             axi_rid_q     <= 4'h0  ;
             axi_rlast_q   <= 1'b0  ;
-            raddr_q       <= 'h0; 
-            rdata_q       <= 32'h0;
-            rstrb_q       <= 4'h0; 
+            raddr_q       <= 'h0 ; 
             rbeat_q       <= 8'h0; 
-            t_raddr_q     <= 'h0 ;
-            t_rstrb_q     <= 4'h0;
-            t_ren_q       <= 1'b0; 
             num_reads     <=    0;
             rstate_q      <= STR_IDLE;
         end 
         else begin
-    
+            case (rstate_q)
+            STR_IDLE: 
+            begin
+                if ((axi_arvalid_i == 1'b1) && (axi_arready_q == 1'b1)) begin
+                    axi_araddr_q  <= axi_araddr_i  ;
+                    axi_arlen_q   <= axi_arlen_i   ;
+                    axi_arburst_q <= axi_arburst_i ;
+                    axi_arready_q <= 1'b0;
+                    axi_rid_q     <= axi_arid_i ;
+                    axi_rresp_q   <= 2'b00  ; // Okay
+                    axi_rlast_q   <= 1'b0  ;
+                    raddr_q       <= get_next_addr(axi_araddr_i[ADDR_LENGTH-1:0], axi_arburst_i, axi_arlen_i);; 
+                    rbeat_q       <= 8'h0; 
+
+                    rstate_q      <= STR_READ;
+                    num_reads     <= num_reads + 1;
+                end 
+                else begin
+                    axi_arready_q <= 1'b1;
+                end
+            end // STR_IDLE
+            STR_READ :
+            begin
+                if (axi_rready_i == 1'b1) begin
+                    axi_rvalid_q  <= 1'b1  ;
+                    axi_rdata_q   <= t_rdata_w ;
+                    rbeat_q  <= rbeat_q + 1;
+                    raddr_q  <= get_next_addr(raddr_q, axi_arburst_q, axi_arlen_q); 
+
+                    if (rbeat_q >= axi_arlen_q) begin
+                        axi_rresp_q <= 2'b00  ;
+                        axi_rlast_q <= 1'b1   ;
+                        rstate_q    <= STR_END;
+                    end
+                end
+
+            end // STR_READ
+            STR_END: 
+            begin 
+                if (axi_rready_i == 1'b1) begin
+                    axi_rvalid_q  <= 1'b0  ;
+                    axi_rlast_q   <= 1'b0  ;
+                    axi_rdata_q   <= 32'h0 ;
+                    axi_rresp_q   <= 2'b10 ;  //Slave Error
+
+                    axi_arready_q <= 1'b1  ;
+                    rstate_q      <= STR_IDLE;
+                end
+            end // STR_END
+            endcase
         end //if
     end // always
 
+    // AXI read outputs
+    assign axi_arready_o = axi_arready_q ;
+    assign axi_rvalid_o  = axi_rvalid_q  ;
+    assign axi_rdata_o   = axi_rdata_q   ;
+    assign axi_rresp_o   = axi_rresp_q   ;
+    assign axi_rid_o     = axi_rid_q     ;
+    assign axi_rlast_o   = axi_rlast_q   ;
 
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n) begin
+            t_raddr_q     <= 'h0 ;
+            t_rstrb_q     <= 4'h0;
+            t_ren_q       <= 1'b0; 
+        end
+        else begin
+            t_raddr_q     <= t_raddr;
+            t_rstrb_q     <= t_rstrb;
+            t_ren_q       <= t_ren  ; 
+        end
+    end
 
+    always @(*) begin
+        t_raddr <= t_raddr_q ;
+        t_rstrb <= t_rstrb_q ;
+        t_ren   <= t_ren_q   ;
+
+        if ((rstate_q == STR_IDLE) && (axi_arvalid_i == 1'b1) && (axi_arready_q == 1'b1)) begin
+            t_raddr = axi_araddr_i[ADDR_LENGTH-1:0] ;
+            t_rstrb = get_strb(axi_araddr_i[ADDR_LENGTH-1:0]);
+            t_ren   = 1'b1; 
+        end
+        else if ((rstate_q == STR_READ) && (axi_rready_i == 1'b1)) begin
+            t_raddr = raddr_q;
+            t_rstrb = get_strb(raddr_q);
+            t_ren   = 1'b1; 
+        end
+    end
+
+    // synthesis translate_off
+    reg  [8*10-1:0] rstate_ascii="IDLE";
+    always @(*) begin
+        case (rstate_q)
+            STR_IDLE  : rstate_ascii = "IDLE  " ;
+            STR_READ  : rstate_ascii = "READ  " ;
+            STR_END   : rstate_ascii = "END   " ;
+            default   : rstate_ascii = "UNKNOWN";
+        endcase
+    end
+    // synthesis translate_on
+
+    // a sort of dual-port memory with write-first feature
+    mem_axi_dpram_sync 
+    #(
+        .WIDTH_AD   (ADDR_LENGTH ),  // size of memory in byte
+        .WIDTH_DA   (32          )   // width of a line in bytes
+    )
+    u_dpram
+    (
+        .RESETn    (rst_n     ) ,
+        .CLK       (clk       ) ,
+        .WADDR     (t_waddr_q ) ,
+        .WDATA     (t_wdata_q ) ,
+        .WSTRB     (t_wstrb_q ) ,
+        .WEN       (t_wen_q   ) ,
+        .RADDR     (t_raddr   ) ,
+        .RDATA     (t_rdata_w ) ,
+        .RSTRB     (t_rstrb   ) ,
+        .REN       (t_ren     ) 
+    );
+
+    // synopsys translate_off
+    integer abits, depth;
+
+    initial begin
+        depth  = 1 << ADDR_LENGTH;
+        $display("%m INFO %03dK (%06d) byte memory", depth/1024, depth);
+        abits = ADDR_LENGTH - 2;
+        //if (abits > 10) begin
+        //       $display("%m INFO sdpram_8x%02dK should be used", 1<<(abits-10));
+        //end else begin
+        //       $display("%m INFO sdpram_8x%03d should be used", 1<<abits);
+        //end
+        wait (csys_req_i == 1'b1);
+        axi_statistics(ID);
+    end
+
+    task axi_statistics;
+        input integer id;                                                            
+    begin                                                                            
+        $display("mem_axi[%2d] reads=%5d writes=%5d", id, num_reads, num_writes );
+    end                         
+    endtask   
+    // synopsys translate_on
 
 
     function integer clogb2;
@@ -316,6 +458,15 @@ module mem_axi4
                 // synopsys translate_on
             end
         endcase
+    end
+    endfunction
+
+    function  [ 3:0] get_strb;
+        input [ADDR_LENGTH-1:0] addr;
+        reg   [ 3:0]    offset;
+    begin
+         offset = addr[1:0]; //offset = addr%4;
+         get_strb = {4{1'b1}} << offset;
     end
     endfunction
 
