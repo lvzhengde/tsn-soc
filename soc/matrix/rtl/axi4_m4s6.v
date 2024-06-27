@@ -31,6 +31,7 @@
 
 /*+
  * AXI4 bus matrix with 4 master ports and 6 slave ports
+ * TODO: replace shared bus with crossbar for high performance
 -*/
 
 module axi4_m4s6

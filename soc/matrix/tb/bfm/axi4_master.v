@@ -35,7 +35,7 @@
 
 module axi4_master
 #(
-     parameter AXI_ID = 0
+    parameter AXI_ID = 0
 )
 (
     input wire           clk             ,
