@@ -105,6 +105,8 @@ module axi4_master
         wait (rst_n == 1'b1);
         repeat (5) @ (posedge clk);
 
+        #100;
+
         while (busy_i == 1'b1) @(posedge clk);
 
         repeat (5) @(posedge clk);

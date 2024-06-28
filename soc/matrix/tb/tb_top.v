@@ -610,10 +610,130 @@ module tb_top;
     );
 
 
+    //-----------------------------------------------------------------
+    // slave port 1-4 connected to ordinary mem_axi4 (1-4)
+    //-----------------------------------------------------------------
+    generate
+    genvar idy;
+
+    for (idy = 1; idy < NUM_SLV-1; idy = idy+1) begin : BLK_SLV
+        mem_axi4
+        #(
+            .SIZE_IN_BYTES      (1024), 
+            .ID                 (idy ) 
+        )
+        u_mem_axi4
+        (
+            .clk             (clk    ),
+            .rst_n           (rst_n  ),
+        
+            // AXI4 interface
+            .axi_awvalid_i   (slv_awvalid_w [idy]),
+            .axi_awaddr_i    (slv_awaddr_w  [idy]),
+            .axi_awid_i      (slv_awid_w    [idy]),
+            .axi_awlen_i     (slv_awlen_w   [idy]),
+            .axi_awburst_i   (slv_awburst_w [idy]),
+            .axi_wvalid_i    (slv_wvalid_w  [idy]),
+            .axi_wdata_i     (slv_wdata_w   [idy]),
+            .axi_wstrb_i     (slv_wstrb_w   [idy]),
+            .axi_wlast_i     (slv_wlast_w   [idy]),
+            .axi_bready_i    (slv_bready_w  [idy]),
+            .axi_arvalid_i   (slv_arvalid_w [idy]),
+            .axi_araddr_i    (slv_araddr_w  [idy]),
+            .axi_arid_i      (slv_arid_w    [idy]),
+            .axi_arlen_i     (slv_arlen_w   [idy]),
+            .axi_arburst_i   (slv_arburst_w [idy]),
+            .axi_rready_i    (slv_rready_w  [idy]),
+        
+            .axi_awready_o   (slv_awready_w [idy]),
+            .axi_wready_o    (slv_wready_w  [idy]),
+            .axi_bvalid_o    (slv_bvalid_w  [idy]),
+            .axi_bresp_o     (slv_bresp_w   [idy]),
+            .axi_bid_o       (slv_bid_w     [idy]),
+            .axi_arready_o   (slv_arready_w [idy]),
+            .axi_rvalid_o    (slv_rvalid_w  [idy]),
+            .axi_rdata_o     (slv_rdata_w   [idy]),
+            .axi_rresp_o     (slv_rresp_w   [idy]),
+            .axi_rid_o       (slv_rid_w     [idy]),
+            .axi_rlast_o     (slv_rlast_w   [idy]),
+        
+            .csys_req_i      (&done),
+            .csys_ack_o      (     ),
+            .c_active_o      (     )
+        );
+    end // for
+    endgenerate
 
 
+    //-----------------------------------------------------------------
+    // slave port 5 connected to IPBus bridge/ipbus_slave_mem
+    //-----------------------------------------------------------------
+    wire          bus2ip_clk      ;
+    wire          bus2ip_rst_n    ;
+    wire [ 31:0]  bus2ip_addr_w   ;
+    wire [ 31:0]  bus2ip_data_w   ;
+    wire          bus2ip_rd_ce_w  ;  
+    wire          bus2ip_wr_ce_w  ;  
+    wire [ 31:0]  ip2bus_data_w   ;   
 
+    axi4_ipbus_bridge u_ipbus_bridge
+    (
+        .clk             (clk   ),
+        .rst_n           (rst_n ),
+    
+        // AXI4 interface
+        .axi_awvalid_i   (slv_awvalid_w [5]),
+        .axi_awaddr_i    (slv_awaddr_w  [5]),
+        .axi_awid_i      (slv_awid_w    [5]),
+        .axi_awlen_i     (slv_awlen_w   [5]),
+        .axi_awburst_i   (slv_awburst_w [5]),
+        .axi_wvalid_i    (slv_wvalid_w  [5]),
+        .axi_wdata_i     (slv_wdata_w   [5]),
+        .axi_wstrb_i     (slv_wstrb_w   [5]),
+        .axi_wlast_i     (slv_wlast_w   [5]),
+        .axi_bready_i    (slv_bready_w  [5]),
+        .axi_arvalid_i   (slv_arvalid_w [5]),
+        .axi_araddr_i    (slv_araddr_w  [5]),
+        .axi_arid_i      (slv_arid_w    [5]),
+        .axi_arlen_i     (slv_arlen_w   [5]),
+        .axi_arburst_i   (slv_arburst_w [5]),
+        .axi_rready_i    (slv_rready_w  [5]),
+    
+        .axi_awready_o   (slv_awready_w [5]),
+        .axi_wready_o    (slv_wready_w  [5]),
+        .axi_bvalid_o    (slv_bvalid_w  [5]),
+        .axi_bresp_o     (slv_bresp_w   [5]),
+        .axi_bid_o       (slv_bid_w     [5]),
+        .axi_arready_o   (slv_arready_w [5]),
+        .axi_rvalid_o    (slv_rvalid_w  [5]),
+        .axi_rdata_o     (slv_rdata_w   [5]),
+        .axi_rresp_o     (slv_rresp_w   [5]),
+        .axi_rid_o       (slv_rid_w     [5]),
+        .axi_rlast_o     (slv_rlast_w   [5]),
+    
+        //standard ip access bus interface
+        .bus2ip_clk      (bus2ip_clk     ),
+        .bus2ip_rst_n    (bus2ip_rst_n   ),
+        .bus2ip_addr_o   (bus2ip_addr_w  ),
+        .bus2ip_data_o   (bus2ip_data_w  ),
+        .bus2ip_rd_ce_o  (bus2ip_rd_ce_w ),  
+        .bus2ip_wr_ce_o  (bus2ip_wr_ce_w ),  
+        .ip2bus_data_i   (ip2bus_data_w  )    
+    );
 
-
+    ipbus_mem_slave u_ipbus_mem_slave
+    #(
+        .SIZE_IN_BYTES   (1024 ), 
+        .BLOCK_ID        (8'h94)
+    )
+    (
+        .bus2ip_clk      (bus2ip_clk     ),         
+        .bus2ip_rst_n    (bus2ip_rst_n   ),        
+        .bus2ip_addr_i   (bus2ip_addr_w  ),
+        .bus2ip_data_i   (bus2ip_data_w  ),
+        .bus2ip_rd_ce_i  (bus2ip_rd_ce_w ),       
+        .bus2ip_wr_ce_i  (bus2ip_wr_ce_w ),      
+        .ip2bus_data_o   (ip2bus_data_w  ) 
+    );
 
 endmodule
