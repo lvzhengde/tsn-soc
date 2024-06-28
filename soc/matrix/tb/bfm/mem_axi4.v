@@ -82,14 +82,14 @@ module mem_axi4
     output [  3:0]  axi_rid_o       ,
     output          axi_rlast_o     ,
 
-    input           csys_req_i      ,
-    output          csys_ack_o      ,
-    output          c_active_o      
+    input           csysreq_i       ,
+    output          csysack_o       ,
+    output          cactive_o      
 );
     localparam ADDR_LENGTH = clogb2(SIZE_IN_BYTES);
 
-    assign csys_ack_o = csys_req_i;
-    assign c_active_o = 1'b1;
+    assign csysack_o = csysreq_i;
+    assign cactive_o = 1'b1;
 
     integer num_reads ;
     integer num_writes;
@@ -401,7 +401,7 @@ module mem_axi4
         //end else begin
         //       $display("%m INFO sdpram_8x%03d should be used", 1<<abits);
         //end
-        wait (csys_req_i == 1'b1);
+        wait (csysreq_i == 1'b1);
         axi_statistics(ID);
     end
 

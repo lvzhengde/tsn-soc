@@ -604,9 +604,9 @@ module tb_top;
         .axi_rid_o       (slv0_rid_w    ),
         .axi_rlast_o     (slv0_rlast_w  ),
     
-        .csys_req_i      (&done),
-        .csys_ack_o      (     ),
-        .c_active_o      (     )
+        .csysreq_i       (&done),
+        .csysack_o       (     ),
+        .cactive_o       (     )
     );
 
 
@@ -657,9 +657,9 @@ module tb_top;
             .axi_rid_o       (slv_rid_w     [idy]),
             .axi_rlast_o     (slv_rlast_w   [idy]),
         
-            .csys_req_i      (&done),
-            .csys_ack_o      (     ),
-            .c_active_o      (     )
+            .csysreq_i       (&done),
+            .csysack_o       (     ),
+            .cactive_o       (     )
         );
     end // for
     endgenerate
