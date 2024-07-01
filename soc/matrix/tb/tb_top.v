@@ -99,7 +99,7 @@ module tb_top;
     // generate clock and reset
     localparam CLK_PERIOD_HALF = 5;  //100MHz clock
     reg     clk   = 1'b0;   always #(CLK_PERIOD_HALF) clk = ~clk;
-    reg     rst_n = 1'b0;   initial #155 rst_n = 1'b1;
+    reg     rst_n = 1'b0;   //initial #155 rst_n = 1'b1;
 
     task reset;
     begin
