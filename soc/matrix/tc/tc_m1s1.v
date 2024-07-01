@@ -52,17 +52,20 @@ module tc_m1s1;
 
     initial
     begin
+        saddr = 0;
+        delay = 0;
+
         tb_top.reset;
         tb_top.BLK_MST[0].u_axi4_master.busy_o = 1;
 
         //MST 0 to SLV 1
-        saddr = 32'h90000000 + 5;
+        saddr = 32'h90000000 + 4;  //align to 4-bytes boundary
         delay = 0;
         tb_top.BLK_MST[0].u_axi4_master.test_single(saddr, delay);
 
         repeat (50) @ (posedge tb_top.clk);
 
-        saddr = 32'h90000000 + 9;
+        saddr = 32'h90000000 + 8;
         delay = 1;
         tb_top.BLK_MST[0].u_axi4_master.test_single(saddr, delay);
 

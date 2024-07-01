@@ -103,9 +103,9 @@ module tb_top;
 
     task reset;
     begin
-        rst_sys_n    = 0;
+        rst_n    = 0;
         #555 
-        rst_sys_n    = 1;
+        rst_n    = 1;
     end
     endtask 
 
@@ -721,11 +721,12 @@ module tb_top;
         .ip2bus_data_i   (ip2bus_data_w  )    
     );
 
-    ipbus_mem_slave u_ipbus_mem_slave
+    ipbus_mem_slave 
     #(
         .SIZE_IN_BYTES   (1024 ), 
         .BLOCK_ID        (8'h94)
     )
+    u_ipbus_mem_slave
     (
         .bus2ip_clk      (bus2ip_clk     ),         
         .bus2ip_rst_n    (bus2ip_rst_n   ),        

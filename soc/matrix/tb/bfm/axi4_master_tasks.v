@@ -141,7 +141,7 @@ begin
 end
 endtask
 
-integer seed_arid=99;
+integer seed_arid = 99;
 
 task axi_master_read_multiple_outstanding;
     input integer  arnum; // num of multiple outstanding, arnum <= 4
@@ -194,7 +194,7 @@ task axi_master_write;
     
     reg   [ 3:0]  awid;
 begin
-    awid <= AXI_ID;
+    awid = AXI_ID;
     
     @ (posedge clk); 
     fork 
@@ -243,8 +243,6 @@ task axi_master_write_w;
     integer idx;
     integer wdelay;
 begin
-    output reg           axi_wlast_o     ,
-
     addr_reg = addr;
     for (idx = 0; idx < blen; idx = idx+1) begin
         axi_wdata_o <= wdata[idx];
@@ -294,7 +292,7 @@ begin
 end
 endtask
 
-integer seed_awid=9;
+integer seed_awid = 9;
 
 task axi_master_write_multiple_outstanding;
     input integer awnum; // num of multiple outstanding, awnum <= 4

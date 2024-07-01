@@ -463,7 +463,7 @@ module axi4_ipbus_bridge
             t_raddr_q <= next_raddr_q;
             t_ren_q   <= 1'b1;
         end
-        else if (rstate_q == SRT_WAIT && ack_q == 1'b1) begin
+        else if (rstate_q == STR_WAIT && ack_q == 1'b1) begin
             t_ren_q   <= 1'b0;
         end
         else if (rstate_q == STR_READ1 && axi_rready_i == 1'b1) begin
@@ -513,12 +513,12 @@ module axi4_ipbus_bridge
     end
 
     //AXI read outputs
-    assign axi_arready_o <= axi_arready_q ; 
-    assign axi_rvalid_o  <= axi_rvalid_q  ; 
-    assign axi_rdata_o   <= axi_rdata_q   ; 
-    assign axi_rresp_o   <= axi_rresp_q   ; 
-    assign axi_rid_o     <= axi_rid_q     ; 
-    assign axi_rlast_o   <= axi_rlast_q   ; 
+    assign axi_arready_o = axi_arready_q ; 
+    assign axi_rvalid_o  = axi_rvalid_q  ; 
+    assign axi_rdata_o   = axi_rdata_q   ; 
+    assign axi_rresp_o   = axi_rresp_q   ; 
+    assign axi_rid_o     = axi_rid_q     ; 
+    assign axi_rlast_o   = axi_rlast_q   ; 
 
 
     //-----------------------------------------------------------------
@@ -580,7 +580,7 @@ module axi4_ipbus_bridge
     end
 
     //write data
-    wire [ 31:0] pwdata_r;
+    reg  [ 31:0] pwdata_r;
 
     //Notes: read the corresponding data firstly
     always @(*) begin

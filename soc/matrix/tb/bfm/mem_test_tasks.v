@@ -185,7 +185,7 @@ begin
             end
 
             store[idy+b] = wdata[b];
-            a = get_next_addr(a);
+            a = get_next_addr_mem(a);
         end
         axi_master_write(addr, blen, 1, delay);
         idy = idy + blen;
@@ -205,14 +205,14 @@ begin
                                  addr, data, store[idy+b]);
                 error_flag = 1;
             end
-            a = get_next_addr(a);
+            a = get_next_addr_mem(a);
         end
         idy = idy + blen;
     end
 
     if (error == 0)
     $display($time,,"%m mem_test_burst OK for %02d-byte %02d-length from 0x%x to 0x%x",
-                     bnum, blen, start_addr, end_addr);
+                     4, blen, start_addr, end_addr);
 end
 endtask
 
@@ -236,11 +236,11 @@ begin
 end
 endfunction
 
-function  [31:0] get_next_addr;
+function  [31:0] get_next_addr_mem;
     input [31:0] addr;
 begin
-    get_next_addr[ 1:0] = 0;
-    get_next_addr[31:2] = addr[31:2] + 1;
+    get_next_addr_mem[ 1:0] = 0;
+    get_next_addr_mem[31:2] = addr[31:2] + 1;
 end
 endfunction
 

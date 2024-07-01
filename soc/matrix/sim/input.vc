@@ -1,0 +1,20 @@
+// This file typically lists files/flags required by a large project, 
+// e.g. include directories
+../rtl/axi4_arb.v
+../rtl/axi4_ipbus_bridge.v
+../rtl/axi4_m4s6.v
+../rtl/axi4_retime.v
+../rtl/axi4_tap.v
+
+../tb/bfm/axi4_master.v
+../tb/bfm/ipbus_mem_slave.v
+../tb/bfm/mem_axi4_beh.v
+../tb/bfm/mem_axi4.v
+../tb/bfm/mem_axi_dpram_sync.v
+//../tb/bfm/axi4_master_tasks.v
+//../tb/bfm/mem_test_tasks.v
+
+../tb/tb_top.v
+../tc/tc_m1s1.v
+
++incdir+../tb/bfm +libext+.v+.sv+.vh+.svh -y .

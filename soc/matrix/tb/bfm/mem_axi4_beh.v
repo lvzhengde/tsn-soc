@@ -222,11 +222,11 @@ module mem_axi4_beh
     end // always
 
     // AXI write outputs
-    assign axi_awready_o <= axi_awready_q ;
-    assign axi_wready_o  <= axi_wready_q  ;
-    assign axi_bvalid_o  <= axi_bvalid_q  ;
-    assign axi_bresp_o   <= axi_bresp_q   ; 
-    assign axi_bid_o     <= axi_bid_q     ;
+    assign axi_awready_o = axi_awready_q ;
+    assign axi_wready_o  = axi_wready_q  ;
+    assign axi_bvalid_o  = axi_bvalid_q  ;
+    assign axi_bresp_o   = axi_bresp_q   ; 
+    assign axi_bid_o     = axi_bid_q     ;
 
     // synthesis translate_off
     reg  [8*10-1:0] wstate_ascii = "IDLE";
@@ -375,12 +375,12 @@ module mem_axi4_beh
     end // always
 
     // AXI read outputs
-    assign axi_arready_o <=  axi_arready_q ;
-    assign axi_rvalid_o  <=  axi_rvalid_q  ;
-    assign axi_rdata_o   <=  axi_rdata_q   ;
-    assign axi_rresp_o   <=  axi_rresp_q   ;
-    assign axi_rid_o     <=  axi_rid_q     ;
-    assign axi_rlast_o   <=  axi_rlast_q   ;
+    assign axi_arready_o =  axi_arready_q ;
+    assign axi_rvalid_o  =  axi_rvalid_q  ;
+    assign axi_rdata_o   =  axi_rdata_q   ;
+    assign axi_rresp_o   =  axi_rresp_q   ;
+    assign axi_rid_o     =  axi_rid_q     ;
+    assign axi_rlast_o   =  axi_rlast_q   ;
 
      // synthesis translate_off
      reg  [8*10-1:0] rstate_ascii="IDLE";
