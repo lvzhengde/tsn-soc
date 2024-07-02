@@ -5,7 +5,7 @@ default: $(TARGET)
 
 $(TARGET):
 	@echo "# Compiling verilog"
-	iverilog -o $(TARGET).out -s $(TEST_CASE) -f input.vc  
+	iverilog -o $(TARGET).out -s $(TEST_CASE) -f input.vc 
 	@echo "# Run test case $(TEST_CASE)"
 	vvp -n $(TARGET).out 
 

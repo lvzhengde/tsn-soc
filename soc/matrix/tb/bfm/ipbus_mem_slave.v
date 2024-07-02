@@ -67,10 +67,12 @@ module ipbus_mem_slave
     always @(posedge bus2ip_clk or negedge bus2ip_rst_n) begin
         if(!bus2ip_rst_n) begin
             for (i = 0; i < DEPTH; i = i+1) begin
-                mem0[i] <= 0;
-                mem1[i] <= 0;
-                mem2[i] <= 0;
-                mem3[i] <= 0;
+                //only non-delayed assignment to array inside for loops 
+                //supported in verilator
+                mem0[i] = 0;
+                mem1[i] = 0;
+                mem2[i] = 0;
+                mem3[i] = 0;
             end
         end
         else if (bus2ip_wr_ce_i == 1'b1 && bus2ip_addr_i[31:24] == BLOCK_ID)begin

@@ -194,6 +194,7 @@ module mem_axi4
                     wstate_q      <= STW_IDLE;
                 end
             end // STW_RSP
+            default:  wstate_q <= STW_IDLE;
             endcase
         end //if
     end //always
@@ -315,6 +316,7 @@ module mem_axi4
                     rstate_q      <= STR_IDLE;
                 end
             end // STR_END
+            default: rstate_q <= STR_IDLE;
             endcase
         end //if
     end // always

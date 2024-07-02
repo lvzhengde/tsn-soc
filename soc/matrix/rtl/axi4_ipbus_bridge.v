@@ -199,6 +199,7 @@ module axi4_ipbus_bridge
                         next_wstate_r = STW_IDLE;
                 end
             end 
+            default: next_wstate_r = STW_IDLE;
         endcase
     end
 
@@ -395,6 +396,7 @@ module axi4_ipbus_bridge
                 if (axi_rready_i == 1'b1)
                     next_rstate_r = STR_IDLE;
             end
+            default: next_rstate_r = STR_IDLE;
         endcase
     end
 

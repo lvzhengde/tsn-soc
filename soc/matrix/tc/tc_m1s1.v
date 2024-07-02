@@ -33,7 +33,7 @@
  * AXI4 protocol test, 1 master communicate with 1 slave
 -*/
 
-`timescale 1ns/1ns
+//`timescale 1ns/1ns
 
 module tc_m1s1;
     parameter NUM_MST = 4;
@@ -47,20 +47,25 @@ module tc_m1s1;
     tb_top();
 
     //stimulus
+    //MST 0 to SLV 1
     reg  [31:0] saddr;
     reg         delay;
+    reg  [15:0] blen ;
+    integer     random;
 
     initial
     begin
-        saddr = 0;
-        delay = 0;
+        saddr  = 0;
+        delay  = 0;
+        blen   = 0;
+        random = 0;
 
         tb_top.reset;
         tb_top.BLK_MST[0].u_axi4_master.busy_o = 1;
 
         repeat (5) @(posedge tb_top.clk);
 
-        //MST 0 to SLV 1
+        //Single beat tests
         saddr = 32'h90000000 + 4;  //align to 4-bytes boundary
         delay = 0;
         tb_top.BLK_MST[0].u_axi4_master.test_single(saddr, delay);
@@ -73,6 +78,26 @@ module tc_m1s1;
 
         repeat (50) @ (posedge tb_top.clk);
 
+        //Burst tests
+        saddr  = 32'h90000000 + 32'h100;  //align to 4-bytes boundary
+        delay  = 0;
+        random = 0;
+        for (blen = 1; blen <= 16; blen = blen+1) begin
+            tb_top.BLK_MST[0].u_axi4_master.test_burst(saddr, blen, 2'b01, delay, random);
+        end
+
+        repeat (50) @ (posedge tb_top.clk);
+
+        saddr  = 32'h90000000 + 32'h200;  //align to 4-bytes boundary
+        delay  = 1;
+        random = 1;
+        for (blen = 1; blen <= 16; blen = blen+1) begin
+            tb_top.BLK_MST[0].u_axi4_master.test_burst(saddr, blen, 2'b01, delay, random);
+        end
+
+        repeat (50) @ (posedge tb_top.clk);
+
+        //Finish stimulus
         tb_top.BLK_MST[0].u_axi4_master.busy_o = 0;
 
         repeat (50) @(posedge tb_top.clk);

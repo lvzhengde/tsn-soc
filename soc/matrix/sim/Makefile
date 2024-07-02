@@ -6,5 +6,9 @@ default: iverilog
 iverilog:
 	make -f iverilog.mk TEST_CASE=$(TEST_CASE)
 
+lint:
+	make -f verilator.mk TEST_CASE=$(TEST_CASE)
+
 clean:
-	make -f iverilog.mk $@
+	@make -f iverilog.mk $@
+	@make -f verilator.mk $@

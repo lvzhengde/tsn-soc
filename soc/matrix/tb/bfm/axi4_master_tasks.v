@@ -79,22 +79,22 @@ task axi_master_read_ar;
     input [15:0]  blen ; // burst length: 1, 2, ...
     input [ 1:0]  burst; // 0:fixed, 1:incr, 2:wrap
 begin
-    axi_arid_o    <= arid;
-    axi_araddr_o  <= addr; 
+    axi_arid_o    = arid;
+    axi_araddr_o  = addr; 
     /* verilator lint_off WIDTH */
-    axi_arlen_o   <= (blen - 1);
+    axi_arlen_o   = (blen - 1);
     /* verilator lint_on WIDTH */
-    axi_arburst_o <= burst; 
-    axi_arvalid_o <= 1'b1;  
+    axi_arburst_o = burst; 
+    axi_arvalid_o = 1'b1;  
 
     @ (posedge clk);
     while (axi_arready_i == 1'b0) @ (posedge clk);
 
-    axi_arid_o    <= 0;
-    axi_araddr_o  <= ~0; 
-    axi_arlen_o   <= 0;
-    axi_arburst_o <= 0; 
-    axi_arvalid_o <= 1'b0;  
+    axi_arid_o    = 0;
+    axi_araddr_o  = ~0; 
+    axi_arlen_o   = 0;
+    axi_arburst_o = 0; 
+    axi_arvalid_o = 1'b0;  
 end
 endtask
 
@@ -106,7 +106,7 @@ task axi_master_read_r;
     integer idx;
     integer rdelay;
 begin
-    axi_rready_o <= 1;    
+    axi_rready_o = 1;    
 
     for (idx = 0; idx < blen; idx = idx+1) begin
         @ (posedge clk); 
@@ -130,14 +130,14 @@ begin
             if (delay) begin
                 rdelay = {$random(seed_tread)}%5;
                 if (rdelay > 0) begin
-                    axi_rready_o <= 0;    
+                    axi_rready_o = 0;    
                     repeat (rdelay) @ (posedge clk); 
-                    axi_rready_o <= 1;    
+                    axi_rready_o = 1;    
                 end
             end
         end
     end
-    axi_rready_o <= 0;    
+    axi_rready_o = 0;    
 end
 endtask
 
@@ -213,22 +213,22 @@ task axi_master_write_aw;
     input [15:0]  blen ; // burst length: 1, 2, ...
     input [ 1:0]  burst; // 0:fixed, 1:incr, 2:wrap
 begin
-    axi_awid_o    <= awid ;
-    axi_awaddr_o  <= addr;
+    axi_awid_o    = awid ;
+    axi_awaddr_o  = addr;
     /* verilator lint_off WIDTH */
-    axi_awlen_o   <= blen - 1;
+    axi_awlen_o   = blen - 1;
     /* verilator lint_on WIDTH */
-    axi_awburst_o <= burst;
-    axi_awvalid_o <= 1'b1;
+    axi_awburst_o = burst;
+    axi_awvalid_o = 1'b1;
 
     @ (posedge clk); 
     while (axi_awready_i == 1'b0) @ (posedge clk);
 
-    axi_awid_o    <= 0 ;
-    axi_awaddr_o  <= ~0;
-    axi_awlen_o   <= 0;
-    axi_awburst_o <= 0;
-    axi_awvalid_o <= 1'b0;
+    axi_awid_o    = 0 ;
+    axi_awaddr_o  = ~0;
+    axi_awlen_o   = 0;
+    axi_awburst_o = 0;
+    axi_awvalid_o = 1'b0;
 end
 endtask
 
@@ -245,15 +245,15 @@ task axi_master_write_w;
 begin
     addr_reg = addr;
     for (idx = 0; idx < blen; idx = idx+1) begin
-        axi_wdata_o <= wdata[idx];
-        axi_wstrb_o <= get_strb(addr_reg);
+        axi_wdata_o = wdata[idx];
+        axi_wstrb_o = get_strb(addr_reg);
      
         if (idx == (blen-1))
-            axi_wlast_o <= 1'b1;
+            axi_wlast_o = 1'b1;
         else  
-            axi_wlast_o <= 1'b0;
+            axi_wlast_o = 1'b0;
 
-        axi_wvalid_o <= 1'b1;
+        axi_wvalid_o = 1'b1;
 
         @ (posedge clk); 
         while (axi_wready_i == 1'b0) @ (posedge clk);
@@ -262,27 +262,27 @@ begin
         if (delay) begin
             wdelay = {$random(seed_twrite)}%5;
             if (wdelay > 0) begin
-                axi_wdata_o  <= ~0;
-                axi_wlast_o  <= 1'b0;
-                axi_wvalid_o <= 1'b0;
+                axi_wdata_o  = ~0;
+                axi_wlast_o  = 1'b0;
+                axi_wvalid_o = 1'b0;
                 repeat (wdelay) @ (posedge clk);
             end
         end
     end
 
-    axi_wdata_o  <= ~0;
-    axi_wlast_o  <= 1'b0;
-    axi_wvalid_o <= 1'b0;
+    axi_wdata_o  = ~0;
+    axi_wlast_o  = 1'b0;
+    axi_wvalid_o = 1'b0;
 end
 endtask
 
 task axi_master_write_b;
     input [3:0] awid ;
 begin
-    axi_bready_o <= 1'b1;
+    axi_bready_o = 1'b1;
     @ (posedge clk); 
     while (axi_bvalid_i == 1'b0) @ (posedge clk);
-    axi_bready_o <= 1'b0;
+    axi_bready_o = 1'b0;
     if (axi_bresp_i != 2'b00) begin
         $display($time,,"%m ERROR WR BRESP no-ok 0x%02x", axi_bresp_i);
     end
