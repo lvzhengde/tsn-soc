@@ -298,7 +298,7 @@ module mem_axi4_beh
                     axi_arburst_q <= axi_arburst_i ;
                     axi_arready_q <= 1'b0;
                     axi_rresp_q   <= 2'b00  ; //Okay 
-                    axi_rid_q     <= axi_rid_i  ;
+                    axi_rid_q     <= axi_arid_i  ;
                     raddr_q       <= axi_araddr_i[ADDR_LENGTH-1:0]; 
                     if (P_DELAY_READ_SETUP == 0) begin
                         axi_rdata_q  <= mem[axi_araddr_i[ADDR_LENGTH-1:2]];

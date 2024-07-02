@@ -75,11 +75,11 @@ module axi4_master
 );
     parameter AXI_ID = ID << 2;
 
-    `include "axi4_master_tasks.v"
-    `include "mem_test_tasks.v"
-    
     reg  [ 31:0]  rdata[0:1023]; 
     reg  [ 31:0]  wdata[0:1023]; 
+
+    `include "axi4_master_tasks.v"
+    `include "mem_test_tasks.v"
 
     reg  done = 1'b0;
 
