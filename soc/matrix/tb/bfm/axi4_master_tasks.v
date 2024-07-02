@@ -41,7 +41,7 @@ integer num_of_writes; initial num_of_writes = 0;
 task axi_statistics;
     input integer id;
 begin
-    $display("Master[%2d] reads=%5d writes=%5d", id, num_of_reads, num_of_writes);
+    $display("Master[%2d] reads =%5d,  writes =%5d", id, num_of_reads, num_of_writes);
 end
 endtask
 
@@ -61,7 +61,7 @@ task axi_master_read;
     
     reg   [ 3:0]  arid;
 begin
-    arid <= AXI_ID;
+    arid = AXI_ID;
 
     @(posedge clk); 
     fork 

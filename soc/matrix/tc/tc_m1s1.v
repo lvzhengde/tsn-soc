@@ -58,6 +58,8 @@ module tc_m1s1;
         tb_top.reset;
         tb_top.BLK_MST[0].u_axi4_master.busy_o = 1;
 
+        repeat (5) @(posedge tb_top.clk);
+
         //MST 0 to SLV 1
         saddr = 32'h90000000 + 4;  //align to 4-bytes boundary
         delay = 0;
@@ -90,7 +92,7 @@ module tc_m1s1;
             wait(tb_top.done[idz] == 1'b1);
         end
 
-        repeat (5) @ (posedge tb_top.clk);
+        repeat (50) @ (posedge tb_top.clk);
         $finish;
     end
 

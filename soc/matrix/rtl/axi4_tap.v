@@ -434,12 +434,16 @@ module axi4_tap
     reg [`ADDR_SEL_W-1:0]  write_port_r;
 
     always @(*) begin
-        write_port_r = `ADDR_SEL_W'd0;
-        if ((mst_awaddr_i & SLV1_MASK) == SLV1_ADDR) write_port_r = `ADDR_SEL_W'd1;
-        if ((mst_awaddr_i & SLV2_MASK) == SLV2_ADDR) write_port_r = `ADDR_SEL_W'd2;
-        if ((mst_awaddr_i & SLV3_MASK) == SLV3_ADDR) write_port_r = `ADDR_SEL_W'd3;
-        if ((mst_awaddr_i & SLV4_MASK) == SLV4_ADDR) write_port_r = `ADDR_SEL_W'd4;
-        if ((mst_awaddr_i & SLV5_MASK) == SLV5_ADDR) write_port_r = `ADDR_SEL_W'd5;
+        write_port_r = write_port_q;
+
+        if (mst_awvalid_i) begin
+            write_port_r = `ADDR_SEL_W'd0;
+            if ((mst_awaddr_i & SLV1_MASK) == SLV1_ADDR) write_port_r = `ADDR_SEL_W'd1;
+            if ((mst_awaddr_i & SLV2_MASK) == SLV2_ADDR) write_port_r = `ADDR_SEL_W'd2;
+            if ((mst_awaddr_i & SLV3_MASK) == SLV3_ADDR) write_port_r = `ADDR_SEL_W'd3;
+            if ((mst_awaddr_i & SLV4_MASK) == SLV4_ADDR) write_port_r = `ADDR_SEL_W'd4;
+            if ((mst_awaddr_i & SLV5_MASK) == SLV5_ADDR) write_port_r = `ADDR_SEL_W'd5;
+        end
     end
 
     wire write_incr_w = (mst_awvalid_i && mst_awready_o);

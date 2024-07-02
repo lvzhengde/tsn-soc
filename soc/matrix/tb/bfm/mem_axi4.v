@@ -341,9 +341,9 @@ module mem_axi4
     end
 
     always @(*) begin
-        t_raddr <= t_raddr_q ;
-        t_rstrb <= t_rstrb_q ;
-        t_ren   <= t_ren_q   ;
+        t_raddr = t_raddr_q ;
+        t_rstrb = t_rstrb_q ;
+        t_ren   = t_ren_q   ;
 
         if ((rstate_q == STR_IDLE) && (axi_arvalid_i == 1'b1) && (axi_arready_q == 1'b1)) begin
             t_raddr = axi_araddr_i[ADDR_LENGTH-1:0] ;
@@ -408,7 +408,7 @@ module mem_axi4
     task axi_statistics;
         input integer id;                                                            
     begin                                                                            
-        $display("mem_axi[%2d] reads=%5d writes=%5d", id, num_reads, num_writes );
+        $display("mem_axi[%2d] reads =%5d,  writes =%5d", id, num_reads, num_writes );
     end                         
     endtask   
     // synopsys translate_on

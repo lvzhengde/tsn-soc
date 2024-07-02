@@ -424,7 +424,7 @@ module tb_top;
     for (idx = 0; idx < NUM_MST; idx = idx + 1) begin : BLK_MST
         axi4_master 
         #(
-            .AXI_ID    (idx << 2) 
+            .ID    (idx) 
         )
         u_axi4_master
         (

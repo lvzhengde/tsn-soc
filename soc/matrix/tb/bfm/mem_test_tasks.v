@@ -49,7 +49,7 @@ task test_single;
     input [31:0]  addr;
     input         delay;
 begin
-     wdata[0] = {(16){AXI_ID[3:2]}} + 1;
+     wdata[0] = $random; //{(16){ID[1:0]}} + 1;
      axi_master_write(addr, 1, 1, delay);
      axi_master_read (addr, 1, 1, delay);
      axi_master_rmw  (addr,       delay);
@@ -76,7 +76,7 @@ begin
         offset     = loc[1:0];
 
         if (random == 0) begin
-            wdata[ind] = {(16){AXI_ID[3:2]}} + ind;
+            wdata[ind] = {(16){ID[1:0]}} + ind;
         end 
         else begin
             for (w =0; w < 4; w = w+1) begin

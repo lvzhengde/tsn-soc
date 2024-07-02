@@ -35,7 +35,7 @@
 
 module axi4_master
 #(
-    parameter AXI_ID = 0
+    parameter ID = 0
 )
 (
     input wire           clk             ,
@@ -73,6 +73,8 @@ module axi4_master
     input wire           busy_i          ,
     output reg           busy_o
 );
+    parameter AXI_ID = ID << 2;
+
     `include "axi4_master_tasks.v"
     `include "mem_test_tasks.v"
     
@@ -112,7 +114,7 @@ module axi4_master
         repeat (5) @(posedge clk);
 
         done = 1'b1;
-        axi_statistics(AXI_ID);
+        axi_statistics(ID);
     end
 
 endmodule
