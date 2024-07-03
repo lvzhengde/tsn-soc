@@ -1,13 +1,13 @@
-TEST_CASE ?= tc_m1s1
+TC ?= tc_m1s1
 
 #make rules
 default: iverilog
 
 iverilog:
-	make -f iverilog.mk TEST_CASE=$(TEST_CASE)
+	make -f iverilog.mk TC=$(TC)
 
 lint:
-	make -f verilator.mk TEST_CASE=$(TEST_CASE)
+	make -f verilator.mk TC=$(TC)
 
 clean:
 	@make -f iverilog.mk $@
