@@ -17,5 +17,6 @@
 ../tb/tb_top.v
 ../tc/tc_m1s1.v
 ../tc/tc_retime.v
+../tc/tc_ipbus.v
 
 +incdir+../tb/bfm +libext+.v+.sv+.vh+.svh -y .
