@@ -566,8 +566,8 @@ module tb_top;
 
     mem_axi4
     #(
-        .SIZE_IN_BYTES      (1024), 
-        .ID                 (0   ) 
+        .SIZE_IN_BYTES      (1024*1024), //emulate external memory device, set to a large size
+        .ID                 (0       ) 
     )
     u_mem_axi4_0
     (

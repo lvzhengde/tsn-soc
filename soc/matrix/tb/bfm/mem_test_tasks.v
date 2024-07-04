@@ -99,14 +99,14 @@ begin
         offset = loc[1:0];
         mask   = patt << (8*offset);
         if ((wdata[ind] & mask) !== (rdata[ind] & mask)) begin
-            $display("%0t %m mismatch A:0x%x D:0x%x, but 0x%x expected %0d-byte:%0d-leng",
+            $display("%0t %m mismatch A:0x%x D:0x%x, but 0x%x expected %0d-byte width: %0d-length",
             $time, addr, rdata[ind]&mask, wdata[ind]&mask, 4, blen);
             error = error + 1;
         end
         loc = loc + 4;
     end
-    if (error==0) $display($time,,"%m test_burst %0d-byte:%0d-leng OK", 4, blen);
-    else          $display($time,,"%m test_burst %0d-byte:%0d-leng error %0d", 4, blen, error);
+    if (error==0) $display($time,,"%m test_burst %0d-byte width: %0d-length OK", 4, blen);
+    else          $display($time,,"%m test_burst %0d-byte width: %0d-length error %0d", 4, blen, error);
 end
 endtask
 
