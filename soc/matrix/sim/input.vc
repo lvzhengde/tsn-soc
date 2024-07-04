@@ -20,5 +20,6 @@
 ../tc/tc_ipbus.v
 ../tc/tc_m4s4.v
 ../tc/tc_m4s1.v
+../tc/tc_misaligned.v
 
 +incdir+../tb/bfm +libext+.v+.sv+.vh+.svh -y .
