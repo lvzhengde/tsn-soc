@@ -30,12 +30,13 @@
 -*/
 
 /*+
- * AXI4 protocol test, 1 master communicate with 1 slave
+ * AXI4 protocol test
+ * MST 0-3 to SLV 1-4
 -*/
 
 //`timescale 1ns/1ns
 
-module tc_m1s1;
+module tc_m4s4;
     parameter NUM_MST = 4;
     parameter NUM_SLV = 6;
 
@@ -46,64 +47,58 @@ module tc_m1s1;
     )
     tb_top();
 
-    //stimulus
-    //MST 0 to SLV 1
-    reg  [31:0] saddr;
-    reg         delay;
-    reg  [15:0] blen ;
-    integer     random;
 
-    initial
-    begin
-        saddr  = 0;
-        delay  = 0;
-        blen   = 0;
-        random = 0;
+    generate
+    genvar idx;
 
-        tb_top.reset;
-        tb_top.BLK_MST[0].u_axi4_master.busy_o = 1;
+    for (idx = 0; idx < NUM_MST; idx = idx + 1) begin : BLK_STIM
+        //stimulus
+        reg  [31:0] saddr;
+        reg         delay;
+        reg  [15:0] blen ;
+        integer     random;
 
-        repeat (5) @(posedge tb_top.clk);
+        initial
+        begin 
+            saddr  = 0;
+            delay  = 0;
+            blen   = 0;
+            random = 0;
 
-        //Single beat tests
-        saddr = 32'h90000000 + 4;  //align to 4-bytes boundary
-        delay = 0;
-        tb_top.BLK_MST[0].u_axi4_master.test_single(saddr, delay);
+            tb_top.reset;
+            tb_top.BLK_MST[idx].u_axi4_master.busy_o = 1;
 
-        repeat (50) @ (posedge tb_top.clk);
+            repeat (50) @ (posedge tb_top.clk);
 
-        saddr = 32'h90000000 + 8;
-        delay = 1;
-        tb_top.BLK_MST[0].u_axi4_master.test_single(saddr, delay);
+            //Burst tests
+            saddr  = {{4'h9, idx[3:0]}, 24'h0} + 32'h100;  //align to 4-bytes boundary
+            delay  = 0;
+            random = 0;
+            for (blen = 1; blen <= 16; blen = blen+1) begin
+                tb_top.BLK_MST[idx].u_axi4_master.test_burst(saddr, blen, 2'b01, delay, random);
+            end
 
-        repeat (50) @ (posedge tb_top.clk);
+            repeat (50) @ (posedge tb_top.clk);
 
-        //Burst tests
-        saddr  = 32'h90000000 + 32'h100;  //align to 4-bytes boundary
-        delay  = 0;
-        random = 0;
-        for (blen = 1; blen <= 16; blen = blen+1) begin
-            tb_top.BLK_MST[0].u_axi4_master.test_burst(saddr, blen, 2'b01, delay, random);
+            saddr  = {{4'h9, idx[3:0]}, 24'h0} + 32'h200;  //align to 4-bytes boundary
+            delay  = 1;
+            random = 1+idx;
+            for (blen = 1; blen <= 16; blen = blen+1) begin
+                random = random + 1;
+                tb_top.BLK_MST[idx].u_axi4_master.test_burst(saddr, blen, 2'b01, delay, random);
+            end
+
+            repeat (50) @ (posedge tb_top.clk);
+
+            //Finish stimulus
+            tb_top.BLK_MST[idx].u_axi4_master.busy_o = 0;
+
+            repeat (50) @(posedge tb_top.clk);
+
+            while (tb_top.BLK_MST[idx].u_axi4_master.busy_i == 1'b1) @(posedge tb_top.clk);
         end
-
-        repeat (50) @ (posedge tb_top.clk);
-
-        saddr  = 32'h90000000 + 32'h200;  //align to 4-bytes boundary
-        delay  = 1;
-        random = 1;
-        for (blen = 1; blen <= 16; blen = blen+1) begin
-            tb_top.BLK_MST[0].u_axi4_master.test_burst(saddr, blen, 2'b01, delay, random);
-        end
-
-        repeat (50) @ (posedge tb_top.clk);
-
-        //Finish stimulus
-        tb_top.BLK_MST[0].u_axi4_master.busy_o = 0;
-
-        repeat (50) @(posedge tb_top.clk);
-
-        while (tb_top.BLK_MST[0].u_axi4_master.busy_i == 1'b1) @(posedge tb_top.clk);
-    end
+    end //for
+    endgenerate
 
     //wait done signals 
     integer idz;
@@ -119,15 +114,15 @@ module tc_m1s1;
 
         repeat (50) @ (posedge tb_top.clk);
 
-        $display("MST 0 to SLV 1 Test Finished!!!");
+        $display("MST 0-3 to SLV 1-4 Test Finished!!!");
         $finish;
     end
 
     //dump waveform to vcd file
     initial
     begin
-        $dumpfile("m1s1.vcd");
-        $dumpvars(0, tc_m1s1);
+        $dumpfile("m4s4.vcd");
+        $dumpvars(0, tc_m4s4);
         $dumpon;
         //$dumpoff;
     end

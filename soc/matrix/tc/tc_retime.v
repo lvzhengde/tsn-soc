@@ -120,6 +120,8 @@ module tc_retime;
         end
 
         repeat (50) @ (posedge tb_top.clk);
+
+        $display("AXI Retiming Test Finished!!!");
         $finish;
     end
 
