@@ -1,6 +1,12 @@
 elfFile = uart
 waveFile = uartWave
 
+default: run
+
+run:
+	iverilog -o $(elfFile).out -s testcase -f comp.f  
+	vvp -n $(elfFile).out -fst
+
 testcase:
 	iverilog -o $(elfFile).out -s testcase -f comp.f  
 

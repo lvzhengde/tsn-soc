@@ -57,4 +57,5 @@ module baud_generator(
             en_16x_baud_o <= 1'b0;
         end
     end
+
 endmodule
