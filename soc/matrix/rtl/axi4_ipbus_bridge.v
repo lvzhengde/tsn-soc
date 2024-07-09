@@ -634,7 +634,7 @@ module axi4_ipbus_bridge
     assign bus2ip_rst_n   = rst_n;
     assign bus2ip_addr_o  = bus2ip_addr_q ;
     assign bus2ip_data_o  = bus2ip_data_q ;
-    assign bus2ip_rd_ce_o = 1'b1;            //always read active
+    assign bus2ip_rd_ce_o = (grant_read_q || grant_write_q) ? 1'b1 : 1'b0;            
     assign bus2ip_wr_ce_o = bus2ip_wr_ce_q;  
 
     //-------------------------------------------------------------

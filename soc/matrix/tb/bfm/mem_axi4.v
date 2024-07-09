@@ -357,6 +357,11 @@ module mem_axi4
             t_rstrb = get_strb(raddr_q);
             t_ren   = 1'b1; 
         end
+        else if ((rstate_q == STR_END) && (axi_rready_i == 1'b1)) begin
+            t_raddr = 'h0;
+            t_rstrb = 4'h0;
+            t_ren   = 1'b0; 
+        end
     end
 
     // synthesis translate_off
