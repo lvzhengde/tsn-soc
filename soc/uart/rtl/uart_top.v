@@ -204,7 +204,7 @@ module uart_top (
         .clk                      (clk    ),
         .rst_n                    (rst_n  ),              
 
-        //register/memory access interface
+        //register access interface
         .waddr_i                  (waddr_w ),
         .wdata_i                  (wdata_w ),
         .wstrb_i                  (wstrb_w ),
@@ -275,7 +275,7 @@ module uart_top (
         .slv_rid_o             (slv_rid_o    ),
         .slv_rlast_o           (slv_rlast_o  ),
 
-        //register/memory access interface
+        //register access interface
         .waddr_o               (waddr_w   ),
         .wdata_o               (wdata_w   ),
         .wstrb_o               (wstrb_w   ),

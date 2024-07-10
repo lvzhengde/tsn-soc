@@ -38,7 +38,7 @@ module uart_registers (
     input           clk     ,
     input           rst_n   ,      
 
-    //register/memory access interface
+    //register access interface
     input  [31:0]   waddr_i , 
     input  [31:0]   wdata_i , 
     input  [ 3:0]   wstrb_i , 
@@ -84,7 +84,7 @@ module uart_registers (
     reg           reset_buffer_q  ;  
     reg  [15:0]   baud_config_q   ;
 
-    reg           slv_read_q  ;
+    reg           slv_read    ;
     reg  [ 7:0]   slv_wdata_q ;
     reg           slv_write_q ;
 
@@ -96,6 +96,7 @@ module uart_registers (
 
     always @(*) begin
         rdata[31:0] = 32'h0;
+        slv_read    = 1'b0 ;
 
         if (ren_i == 1'b1 && raddr_i[31:8] == BASEADDR) begin
           case (raddr_i[7:0])
@@ -110,8 +111,11 @@ module uart_registers (
             8'h0c:    
                 rdata[31:0] = {24'h0, slv_wdata_q[7:0]};  //uart write data
             8'h10:    
+            begin
                 rdata[31:0] = {19'h0, rx_buffer_data_present_i, rx_buffer_full_i, rx_buffer_hfull_i,
                                rx_buffer_afull_i, rx_buffer_aempty_i, slv_rdata_i[7:0]};  //uart read data with status info
+                slv_read    = 1'b1;
+            end
             default:  
                 rdata[31:0] = 32'h0;
           endcase
@@ -122,10 +126,11 @@ module uart_registers (
         if(!rst_n)
             rdata_q <= 32'h0;
         else
-            rdata_q <= rdata & rmask_w;
+            rdata_q <= rdata_o;
     end
 
-    assign rdata_o = rdata_q;
+    assign rdata_o    = (ren_i == 1'b1) ? (rdata & rmask_w) : rdata_q; //no delay and skid buffer
+    assign slv_read_o = slv_read;
 
     //write operation
     wire [31:0] wmask_w = {{8{wstrb_i[3]}}, {8{wstrb_i[2]}}, {8{wstrb_i[1]}}, {8{wstrb_i[0]}}};
@@ -176,5 +181,9 @@ module uart_registers (
             reset_buffer_q <= 1'b0 ;
         end
     end
+
+    assign slv_write_o    = slv_write_q;
+    assign slv_wdata_o    = slv_wdata_q;
+    assign reset_buffer_o = reset_buffer_q;
 
 endmodule
