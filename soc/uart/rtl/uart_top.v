@@ -129,7 +129,8 @@ module uart_top (
     wire  [15:0]  baud_config_w  ;
 
 
-    uart_rx uart_rx(
+    uart_rx uart_rx 
+    (
         .clk                   (clk   ),
         .rst_n                 (rst_n ),     
                               
@@ -151,7 +152,8 @@ module uart_top (
     );
 
 
-    uart_tx uart_tx(
+    uart_tx uart_tx 
+    (
         .clk                   (clk   ) , 
         .rst_n                 (rst_n ) , 
                                 
@@ -172,7 +174,8 @@ module uart_top (
     );
 
 
-    baud_generator  baud_generator(
+    baud_generator  baud_generator 
+    (
         .clk                   (clk  )  ,
         .rst_n                 (rst_n)  ,
                                
@@ -196,7 +199,8 @@ module uart_top (
     wire           slv_write_w ;
 
       
-    uart_registers  uart_registers(
+    uart_registers  uart_registers 
+    (
         .clk                      (clk    ),
         .rst_n                    (rst_n  ),              
 
@@ -235,5 +239,113 @@ module uart_top (
         .slv_wdata_o              (slv_wdata_w ),
         .slv_write_o              (slv_write_w )
     );
+
+    uart_axi_slv uart_axi_slv 
+    (
+        .clk                   (clk   ),
+        .rst_n                 (rst_n ),     
+
+        // AXI4 bus slave interface
+        .slv_awvalid_i         (slv_awvalid_i),
+        .slv_awaddr_i          (slv_awaddr_i ),
+        .slv_awid_i            (slv_awid_i   ),
+        .slv_awlen_i           (slv_awlen_i  ),
+        .slv_awburst_i         (slv_awburst_i),
+        .slv_wvalid_i          (slv_wvalid_i ),
+        .slv_wdata_i           (slv_wdata_i  ),
+        .slv_wstrb_i           (slv_wstrb_i  ),
+        .slv_wlast_i           (slv_wlast_i  ),
+        .slv_bready_i          (slv_bready_i ),
+        .slv_arvalid_i         (slv_arvalid_i),
+        .slv_araddr_i          (slv_araddr_i ),
+        .slv_arid_i            (slv_arid_i   ),
+        .slv_arlen_i           (slv_arlen_i  ),
+        .slv_arburst_i         (slv_arburst_i),
+        .slv_rready_i          (slv_rready_i ),
+
+        .slv_awready_o         (slv_awready_o),
+        .slv_wready_o          (slv_wready_o ),
+        .slv_bvalid_o          (slv_bvalid_o ),
+        .slv_bresp_o           (slv_bresp_o  ),
+        .slv_bid_o             (slv_bid_o    ),
+        .slv_arready_o         (slv_arready_o),
+        .slv_rvalid_o          (slv_rvalid_o ),
+        .slv_rdata_o           (slv_rdata_o  ),
+        .slv_rresp_o           (slv_rresp_o  ),
+        .slv_rid_o             (slv_rid_o    ),
+        .slv_rlast_o           (slv_rlast_o  ),
+
+        //register/memory access interface
+        .waddr_o               (waddr_w   ),
+        .wdata_o               (wdata_w   ),
+        .wstrb_o               (wstrb_w   ),
+        .wen_o                 (wen_w     ),
+        .raddr_o               (raddr_w   ),
+        .rdata_i               (rdata_w   ),
+        .rstrb_o               (rstrb_w   ),
+        .ren_o                 (ren_w     )
+    );
+
+    wire  [ 7:0]   mst_rdata_w ;
+    wire           mst_read_w  ;
+    wire  [ 7:0]   mst_wdata_w ;
+    wire           mst_write_w ;
+
+
+    uart_axi_mst uart_axi_mst 
+    (
+        .clk                      (clk   ),
+        .rst_n                    (rst_n ),     
+
+        // AXI4 bus master interface
+        .mst_awvalid_o            (mst_awvalid_o),  
+        .mst_awaddr_o             (mst_awaddr_o ),   
+        .mst_awid_o               (mst_awid_o   ),   
+        .mst_awlen_o              (mst_awlen_o  ),   
+        .mst_awburst_o            (mst_awburst_o),  
+        .mst_wvalid_o             (mst_wvalid_o ),   
+        .mst_wdata_o              (mst_wdata_o  ),  
+        .mst_wstrb_o              (mst_wstrb_o  ),  
+        .mst_wlast_o              (mst_wlast_o  ),  
+        .mst_bready_o             (mst_bready_o ),   
+        .mst_arvalid_o            (mst_arvalid_o),    
+        .mst_araddr_o             (mst_araddr_o ),   
+        .mst_arid_o               (mst_arid_o   ),   
+        .mst_arlen_o              (mst_arlen_o  ),  
+        .mst_arburst_o            (mst_arburst_o),    
+        .mst_rready_o             (mst_rready_o ),   
+
+        .mst_awready_i            (mst_awready_i),   
+        .mst_wready_i             (mst_wready_i ),  
+        .mst_bvalid_i             (mst_bvalid_i ),  
+        .mst_bresp_i              (mst_bresp_i  ), 
+        .mst_bid_i                (mst_bid_i    ),
+        .mst_arready_i            (mst_arready_i),   
+        .mst_rvalid_i             (mst_rvalid_i ),  
+        .mst_rdata_i              (mst_rdata_i  ), 
+        .mst_rresp_i              (mst_rresp_i  ), 
+        .mst_rid_i                (mst_rid_i    ), 
+        .mst_rlast_i              (mst_rlast_i  ), 
+
+        //uart rx interface
+        .mst_rdata_i              (mst_rdata_w             ),
+        .mst_read_o               (mst_read_w              ),
+        .rx_buffer_data_present_i (rx_buffer_data_present_w),
+
+        //uart tx interface
+        .mst_wdata_o              (mst_wdata_w      ),
+        .mst_write_o              (mst_write_w      ),      
+        .tx_buffer_full_i         (tx_buffer_full_w ),
+        .tx_buffer_afull_i        (tx_buffer_afull_w)
+    );
+
+
+    // Selection of UART operator
+    assign rx_read_buffer_w  = (uart_mst_i == 1'b1) ? mst_read_w : slv_read_w;
+    assign tx_write_buffer_w = (uart_mst_i == 1'b1) ? mst_write_w : slv_write_w;
+    assign tx_data_in_w      = (uart_mst_i == 1'b1) ? mst_wdata_w : slv_wdata_w;
+
+    assign mst_rdata_w = rx_data_out_w;
+    assign slv_rdata_w = rx_data_out_w;
 
 endmodule
