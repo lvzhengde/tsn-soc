@@ -228,7 +228,7 @@ module emac_rx_fifo (
     end
                         
     //Gray to binary address--read address
-    always @(posedge clk_mac or negedge rst_n) begin : UNGRAY_READ
+    always @(*) begin : UNGRAY_READ
         integer i;
 
         add_rd_ungray[`EMAC_RXFF_AWIDTH-1] = add_rd_gray_d2[`EMAC_RXFF_AWIDTH-1];   
@@ -588,7 +588,7 @@ module emac_rx_fifo (
     end
 
     //binary address to Gray address--read
-    always @(posedge clk_sys or negedge rst_n) begin : GRAY_READ
+    always @(*) begin : GRAY_READ
         integer i;
 
         add_rd_gray[`EMAC_RXFF_AWIDTH-1] = add_rd[`EMAC_RXFF_AWIDTH-1];
