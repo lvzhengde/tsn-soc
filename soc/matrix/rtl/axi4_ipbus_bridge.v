@@ -582,17 +582,12 @@ module axi4_ipbus_bridge
     end
 
     //write data
-    reg  [ 31:0] pwdata_r;
+    wire [31:0] pwdata_r;
+    wire [31:0] wmask_w = {{8{be_r[3]}}, {8{be_r[2]}}, {8{be_r[1]}}, {8{be_r[0]}}};
 
-    //Notes: read the corresponding data firstly
-    always @(*) begin
-        pwdata_r = wdata_r;
-
-        if (!be_r[0]) pwdata_r[  7:0 ] = ip2bus_data_i[  7:0 ];
-        if (!be_r[1]) pwdata_r[ 15:8 ] = ip2bus_data_i[ 15:8 ];
-        if (!be_r[2]) pwdata_r[ 23:16] = ip2bus_data_i[ 23:16];
-        if (!be_r[3]) pwdata_r[ 31:24] = ip2bus_data_i[ 31:24];
-    end
+    //FIXME: be_r = 4'hf should be mandatory or read related data firstly?
+    //How to avoid confusion in bus2ip_rd_ce signal?
+    assign pwdata_r = wdata_r & wmask_w;
 
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
@@ -607,6 +602,18 @@ module axi4_ipbus_bridge
             bus2ip_data_q  <= 32'h0;
             bus2ip_wr_ce_q <= 1'b0;
         end
+    end
+
+    //IPBus read enable 
+    reg  bus2ip_rd_ce_q;
+
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n)
+            bus2ip_rd_ce_q <= 1'b0;
+        else if (pstate_q == ST_IDLE && req_r == 1'b1 && grant_read_q == 1'b1)
+            bus2ip_rd_ce_q <= 1'b1;
+        else if (pstate_q == ST_END && req_r == 1'b0)
+            bus2ip_rd_ce_q <= 1'b0;
     end
 
     //IPBus read data
@@ -634,7 +641,7 @@ module axi4_ipbus_bridge
     assign bus2ip_rst_n   = rst_n;
     assign bus2ip_addr_o  = bus2ip_addr_q ;
     assign bus2ip_data_o  = bus2ip_data_q ;
-    assign bus2ip_rd_ce_o = (grant_read_q || grant_write_q) ? 1'b1 : 1'b0;            
+    assign bus2ip_rd_ce_o = bus2ip_rd_ce_q;            
     assign bus2ip_wr_ce_o = bus2ip_wr_ce_q;  
 
     //-------------------------------------------------------------
