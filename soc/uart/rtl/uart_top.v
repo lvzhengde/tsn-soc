@@ -43,6 +43,7 @@ module uart_top (
     input           uart_mst_i ,    //0: Normal slave operation, 1: UART as AXI4 bus master 
     input           uart_rxd_i ,
     output          uart_txd_o ,  
+    output          intr_o     ,
 
     // AXI4 bus master interface
     output          mst_awvalid_o ,  
@@ -246,34 +247,34 @@ module uart_top (
         .rst_n                 (rst_n ),     
 
         // AXI4 bus slave interface
-        .slv_awvalid_i         (slv_awvalid_i),
-        .slv_awaddr_i          (slv_awaddr_i ),
-        .slv_awid_i            (slv_awid_i   ),
-        .slv_awlen_i           (slv_awlen_i  ),
-        .slv_awburst_i         (slv_awburst_i),
-        .slv_wvalid_i          (slv_wvalid_i ),
-        .slv_wdata_i           (slv_wdata_i  ),
-        .slv_wstrb_i           (slv_wstrb_i  ),
-        .slv_wlast_i           (slv_wlast_i  ),
-        .slv_bready_i          (slv_bready_i ),
-        .slv_arvalid_i         (slv_arvalid_i),
-        .slv_araddr_i          (slv_araddr_i ),
-        .slv_arid_i            (slv_arid_i   ),
-        .slv_arlen_i           (slv_arlen_i  ),
-        .slv_arburst_i         (slv_arburst_i),
-        .slv_rready_i          (slv_rready_i ),
+        .axi_awvalid_i         (slv_awvalid_i),
+        .axi_awaddr_i          (slv_awaddr_i ),
+        .axi_awid_i            (slv_awid_i   ),
+        .axi_awlen_i           (slv_awlen_i  ),
+        .axi_awburst_i         (slv_awburst_i),
+        .axi_wvalid_i          (slv_wvalid_i ),
+        .axi_wdata_i           (slv_wdata_i  ),
+        .axi_wstrb_i           (slv_wstrb_i  ),
+        .axi_wlast_i           (slv_wlast_i  ),
+        .axi_bready_i          (slv_bready_i ),
+        .axi_arvalid_i         (slv_arvalid_i),
+        .axi_araddr_i          (slv_araddr_i ),
+        .axi_arid_i            (slv_arid_i   ),
+        .axi_arlen_i           (slv_arlen_i  ),
+        .axi_arburst_i         (slv_arburst_i),
+        .axi_rready_i          (slv_rready_i ),
 
-        .slv_awready_o         (slv_awready_o),
-        .slv_wready_o          (slv_wready_o ),
-        .slv_bvalid_o          (slv_bvalid_o ),
-        .slv_bresp_o           (slv_bresp_o  ),
-        .slv_bid_o             (slv_bid_o    ),
-        .slv_arready_o         (slv_arready_o),
-        .slv_rvalid_o          (slv_rvalid_o ),
-        .slv_rdata_o           (slv_rdata_o  ),
-        .slv_rresp_o           (slv_rresp_o  ),
-        .slv_rid_o             (slv_rid_o    ),
-        .slv_rlast_o           (slv_rlast_o  ),
+        .axi_awready_o         (slv_awready_o),
+        .axi_wready_o          (slv_wready_o ),
+        .axi_bvalid_o          (slv_bvalid_o ),
+        .axi_bresp_o           (slv_bresp_o  ),
+        .axi_bid_o             (slv_bid_o    ),
+        .axi_arready_o         (slv_arready_o),
+        .axi_rvalid_o          (slv_rvalid_o ),
+        .axi_rdata_o           (slv_rdata_o  ),
+        .axi_rresp_o           (slv_rresp_o  ),
+        .axi_rid_o             (slv_rid_o    ),
+        .axi_rlast_o           (slv_rlast_o  ),
 
         //register access interface
         .waddr_o               (waddr_w   ),
@@ -298,34 +299,34 @@ module uart_top (
         .rst_n                    (rst_n ),     
 
         // AXI4 bus master interface
-        .mst_awvalid_o            (mst_awvalid_o),  
-        .mst_awaddr_o             (mst_awaddr_o ),   
-        .mst_awid_o               (mst_awid_o   ),   
-        .mst_awlen_o              (mst_awlen_o  ),   
-        .mst_awburst_o            (mst_awburst_o),  
-        .mst_wvalid_o             (mst_wvalid_o ),   
-        .mst_wdata_o              (mst_wdata_o  ),  
-        .mst_wstrb_o              (mst_wstrb_o  ),  
-        .mst_wlast_o              (mst_wlast_o  ),  
-        .mst_bready_o             (mst_bready_o ),   
-        .mst_arvalid_o            (mst_arvalid_o),    
-        .mst_araddr_o             (mst_araddr_o ),   
-        .mst_arid_o               (mst_arid_o   ),   
-        .mst_arlen_o              (mst_arlen_o  ),  
-        .mst_arburst_o            (mst_arburst_o),    
-        .mst_rready_o             (mst_rready_o ),   
+        .axi_awvalid_o            (mst_awvalid_o),  
+        .axi_awaddr_o             (mst_awaddr_o ),   
+        .axi_awid_o               (mst_awid_o   ),   
+        .axi_awlen_o              (mst_awlen_o  ),   
+        .axi_awburst_o            (mst_awburst_o),  
+        .axi_wvalid_o             (mst_wvalid_o ),   
+        .axi_wdata_o              (mst_wdata_o  ),  
+        .axi_wstrb_o              (mst_wstrb_o  ),  
+        .axi_wlast_o              (mst_wlast_o  ),  
+        .axi_bready_o             (mst_bready_o ),   
+        .axi_arvalid_o            (mst_arvalid_o),    
+        .axi_araddr_o             (mst_araddr_o ),   
+        .axi_arid_o               (mst_arid_o   ),   
+        .axi_arlen_o              (mst_arlen_o  ),  
+        .axi_arburst_o            (mst_arburst_o),    
+        .axi_rready_o             (mst_rready_o ),   
 
-        .mst_awready_i            (mst_awready_i),   
-        .mst_wready_i             (mst_wready_i ),  
-        .mst_bvalid_i             (mst_bvalid_i ),  
-        .mst_bresp_i              (mst_bresp_i  ), 
-        .mst_bid_i                (mst_bid_i    ),
-        .mst_arready_i            (mst_arready_i),   
-        .mst_rvalid_i             (mst_rvalid_i ),  
-        .mst_rdata_i              (mst_rdata_i  ), 
-        .mst_rresp_i              (mst_rresp_i  ), 
-        .mst_rid_i                (mst_rid_i    ), 
-        .mst_rlast_i              (mst_rlast_i  ), 
+        .axi_awready_i            (mst_awready_i),   
+        .axi_wready_i             (mst_wready_i ),  
+        .axi_bvalid_i             (mst_bvalid_i ),  
+        .axi_bresp_i              (mst_bresp_i  ), 
+        .axi_bid_i                (mst_bid_i    ),
+        .axi_arready_i            (mst_arready_i),   
+        .axi_rvalid_i             (mst_rvalid_i ),  
+        .axi_rdata_i              (mst_rdata_i  ), 
+        .axi_rresp_i              (mst_rresp_i  ), 
+        .axi_rid_i                (mst_rid_i    ), 
+        .axi_rlast_i              (mst_rlast_i  ), 
 
         //uart rx interface
         .mst_rdata_i              (mst_rdata_w             ),
@@ -347,5 +348,31 @@ module uart_top (
 
     assign mst_rdata_w = rx_data_out_w;
     assign slv_rdata_w = rx_data_out_w;
+
+
+    //-----------------------------------------------------------------
+    // Interrupt
+    // Only generate interrupt when uart data received
+    //-----------------------------------------------------------------    
+    reg    intr_q;
+    reg    rx_buffer_data_present_q;
+
+    always @(posedge clk or negedge rst_n) begin
+        if(!rst_n)
+            rx_buffer_data_present_q <= 1'b0;
+        else
+            rx_buffer_data_present_q <= rx_buffer_data_present_w;
+    end
+
+    always @(posedge clk or negedge rst_n) begin
+        if(!rst_n)
+            intr_q <= 1'b0;
+        else if (rx_buffer_data_present_w & (~rx_buffer_data_present_q)) //positive edge
+            intr_q <= 1'b1;
+        else if ((~rx_buffer_data_present_w) & rx_buffer_data_present_q) //negative edge
+            intr_q <= 1'b0;
+    end
+
+    assign intr_o = intr_q;
 
 endmodule
