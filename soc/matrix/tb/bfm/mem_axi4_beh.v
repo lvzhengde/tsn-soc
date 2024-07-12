@@ -48,6 +48,7 @@ module mem_axi4_beh
 //-----------------------------------------------------------------
 #(
     parameter P_SIZE_IN_BYTES      = 1024 ,  
+    parameter ID                   = 0    , 
     parameter P_DELAY_WRITE_SETUP  = 0    ,
     parameter P_DELAY_WRITE_BURST  = 0    ,
     parameter P_DELAY_READ_SETUP   = 0    ,
@@ -88,7 +89,9 @@ module mem_axi4_beh
     output [ 31:0]  axi_rdata_o     ,
     output [  1:0]  axi_rresp_o     ,
     output [  3:0]  axi_rid_o       ,
-    output          axi_rlast_o     
+    output          axi_rlast_o     ,
+
+    input           done_i
 
 );
     // internal memory
@@ -96,6 +99,9 @@ module mem_axi4_beh
     localparam DEPTH = (1 << (ADDR_LENGTH - 2));
     
     reg  [31:0] mem[0:DEPTH-1]; // synthesis syn_ramstyle="block_ram"; 
+
+    integer num_reads ;
+    integer num_writes;
 
     //-------------------------------------------------------------------------
     // write case
@@ -130,24 +136,22 @@ module mem_axi4_beh
             axi_awid_q    <= 4'h0 ;
             axi_awlen_q   <= 8'h0 ;
             axi_awburst_q <= 2'h0 ;
-
             axi_awready_q <= 1'b0 ;
             axi_wready_q  <= 1'b0 ;
             axi_bvalid_q  <= 1'b0 ;
             axi_bresp_q   <= 2'b10 ; //Slave Error
             axi_bid_q     <= 4'h0 ;
-
             waddr_q       <= 'h0; 
             wbeat_q       <= 'h0; 
             wdelay_q      <= 'h0;
-
+            num_writes    <=   0;
             wstate_q      <= STW_IDLE;
         end 
         else begin
             case (wstate_q)
             STW_IDLE: 
             begin
-                if ((axi_awvalid_i == 1'b1) && (axi_awready_q == 1'b1)) begin
+                if ((axi_awvalid_i == 1'b1) && (axi_awready_o == 1'b1)) begin
                     axi_awaddr_q  <= axi_awaddr_i ;
                     axi_awid_q    <= axi_awid_i   ;
                     axi_awlen_q   <= axi_awlen_i  ;
@@ -158,6 +162,8 @@ module mem_axi4_beh
 
                     waddr_q       <= axi_awaddr_i[ADDR_LENGTH-1:0]; 
                     wbeat_q       <= 'h0; 
+                    num_writes    <= num_writes + 1;
+
                     if (P_DELAY_WRITE_SETUP == 0) begin
                         axi_wready_q  <= 1'b1 ;
                         wdelay_q      <= P_DELAY_WRITE_BURST;
@@ -262,37 +268,35 @@ module mem_axi4_beh
     reg  [ 7:0]              rbeat_q ; // keeps num of transfers within a burst
     reg  [ 7:0]              rdelay_q;
     //-------------------------------------------------------------------------
-    localparam STR_IDLE = 2'h0
-             , STR_DELAY= 2'h1
-             , STR_READ = 2'h2
-             , STR_END  = 2'h3;
+    localparam STR_IDLE = 2'h0,
+               STR_DELAY= 2'h1,
+               STR_READ = 2'h2,
+               STR_END  = 2'h3;
 
     reg  [ 1:0]  rstate_q;
 
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
-            axi_araddr_q  <= 32'h0  ;
+            axi_araddr_q  <= 32'h0 ;
             axi_arlen_q   <= 8'h0  ;
             axi_arburst_q <= 2'b0  ;
-
             axi_arready_q <= 1'b0  ;
             axi_rvalid_q  <= 1'b0  ;
-            axi_rdata_q   <= 32'h0  ;
-            axi_rresp_q   <= 2'b10  ; //Slave Error
+            axi_rdata_q   <= 32'h0 ;
+            axi_rresp_q   <= 2'b10 ; //Slave Error
             axi_rid_q     <= 4'h0  ;
             axi_rlast_q   <= 1'b0  ;
-
-            raddr_q       <= 'h0; 
+            raddr_q       <= 'h0 ; 
             rbeat_q       <= 8'h0; 
             rdelay_q      <= 8'h0;
-
+            num_reads     <=    0;
             rstate_q      <= STR_IDLE;
         end 
         else begin
             case (rstate_q)
             STR_IDLE: 
             begin
-                if ((axi_arvalid_i == 1'b1) && (axi_arready_q == 1'b1)) begin
+                if ((axi_arvalid_i == 1'b1) && (axi_arready_o == 1'b1)) begin
                     axi_araddr_q  <= axi_araddr_i  ;
                     axi_arlen_q   <= axi_arlen_i   ;
                     axi_arburst_q <= axi_arburst_i ;
@@ -300,6 +304,8 @@ module mem_axi4_beh
                     axi_rresp_q   <= 2'b00  ; //Okay 
                     axi_rid_q     <= axi_arid_i  ;
                     raddr_q       <= axi_araddr_i[ADDR_LENGTH-1:0]; 
+                    num_reads     <= num_reads + 1;
+
                     if (P_DELAY_READ_SETUP == 0) begin
                         axi_rdata_q  <= mem[axi_araddr_i[ADDR_LENGTH-1:2]];
                         axi_rvalid_q <= 1'b1;
@@ -433,4 +439,29 @@ module mem_axi4_beh
         endcase
     end
     endfunction
+
+    // synopsys translate_off
+    integer abits, depth;
+
+    initial begin
+        depth  = 1 << ADDR_LENGTH;
+        $display("%m INFO %03dK (%06d) byte memory", depth/1024, depth);
+        abits = ADDR_LENGTH - 2;
+        //if (abits > 10) begin
+        //       $display("%m INFO sdpram_8x%02dK should be used", 1<<(abits-10));
+        //end else begin
+        //       $display("%m INFO sdpram_8x%03d should be used", 1<<abits);
+        //end
+        wait (done_i == 1'b1);
+        axi_statistics(ID);
+    end
+
+    task axi_statistics;
+        input integer id;                                                            
+    begin                                                                            
+        $display("mem_axi[%2d] reads =%5d,  writes =%5d, mem_axi4_beh used", id, num_reads, num_writes );
+    end                         
+    endtask   
+    // synopsys translate_on
+
 endmodule

@@ -564,10 +564,14 @@ module tb_top;
         .outport_rready_o  (slv0_rready_w )
     );
 
-    mem_axi4
+    mem_axi4_beh
     #(
-        .SIZE_IN_BYTES      (1024*1024), //emulate external memory device, set to a large size
-        .ID                 (0       ) 
+        .P_SIZE_IN_BYTES      (1024*1024), //emulate external memory device, set to a large size
+        .ID                   (0        ), 
+        .P_DELAY_WRITE_SETUP  (2        ),
+        .P_DELAY_WRITE_BURST  (2        ),
+        .P_DELAY_READ_SETUP   (2        ),
+        .P_DELAY_READ_BURST   (2        )
     )
     u_mem_axi4_0
     (
@@ -604,9 +608,7 @@ module tb_top;
         .axi_rid_o       (slv0_rid_w    ),
         .axi_rlast_o     (slv0_rlast_w  ),
     
-        .csysreq_i       (&done),
-        .csysack_o       (     ),
-        .cactive_o       (     )
+        .done_i          (&done         )
     );
 
 
