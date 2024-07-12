@@ -192,13 +192,9 @@ module uart_axi_slv
     //-----------------------------------------------------------
     // read case
     //-----------------------------------------------------------
-    reg  [ADDR_LENGTH-1:0]  t_raddr_q ;
-    wire [31:0]   t_rdata_w ;
+    reg  [31:0]   t_raddr_q ;
     reg  [ 3:0]   t_rstrb_q ;
     reg           t_ren_q   ; 
-    reg  [ADDR_LENGTH-1:0]  t_raddr ;
-    reg  [ 3:0]   t_rstrb ;
-    reg           t_ren   ; 
 
     reg  [ 31:0]  axi_araddr_q    ;
     reg  [  7:0]  axi_arlen_q     ;
@@ -211,7 +207,7 @@ module uart_axi_slv
     reg  [  3:0]  axi_rid_q       ;
     reg           axi_rlast_q     ;
     
-    reg  [ADDR_LENGTH-1:0] raddr_q; // address of each transfer within a burst
+    reg  [31:0]   raddr_q; // address of each transfer within a burst
     reg  [ 7:0]   rbeat_q; // keeps num of transfers within a burst
 
     localparam STR_IDLE   = 2'h0,
@@ -233,13 +229,16 @@ module uart_axi_slv
             axi_rlast_q   <= 1'b0  ;
             raddr_q       <= 'h0 ; 
             rbeat_q       <= 8'h0; 
+            t_raddr_q     <= 'h0;
+            t_rstrb_q     <= 4'h0;
+            t_ren_q       <= 1'b0; 
             rstate_q      <= STR_IDLE;
         end 
         else begin
             case (rstate_q)
             STR_IDLE: 
             begin
-                if ((axi_arvalid_i == 1'b1) && (axi_arready_q == 1'b1)) begin
+                if ((axi_arvalid_i == 1'b1) && (axi_arready_o == 1'b1)) begin
                     axi_araddr_q  <= axi_araddr_i  ;
                     axi_arlen_q   <= axi_arlen_i   ;
                     axi_arburst_q <= axi_arburst_i ;
@@ -247,9 +246,11 @@ module uart_axi_slv
                     axi_rid_q     <= axi_arid_i ;
                     axi_rresp_q   <= 2'b00  ; // Okay
                     axi_rlast_q   <= 1'b0  ;
-                    raddr_q       <= get_next_addr(axi_araddr_i[ADDR_LENGTH-1:0], axi_arburst_i, axi_arlen_i);; 
+                    raddr_q       <= get_next_addr(axi_araddr_i[31:0], axi_arburst_i, axi_arlen_i);; 
                     rbeat_q       <= 8'h0; 
-
+                    t_raddr_q     <= axi_araddr_i ;
+                    t_rstrb_q     <= get_strb(axi_araddr_i);
+                    t_ren_q       <= 1'b1; 
                     rstate_q      <= STR_READ;
                 end 
                 else begin
@@ -260,17 +261,27 @@ module uart_axi_slv
             begin
                 if (axi_rready_i == 1'b1) begin
                     axi_rvalid_q  <= 1'b1  ;
-                    axi_rdata_q   <= t_rdata_w ;
-                    rbeat_q  <= rbeat_q + 1;
-                    raddr_q  <= get_next_addr(raddr_q, axi_arburst_q, axi_arlen_q); 
+                    axi_rdata_q   <= rdata_i ;
+                    rbeat_q   <= rbeat_q + 1;
+                    raddr_q   <= get_next_addr(raddr_q, axi_arburst_q, axi_arlen_q); 
 
                     if (rbeat_q >= axi_arlen_q) begin
+                        t_raddr_q   <= 'h0;
+                        t_rstrb_q   <= 4'h0;
+                        t_ren_q     <= 1'b0; 
                         axi_rresp_q <= 2'b00  ;
                         axi_rlast_q <= 1'b1   ;
                         rstate_q    <= STR_END;
                     end
+                    else begin
+                        t_raddr_q   <= raddr_q;
+                        t_rstrb_q   <= get_strb(raddr_q);
+                        t_ren_q     <= 1'b1; 
+                    end
                 end
-
+                else begin
+                    t_ren_q       <= 1'b0; 
+                end
             end // STR_READ
             STR_END: 
             begin 
@@ -279,7 +290,6 @@ module uart_axi_slv
                     axi_rlast_q   <= 1'b0  ;
                     axi_rdata_q   <= 32'h0 ;
                     axi_rresp_q   <= 2'b10 ;  //Slave Error
-
                     axi_arready_q <= 1'b1  ;
                     rstate_q      <= STR_IDLE;
                 end
@@ -297,60 +307,10 @@ module uart_axi_slv
     assign axi_rid_o     = axi_rid_q     ;
     assign axi_rlast_o   = axi_rlast_q   ;
 
-    always @(posedge clk or negedge rst_n) begin
-        if (!rst_n) begin
-            t_raddr_q     <= 'h0 ;
-            t_rstrb_q     <= 4'h0;
-            t_ren_q       <= 1'b0; 
-        end
-        else begin
-            t_raddr_q     <= t_raddr;
-            t_rstrb_q     <= t_rstrb;
-            t_ren_q       <= t_ren  ; 
-        end
-    end
-
-    always @(*) begin
-        t_raddr = t_raddr_q ;
-        t_rstrb = t_rstrb_q ;
-        t_ren   = t_ren_q   ;
-
-        if ((rstate_q == STR_IDLE) && (axi_arvalid_i == 1'b1) && (axi_arready_q == 1'b1)) begin
-            t_raddr = axi_araddr_i[ADDR_LENGTH-1:0] ;
-            t_rstrb = get_strb(axi_araddr_i[ADDR_LENGTH-1:0]);
-            t_ren   = 1'b1; 
-        end
-        else if ((rstate_q == STR_READ) && (axi_rready_i == 1'b1)) begin
-            t_raddr = raddr_q;
-            t_rstrb = get_strb(raddr_q);
-            t_ren   = 1'b1; 
-        end
-        else if ((rstate_q == STR_END) && (axi_rready_i == 1'b1)) begin
-            t_raddr = 'h0;
-            t_rstrb = 4'h0;
-            t_ren   = 1'b0; 
-        end
-    end
-
-    // a sort of dual-port memory with write-first feature
-    mem_axi_dpram_sync 
-    #(
-        .WIDTH_AD   (ADDR_LENGTH ),  // size of memory in byte
-        .WIDTH_DA   (32          )   // width of a line in bytes
-    )
-    u_dpram
-    (
-        .RESETn    (rst_n     ) ,
-        .CLK       (clk       ) ,
-        .WADDR     (t_waddr_q ) ,
-        .WDATA     (t_wdata_q ) ,
-        .WSTRB     (t_wstrb_q ) ,
-        .WEN       (t_wen_q   ) ,
-        .RADDR     (t_raddr   ) ,
-        .RDATA     (t_rdata_w ) ,
-        .RSTRB     (t_rstrb   ) ,
-        .REN       (t_ren     ) 
-    );
+    // Register read ports
+    assign raddr_o =  t_raddr_q; 
+    assign rstrb_o =  t_rstrb_q;
+    assign ren_o   =  t_ren_q  ;       
 
     function  [31:0] get_next_addr;
         input [31:0] addr ;
