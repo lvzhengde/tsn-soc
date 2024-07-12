@@ -293,7 +293,11 @@ module uart_top (
     wire           mst_write_w ;
 
 
-    uart_axi_mst uart_axi_mst 
+    uart_axi_mst
+    #(
+        .AXI_ID    (0)
+    ) 
+    uart_axi_mst 
     (
         .clk                      (clk   ),
         .rst_n                    (rst_n ),     
