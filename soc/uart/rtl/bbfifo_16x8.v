@@ -83,16 +83,16 @@ module bbfifo_16x8(
     // misc logics
     always @(posedge clk or negedge rst_n) begin
         if(!rst_n)	
-        	  rptr <= 5'b0;
+        	rptr <= 5'b0;
         else if(read_i && (!empty))
-        	  rptr <= rptr + 5'b1;
+        	rptr <= rptr + 5'b1;
     end
     
     always @(posedge clk or negedge rst_n) begin
         if(!rst_n)
-    	      wptr <= 5'b0;
+    	    wptr <= 5'b0;
         else if(write_i && (!full))
-        	  wptr <= wptr + 5'b1;
+        	wptr <= wptr + 5'b1;
     end
 
     //full & empty flags

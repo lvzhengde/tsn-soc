@@ -85,5 +85,333 @@ module uart_axi_mst
     input          tx_buffer_afull_i 
 );
 
+    //-----------------------------------------------------------------
+    // Defines
+    //-----------------------------------------------------------------
+    localparam REQ_WRITE        = 8'had;
+    localparam REQ_READ         = 8'h5a;
+    
+    localparam STATE_IDLE       = 4'd0;
+    localparam STATE_LEN        = 4'd2;
+    localparam STATE_ADDR0      = 4'd3;
+    localparam STATE_ADDR1      = 4'd4;
+    localparam STATE_ADDR2      = 4'd5;
+    localparam STATE_ADDR3      = 4'd6;
+    localparam STATE_WRITE      = 4'd7;
+    localparam STATE_READ       = 4'd8;
+    localparam STATE_DATA0      = 4'd9;
+    localparam STATE_DATA1      = 4'd10;
+    localparam STATE_DATA2      = 4'd11;
+    localparam STATE_DATA3      = 4'd12;
+
+    //-----------------------------------------------------------------
+    // States
+    //-----------------------------------------------------------------
+    reg [ 3:0] state_q;
+    reg [ 3:0] next_state_r;
+
+    // Next state logics
+    always @(*) begin
+        next_state_r = state_q;
+    
+        case (next_state_r)
+        //-------------------------------------------------------------
+        // IDLE:
+        //-------------------------------------------------------------
+        STATE_IDLE:
+        begin
+            if (rx_valid_w)
+            begin
+                case (rx_data_w)
+                REQ_WRITE,
+                REQ_READ:
+                    next_state_r = STATE_LEN;
+                default:
+                    ;
+                endcase
+            end
+        end
+        //-----------------------------------------
+        // STATE_LEN
+        //-----------------------------------------
+        STATE_LEN :
+        begin
+            if (rx_valid_w)
+                next_state_r  = STATE_ADDR0;
+        end
+        //-----------------------------------------
+        // STATE_ADDR
+        //-----------------------------------------
+        STATE_ADDR0 : if (rx_valid_w) next_state_r  = STATE_ADDR1;
+        STATE_ADDR1 : if (rx_valid_w) next_state_r  = STATE_ADDR2;
+        STATE_ADDR2 : if (rx_valid_w) next_state_r  = STATE_ADDR3;
+        STATE_ADDR3 :
+        begin
+            if (rx_valid_w && axi_wr_q) 
+                next_state_r  = STATE_WRITE;
+            else if (rx_valid_w) 
+                next_state_r  = STATE_READ;            
+        end
+        //-----------------------------------------
+        // STATE_WRITE
+        //-----------------------------------------
+        STATE_WRITE :
+        begin
+            if (len_q == 8'b0 && (axi_bvalid_i))
+                next_state_r  = STATE_IDLE;
+            else
+                next_state_r  = STATE_WRITE;
+        end
+        //-----------------------------------------
+        // STATE_READ
+        //-----------------------------------------
+        STATE_READ :
+        begin
+            // Data ready
+            if (axi_rvalid_i)
+                next_state_r  = STATE_DATA0;
+        end
+        //-----------------------------------------
+        // STATE_DATA
+        //-----------------------------------------
+        STATE_DATA0 :
+        begin
+            if (read_skip_w)
+                next_state_r  = STATE_DATA1;
+            else if (tx_accept_w && (len_q == 8'b0))
+                next_state_r  = STATE_IDLE;
+            else if (tx_accept_w)
+                next_state_r  = STATE_DATA1;
+        end
+        STATE_DATA1 :
+        begin
+            if (read_skip_w)
+                next_state_r  = STATE_DATA2;
+            else if (tx_accept_w && (len_q == 8'b0))
+                next_state_r  = STATE_IDLE;
+            else if (tx_accept_w)
+                next_state_r  = STATE_DATA2;
+        end
+        STATE_DATA2 :
+        begin
+            if (read_skip_w)
+                next_state_r  = STATE_DATA3;
+            else if (tx_accept_w && (len_q == 8'b0))
+                next_state_r  = STATE_IDLE;
+            else if (tx_accept_w)
+                next_state_r  = STATE_DATA3;
+        end
+        STATE_DATA3 :
+        begin
+            if (tx_accept_w && (len_q != 8'b0))
+                next_state_r  = STATE_READ;
+            else if (tx_accept_w)
+                next_state_r  = STATE_IDLE;
+        end
+        default:
+            ;
+        endcase
+    end
+
+    // State switch
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n)
+            state_q <= STATE_IDLE;
+        else
+            state_q <= next_state_r;
+    end
+
+    //-----------------------------------------------------------------
+    // RD/WR to and from UART
+    //-----------------------------------------------------------------
+    
+    // Write to UART Tx buffer in the following states
+    assign tx_valid_w = ((state_q == STATE_DATA0) |
+                         (state_q == STATE_DATA1) |
+                         (state_q == STATE_DATA2) |
+                         (state_q == STATE_DATA3)) && !read_skip_w;
+    
+    // Accept data in the following states
+    assign rx_accept_w = (state_q == STATE_IDLE)  |
+                         (state_q == STATE_LEN)   |
+                         (state_q == STATE_ADDR0) |
+                         (state_q == STATE_ADDR1) |
+                         (state_q == STATE_ADDR2) |
+                         (state_q == STATE_ADDR3) |
+                         (state_q == STATE_WRITE && !axi_busy_q);
+
+    assign rx_valid_w = rx_buffer_data_present_i; 
+
+    //-----------------------------------------------------------------
+    // Capture length
+    //-----------------------------------------------------------------
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n)
+            len_q       <= 8'd0;
+        else if (state_q == STATE_LEN && rx_valid_w)
+            len_q[7:0]  <= rx_data_w;
+        else if (state_q == STATE_WRITE && rx_valid_w && !axi_busy_q)
+            len_q       <= len_q - 8'd1;
+        else if (state_q == STATE_READ && (axi_busy_q && axi_rvalid_i))
+            len_q       <= len_q - 8'd1;
+        else if (((state_q == STATE_DATA0) || (state_q == STATE_DATA1) || (state_q == STATE_DATA2)) && (tx_accept_w && !read_skip_w))
+            len_q       <= len_q - 8'd1;
+    end
+
+    assign tx_accept_w = !tx_buffer_full_i;
+    
+    //-----------------------------------------------------------------
+    // Capture address
+    //-----------------------------------------------------------------
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n)
+            axi_addr_q        <= 'd0;
+        else if (state_q == STATE_ADDR0 && rx_valid_w)
+            axi_addr_q[31:24] <= rx_data_w;
+        else if (state_q == STATE_ADDR1 && rx_valid_w)
+            axi_addr_q[23:16] <= rx_data_w;
+        else if (state_q == STATE_ADDR2 && rx_valid_w)
+            axi_addr_q[15:8]  <= rx_data_w;
+        else if (state_q == STATE_ADDR3 && rx_valid_w)
+            axi_addr_q[7:0]   <= rx_data_w;
+        // Address increment on every access issued
+        else if (state_q == STATE_WRITE && (axi_busy_q && axi_bvalid_i))
+            axi_addr_q        <= {axi_addr_q[31:2], 2'b0} + 'd4;
+        else if (state_q == STATE_READ && (axi_busy_q && axi_rvalid_i))
+            axi_addr_q        <= {axi_addr_q[31:2], 2'b0} + 'd4;
+    end
+        
+    //-----------------------------------------------------------------
+    // Data Index
+    //-----------------------------------------------------------------
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n)
+            data_idx_q <= 2'b0;
+        else if (state_q == STATE_ADDR3)
+            data_idx_q <= rx_data_w[1:0];
+        else if (state_q == STATE_WRITE && rx_valid_w && !axi_busy_q)
+            data_idx_q <= data_idx_q + 2'd1;
+        else if (((state_q == STATE_DATA0) || (state_q == STATE_DATA1) || (state_q == STATE_DATA2)) && tx_accept_w && (data_idx_q != 2'b0))
+            data_idx_q <= data_idx_q - 2'd1;
+    end
+    
+    assign read_skip_w = (data_idx_q != 2'b0);
+
+    //-----------------------------------------------------------------
+    // Data Sample
+    //-----------------------------------------------------------------
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n)
+            data_q <= 32'b0;
+        // Write to AXI memory/register
+        else if (state_q == STATE_WRITE && rx_valid_w && !axi_busy_q)
+        begin
+            case (data_idx_q)
+                2'd0: data_q[7:0]   <= rx_data_w;
+                2'd1: data_q[15:8]  <= rx_data_w;
+                2'd2: data_q[23:16] <= rx_data_w;
+                2'd3: data_q[31:24] <= rx_data_w;
+            endcase  
+        end
+        // Read from AXI memory/registr
+        else if (state_q == STATE_READ && axi_rvalid_i)
+            data_q <= axi_rdata_i;
+        // Shift data out (read response -> UART)
+        else if (((state_q == STATE_DATA0) || (state_q == STATE_DATA1) || (state_q == STATE_DATA2)) && (tx_accept_w || read_skip_w))
+            data_q <= {8'b0, data_q[31:8]};
+    end
+
+    assign tx_data_w  = data_q[7:0];                  
+    assign axi_wdata_o = data_q;
+
+    //-----------------------------------------------------------------
+    // AXI: Write Request
+    //-----------------------------------------------------------------
+    reg axi_awvalid_q;
+    reg axi_awvalid_r;
+    
+    reg axi_wvalid_q;
+    reg axi_wvalid_r;
+    
+    always @(*) begin
+        axi_awvalid_r = 1'b0;
+        axi_wvalid_r  = 1'b0;
+    
+        // Hold
+        if (axi_awvalid_o && !axi_awready_i)
+            axi_awvalid_r = axi_awvalid_q;
+        else if (axi_awvalid_o)
+            axi_awvalid_r = 1'b0;
+        // Every 4th byte, issue bus access
+        else if (state_q == STATE_WRITE && rx_valid_w && (data_idx_q == 2'd3 || len_q == 1))
+            axi_awvalid_r = 1'b1;
+    
+        // Hold
+        if (axi_wvalid_o && !axi_wready_i)
+            axi_wvalid_r = axi_wvalid_q;
+        else if (axi_wvalid_o)
+            axi_wvalid_r = 1'b0;
+        // Every 4th byte, issue bus access
+        else if (state_q == STATE_WRITE && rx_valid_w && (data_idx_q == 2'd3 || len_q == 1))
+            axi_wvalid_r = 1'b1;
+    end
+
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n)
+        begin
+            axi_awvalid_q <= 1'b0;
+            axi_wvalid_q  <= 1'b0;
+        end
+        else
+        begin
+            axi_awvalid_q <= axi_awvalid_r;
+            axi_wvalid_q  <= axi_wvalid_r;
+        end
+    end
+    
+    assign axi_awvalid_o = axi_awvalid_q;
+    assign axi_wvalid_o  = axi_wvalid_q;
+    assign axi_awaddr_o  = {axi_addr_q[31:2], 2'b0};
+    assign axi_awid_o    = AXI_ID;
+    assign axi_awlen_o   = 8'b0;
+    assign axi_awburst_o = 2'b01;
+    assign axi_wlast_o   = 1'b1;
+    
+    assign axi_bready_o  = 1'b1;
+
+    //-----------------------------------------------------------------
+    // AXI: Read Request
+    //-----------------------------------------------------------------
+    reg axi_arvalid_q;
+    reg axi_arvalid_r;
+    
+    always @(*) begin
+        axi_arvalid_r = 1'b0;
+    
+        // Hold
+        if (axi_arvalid_o && !axi_arready_i)
+            axi_arvalid_r = axi_arvalid_q;
+        else if (axi_arvalid_o)
+            axi_arvalid_r = 1'b0;
+        else if (state_q == STATE_READ && !axi_busy_q)
+            axi_arvalid_r = 1'b0;
+    end
+    
+    always @(posedge clk or negedge rst_n)
+    if (!rst_n)
+        axi_arvalid_q <= 1'b0;
+    else
+        axi_arvalid_q <= axi_arvalid_r;
+    
+    assign axi_arvalid_o = axi_arvalid_q;
+    assign axi_araddr_o  = {axi_addr_q[31:2], 2'b0};
+    assign axi_arid_o    = AXI_ID;
+    assign axi_arlen_o   = 8'b0;
+    assign axi_arburst_o = 2'b01;
+    
+    assign axi_rready_o  = 1'b1;
+
+
+
 
 endmodule
