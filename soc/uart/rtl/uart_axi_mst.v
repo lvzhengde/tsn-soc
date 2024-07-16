@@ -29,6 +29,26 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 -*/
 
+/*+
+ * UART COMMAND in RX buffer
+ * cmd[0] = REQ_WRITE/REQ_READ
+ * cmd[1] = len           //length in bytes
+ * cmd[2] = addr[31:24]
+ * cmd[3] = addr[23:16] 
+ * cmd[4] = addr[15: 8]
+ * cmd[5] = addr[ 7: 0]
+ * DATA in RX / TX buffer
+ * data0[ 7: 0]
+ * data0[15: 8]
+ * data0[23:16]
+ * data0[31:24]
+ * data1[ 7: 0]
+ * ......
+ * address in big endian, data in little endian
+ * Using single beat AXI transfer only
+ * can be converted to AXI-lite simply
+-*/
+
 module uart_axi_mst 
 //-----------------------------------------------------------------
 // Params
@@ -103,6 +123,38 @@ module uart_axi_mst
     localparam STATE_DATA1      = 4'd10;
     localparam STATE_DATA2      = 4'd11;
     localparam STATE_DATA3      = 4'd12;
+
+    //-----------------------------------------------------------------
+    // Wires / Regs
+    //-----------------------------------------------------------------
+    wire       tx_valid_w;
+    wire [7:0] tx_data_w;
+    wire       tx_accept_w;
+    wire       read_skip_w;
+    
+    wire       rx_valid_w;
+    wire [7:0] rx_data_w;
+    wire       rx_accept_w;
+    
+    reg [31:0] axi_addr_q;
+    reg        axi_busy_q;
+    reg        axi_wr_q;
+    
+    reg [7:0]  len_q;
+    // Byte Index
+    reg [1:0]  data_idx_q;
+    // Word storage
+    reg [31:0] data_q;
+
+    // UART TX interface
+    assign mst_write_o = tx_valid_w;
+    assign mst_wdata_o = tx_data_w ;
+    assign tx_accept_w = !tx_buffer_full_i;
+
+    // UART RX interface
+    assign rx_valid_w = rx_buffer_data_present_i; 
+    assign mst_read_o = rx_accept_w;
+    assign rx_data_w  = mst_rdata_i;
 
     //-----------------------------------------------------------------
     // States
@@ -240,8 +292,6 @@ module uart_axi_mst
                          (state_q == STATE_ADDR3) |
                          (state_q == STATE_WRITE && !axi_busy_q);
 
-    assign rx_valid_w = rx_buffer_data_present_i; 
-
     //-----------------------------------------------------------------
     // Capture length
     //-----------------------------------------------------------------
@@ -258,7 +308,6 @@ module uart_axi_mst
             len_q       <= len_q - 8'd1;
     end
 
-    assign tx_accept_w = !tx_buffer_full_i;
     
     //-----------------------------------------------------------------
     // Capture address
@@ -313,7 +362,7 @@ module uart_axi_mst
                 2'd3: data_q[31:24] <= rx_data_w;
             endcase  
         end
-        // Read from AXI memory/registr
+        // Read from AXI memory/register
         else if (state_q == STATE_READ && axi_rvalid_i)
             data_q <= axi_rdata_i;
         // Shift data out (read response -> UART)
@@ -321,7 +370,7 @@ module uart_axi_mst
             data_q <= {8'b0, data_q[31:8]};
     end
 
-    assign tx_data_w  = data_q[7:0];                  
+    assign tx_data_w   = data_q[7:0];                  
     assign axi_wdata_o = data_q;
 
     //-----------------------------------------------------------------
@@ -394,7 +443,7 @@ module uart_axi_mst
         else if (axi_arvalid_o)
             axi_arvalid_r = 1'b0;
         else if (state_q == STATE_READ && !axi_busy_q)
-            axi_arvalid_r = 1'b0;
+            axi_arvalid_r = 1'b1;
     end
     
     always @(posedge clk or negedge rst_n)
@@ -411,7 +460,63 @@ module uart_axi_mst
     
     assign axi_rready_o  = 1'b1;
 
+    //-----------------------------------------------------------------
+    // Write mask
+    //-----------------------------------------------------------------
+    reg [3:0] axi_sel_q;
+    reg [3:0] axi_sel_r;
+    
+    always @(*) begin
+        axi_sel_r = 4'b1111;
+    
+        case (data_idx_q)
+            2'd0: axi_sel_r = 4'b0001;
+            2'd1: axi_sel_r = 4'b0011;
+            2'd2: axi_sel_r = 4'b0111;
+            2'd3: axi_sel_r = 4'b1111;
+        endcase
+    
+        case (axi_addr_q[1:0])
+            2'd0: axi_sel_r = axi_sel_r & 4'b1111;
+            2'd1: axi_sel_r = axi_sel_r & 4'b1110;
+            2'd2: axi_sel_r = axi_sel_r & 4'b1100;
+            2'd3: axi_sel_r = axi_sel_r & 4'b1000;
+        endcase
+    end
+    
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n)
+            axi_sel_q    <= 4'b0;
+        // Idle - reset for read requests
+        else if (state_q == STATE_IDLE)
+            axi_sel_q   <= 4'b1111;
+        // Every 4th byte, issue bus access
+        else if (state_q == STATE_WRITE && rx_valid_w && (data_idx_q == 2'd3 || len_q == 8'd1))
+            axi_sel_q   <= axi_sel_r;
+    end
+    
+    assign axi_wstrb_o  = axi_sel_q;
 
+    //-----------------------------------------------------------------
+    // Write enable
+    //-----------------------------------------------------------------
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n)
+            axi_wr_q    <= 1'b0;
+        else if (state_q == STATE_IDLE && rx_valid_w)
+            axi_wr_q    <= (rx_data_w == REQ_WRITE);
+    end
 
+    //-----------------------------------------------------------------
+    // Access in progress
+    //-----------------------------------------------------------------
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n == 1'b1)
+            axi_busy_q <= 1'b0;
+        else if (axi_arvalid_o || axi_awvalid_o)
+            axi_busy_q <= 1'b1;
+        else if (axi_bvalid_i || axi_rvalid_i)
+            axi_busy_q <= 1'b0;
+    end
 
 endmodule
