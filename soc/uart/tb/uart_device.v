@@ -247,7 +247,7 @@ module uart_device
 
 
     // AXI4 bus masters
-    wire    test_busy;
+    reg    test_busy = 1;
 
     axi4_master 
     #(
@@ -290,5 +290,92 @@ module uart_device
         .busy_i          (test_busy     )
     );
     
+
+    //-----------------------------------------------------------------
+    // Tasks and functions
+    //-----------------------------------------------------------------
+    reg  [ 31:0]  rd_buffer[0:1023]; 
+    reg  [ 31:0]  wr_buffer[0:1023]; 
+
+    reg  [ 31:0]  rd_data, wr_data;
+    wire [ 31:0]  base_addr = {uart_top.uart_registers.BASEADDR, 8'h0};
+
+    task axi_uart_transmit;
+        input integer len;
+        input integer random;
+
+        integer     idx, seed;
+        reg  [31:0] addr;
+        reg         tx_fifo_full;
+    begin
+        seed = random;
+        tx_fifo_full = 0;
+
+        if(len > 1024) begin
+            $display($time,,"%m ERROR length exceed 1024 %x", len);
+            $finish;
+        end
+
+        //prepare transmit data
+        for (idx = 0; idx < len; idx = idx+1) begin
+            if (random == 0)
+                wr_buffer[idx] = idx & 'hff;
+            else
+                wr_buffer[idx] = $random(seed) & 'hff;
+        end
+
+        //transmit data
+        for (idx = 0; idx < len; idx = idx+1) begin
+            //read uart status 
+            addr = base_addr + 8'h08;
+            u_axi4_master.axi_master_read (addr, 1, 1, 0);
+            rd_data = u_axi4_master.rdata[0];
+            tx_fifo_full = rd_data[3];
+
+            while (tx_fifo_full == 1) begin
+                repeat(12) @(posedge uart_top.en_16x_baud_w);
+                u_axi4_master.axi_master_read (addr, 1, 1, 0);
+                rd_data = u_axi4_master.rdata[0];
+                tx_fifo_full = rd_data[3];
+            end
+
+            //write data to transmit
+            addr = base_addr + 8'h0c;
+            wr_data = {24'h0, wr_buffer[idx][7:0]}
+            u_axi4_master.wdata[0] = wr_data;
+            axi_master_write(addr, 1, 1, 0);
+            @(posedge clk); 
+        end //for
+    end
+    endtask
+
+    reg  rx_terminate    = 0;
+    reg  rx_data_present = 0;
+
+    task axi_uart_receive;
+        output integer len;
+    begin
+        len = 0;
+        rx_terminate    = 0;
+        rx_data_present = 0;
+
+        while (rx_terminate != 1'b1 && len <= 1024) begin        
+            //read uart rx data register 
+            addr = base_addr + 8'h10;
+            u_axi4_master.axi_master_read (addr, 1, 1, 0);
+            rd_data = u_axi4_master.rdata[0];
+            rx_data_present = rd_data[12];
+
+            if (rx_data_present == 1'b1) begin
+                rd_buffer[len][31:0] = {24'h0, rd_data[7:0]};
+                len = len + 1;
+            end
+            else begin //wait
+                repeat(12) @(posedge uart_top.en_16x_baud_w);
+            end
+
+            @(posedge clk);
+        end  //while
+    end
 
 endmodule
