@@ -247,7 +247,7 @@ module uart_device
 
 
     // AXI4 bus masters
-    wire    busy_out;
+    wire    test_busy;
 
     axi4_master 
     #(
@@ -287,8 +287,7 @@ module uart_device
         .axi_arburst_o   (slv_arburst_w ),
         .axi_rready_o    (slv_rready_w  ),
     
-        .busy_i          (busy_out     ),
-        .busy_o          (busy_out     )  
+        .busy_i          (test_busy     )
     );
     
 
