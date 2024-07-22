@@ -1,0 +1,23 @@
+// This file typically lists files/flags required by a large project, 
+// e.g. include directories
+../rtl/baud_generator.v
+../rtl/bbfifo_16x8_mem.v
+../rtl/bbfifo_16x8.v
+../rtl/kcuart_rx.v
+../rtl/kcuart_tx.v
+../rtl/uart_axi_mst.v
+../rtl/uart_axi_slv.v
+../rtl/uart_registers.v
+../rtl/uart_rx.v
+../rtl/uart_top.v
+../rtl/uart_tx.v
+
+../tb/axi4_master.v
+../tb/mem_axi4_beh.v
+../tb/tb_top.v
+../tb/uart_device.v
+../tb/uart_host.v
+
+../tc/tc_slvh2d.v
+
+//+incdir+../rtl +libext+.v+.sv+.vh+.svh -y .

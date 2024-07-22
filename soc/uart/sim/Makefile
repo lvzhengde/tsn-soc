@@ -1,38 +1,14 @@
-elfFile = uart
-waveFile = uartWave
+TC ?= tc_slvh2d
 
-default: run
+#make rules
+default: iverilog
 
-run:
-	iverilog -o $(elfFile).out -s testcase -f comp.f  
-	vvp -n $(elfFile).out -fst
+iverilog:
+	make -f iverilog.mk TC=$(TC)
 
-testcase:
-	iverilog -o $(elfFile).out -s testcase -f comp.f  
-
-testcase_baud_change:
-	iverilog -o $(elfFile).out -s testcase_baud_change -f comp.f  
-	
-testcase_break_condition:
-	iverilog -o $(elfFile).out -s testcase_break_condition -f comp.f  
-
-testcase_msb_first:
-	iverilog -o $(elfFile).out -s testcase_msb_first -f comp.f  
-	
-testcase_multiple_access:
-	iverilog -o $(elfFile).out -s testcase_multiple_access -f comp.f  
-
-testcase_parity_msb:
-	iverilog -o $(elfFile).out -s testcase_parity_msb -f comp.f  
-
-testcase_parity:
-	iverilog -o $(elfFile).out -s testcase_parity -f comp.f  
-
-vsim:
-	vvp -n $(elfFile).out -fst
-
-debug:
-	gtkwave $(waveFile).fst
+lint:
+	make -f verilator.mk TC=$(TC)
 
 clean:
-	rm -rf *.fst *.lxt *.vcd *.out
+	@make -f iverilog.mk $@
+	@make -f verilator.mk $@
