@@ -371,11 +371,12 @@ module uart_device
                 len = len + 1;
             end
             else begin //wait
-                repeat(12) @(posedge uart_top.en_16x_baud_w);
+                repeat(2) @(posedge uart_top.en_16x_baud_w);
             end
 
             @(posedge clk);
         end  //while
     end
+    endtask
 
 endmodule
