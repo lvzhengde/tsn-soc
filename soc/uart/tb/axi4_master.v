@@ -201,7 +201,7 @@ module axi4_master
             @ (posedge clk); 
             while (axi_rvalid_i == 1'b0) @ (posedge clk);
     
-            rdata[idx] = axi_rdata_i; // simply store the read-data; should be blocking
+            rdata[idx] = axi_rdata_i; 
             if (axi_rresp_i != 2'b00) begin
                 $display($time,,"%m ERROR RD RRESP no-ok 0x%02x", axi_rresp_i);
             end
