@@ -53,15 +53,15 @@ module tc_slvh2d;
         random = 0;
     
         #10;
-        $display($time,,"UART Configured As AXI Slave, Simulation Start!");
+        $display($time,, "UART Configured As AXI Slave, Simulation Start!");
 
         fork
             begin
-                $display($time,,"Reset UART device.");
+                $display($time,, "Reset UART device.");
                 tb_top.uart_device.reset;
             end
             begin
-                $display($time,,"Reset UART host.");
+                $display($time,, "Reset UART host.");
                 tb_top.uart_host.reset;
             end
         join
@@ -71,8 +71,8 @@ module tc_slvh2d;
             begin
                 tx_len = 17;
                 random = 5;
-                $display($time,,"Host transmit data to UART..., tx_len = %d, rand seed = %d", tx_len, random);
-                tb_top.uart_host.test_transmit(len, random);
+                $display($time,, "Host transmit data to UART..., tx_len = %d, rand seed = %d", tx_len, random);
+                tb_top.uart_host.test_transmit(tx_len, random);
                 #200;
                 tb_top.uart_device.rx_terminate = tb_top.uart_host.tx_done;
             end
@@ -80,7 +80,7 @@ module tc_slvh2d;
             //Device receive
             begin
                 #100;
-                $display($time,,"Device receive data from UART...");
+                $display($time,, "Device receive data from UART...");
                 tb_top.uart_device.axi_uart_receive(rx_len);
             end
         join
@@ -93,7 +93,7 @@ module tc_slvh2d;
         else begin
             for (idx = 0; idx < tx_len; idx = idx+1) begin
                 tx_data = tb_top.uart_host.wr_buffer[idx][7:0];
-                rx_data = tb_top.uart_device.rd_buffer[idx][7:0]
+                rx_data = tb_top.uart_device.rd_buffer[idx][7:0];
                 $display("idx = %d, transmitted data = %x, received data = %x", idx, tx_data, rx_data);
 
                 if (rx_data != tx_data) begin

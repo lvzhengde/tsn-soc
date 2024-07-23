@@ -80,7 +80,7 @@ module uart_registers (
     parameter BASEADDR   = 24'h90_0000 ;
     parameter CLK_FREQ   = 100000000   ;  //100MHz
     parameter UART_SPEED = 115200      ;  //Baud rate
-    parameter BAUD_CFG   = CLK_FRQ/(16*UART_SPEED);
+    parameter BAUD_CFG   = CLK_FREQ/(16*UART_SPEED);
 
     reg           parity_en_q     ;  
     reg           msb_first_q     ;  
@@ -195,9 +195,15 @@ module uart_registers (
         end
     end
 
-    assign slv_write_o    = slv_write_q;
-    assign slv_wdata_o    = slv_wdata_q;
-    assign reset_cpu_o    = reset_cpu_q;
-    assign reset_buffer_o = reset_buffer_q;
+    //outputs
+    assign slv_write_o = slv_write_q;
+    assign slv_wdata_o = slv_wdata_q;
+
+    assign parity_en_o      = parity_en_q      ;  
+    assign msb_first_o      = msb_first_q      ;  
+    assign start_polarity_o = start_polarity_q ;  
+    assign baud_config_o    = baud_config_q    ;
+    assign reset_cpu_o      = reset_cpu_q      ;
+    assign reset_buffer_o   = reset_buffer_q   ;
 
 endmodule

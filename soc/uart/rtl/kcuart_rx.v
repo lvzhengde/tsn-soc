@@ -154,6 +154,8 @@ module kcuart_rx(
                 4'd10: 
                     if(parity_en_i == 1'b1)
                         stop_bit <= serial_in_d3 ;
+                default:
+                    ;
             endcase
         end
         else if(rx_active == 1'b0) begin

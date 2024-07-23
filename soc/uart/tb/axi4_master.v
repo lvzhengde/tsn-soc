@@ -72,7 +72,8 @@ module axi4_master
 
     input wire           busy_i          
 );
-    parameter AXI_ID = ID << 2;
+    parameter AXI_ID  = ID << 2;
+    parameter T_QDELAY = 0.1;
 
     reg  [ 31:0]  rdata[0:1023]; 
     reg  [ 31:0]  wdata[0:1023]; 
@@ -163,6 +164,8 @@ module axi4_master
         input [15:0]  blen ; // burst length: 1, 2, ...
         input [ 1:0]  burst; // 0:fixed, 1:incr, 2:wrap
     begin
+        #(T_QDELAY);
+
         axi_arid_o    = arid;
         axi_araddr_o  = addr; 
         /* verilator lint_off WIDTH */
@@ -173,6 +176,7 @@ module axi4_master
     
         @ (posedge clk);
         while (axi_arready_i == 1'b0) @ (posedge clk);
+        #(T_QDELAY);
     
         axi_arid_o    = 0;
         axi_araddr_o  = ~0; 
@@ -190,6 +194,7 @@ module axi4_master
         integer idx;
         integer rdelay;
     begin
+        #(T_QDELAY);
         axi_rready_o = 1;    
     
         for (idx = 0; idx < blen; idx = idx+1) begin
@@ -221,6 +226,8 @@ module axi4_master
                 end
             end
         end
+
+        #(T_QDELAY);
         axi_rready_o = 0;    
     end
     endtask
@@ -261,6 +268,8 @@ module axi4_master
         input [15:0]  blen ; // burst length: 1, 2, ...
         input [ 1:0]  burst; // 0:fixed, 1:incr, 2:wrap
     begin
+        #(T_QDELAY);
+
         axi_awid_o    = awid ;
         axi_awaddr_o  = addr;
         /* verilator lint_off WIDTH */
@@ -271,6 +280,7 @@ module axi4_master
     
         @ (posedge clk); 
         while (axi_awready_i == 1'b0) @ (posedge clk);
+        #(T_QDELAY);
     
         axi_awid_o    = 0 ;
         axi_awaddr_o  = ~0;
@@ -291,7 +301,9 @@ module axi4_master
         integer idx;
         integer wdelay;
     begin
+        #(T_QDELAY);
         addr_reg = addr;
+
         for (idx = 0; idx < blen; idx = idx+1) begin
             axi_wdata_o = wdata[idx];
             axi_wstrb_o = get_strb(addr_reg);
@@ -305,6 +317,7 @@ module axi4_master
     
             @ (posedge clk); 
             while (axi_wready_i == 1'b0) @ (posedge clk);
+            #(T_QDELAY);
             addr_reg = get_next_addr(addr_reg, blen, burst);
     
             if (delay) begin
@@ -327,9 +340,11 @@ module axi4_master
     task axi_master_write_b;
         input [3:0] awid ;
     begin
+        #(T_QDELAY);
         axi_bready_o = 1'b1;
         @ (posedge clk); 
         while (axi_bvalid_i == 1'b0) @ (posedge clk);
+        #(T_QDELAY);
         axi_bready_o = 1'b0;
         if (axi_bresp_i != 2'b00) begin
             $display($time,,"%m ERROR WR BRESP no-ok 0x%02x", axi_bresp_i);

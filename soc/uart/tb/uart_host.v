@@ -140,7 +140,7 @@ module uart_host
     localparam BASEADDR   = 24'h90_0000 ;
     localparam CLK_FREQ   = 100000000   ;  //100MHz
     localparam UART_SPEED = 115200      ;  //Baud rate
-    localparam BAUD_CFG   = CLK_FRQ/(16*UART_SPEED);
+    localparam BAUD_CFG   = CLK_FREQ/(16*UART_SPEED);
 
     reg    tx_done;
     reg    rx_terminate;
@@ -178,7 +178,7 @@ module uart_host
         tx_done = 0;
 
         if(len > 1024) begin
-            $display($time,,"%m ERROR length exceed 1024 %x", len);
+            $display($time,, "%m ERROR length exceed 1024 %x", len);
             $finish;
         end
 
@@ -197,6 +197,7 @@ module uart_host
             tx_write_buffer = 1'b1; 
             tx_data_in      = wr_buffer[idx][7:0];
             @(posedge clk);
+            $display($time,, "%m idx = %d, transmitted data = %02x", idx, tx_data_in);
             tx_write_buffer = 1'b0;
             tx_data_in      = 8'h0;
             @(posedge clk); 
@@ -206,6 +207,7 @@ module uart_host
         wait(uart_tx.data_present == 1'b0);
         repeat(16*11) @(posedge en_16x_baud);
 
+        $display($time,, "%m Host UART Transmit Done!");
         tx_done = 1;
     end
     endtask
@@ -296,7 +298,7 @@ module uart_host
         //tx data
         idx = 0;
         while (idx < len) begin
-            offset = idx[1:0]
+            offset = idx[1:0];
             case (offset)
                 2'b00: data = wr_buffer[idx>>2][ 7: 0];
                 2'b01: data = wr_buffer[idx>>2][15: 8];
@@ -320,6 +322,7 @@ module uart_host
         wait(uart_tx.data_present == 1'b0);
         repeat(16*11) @(posedge en_16x_baud);
 
+        $display($time,, "%m Host Write Memory Done!");
         tx_done = 1;
     end
     endtask
@@ -396,7 +399,7 @@ module uart_host
             @(posedge clk);
 
 
-            offset = idx[1:0]
+            offset = idx[1:0];
             case (offset)
                 2'b00: rd_buffer[idx>>2][ 7: 0] = data;
                 2'b01: rd_buffer[idx>>2][15: 8] = data;

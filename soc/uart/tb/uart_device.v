@@ -133,7 +133,7 @@ module uart_device
         .uart_mst_i      (uart_mst_i ),    
         .uart_rxd_i      (uart_rxd_i ),
         .uart_txd_o      (uart_txd_o ),  
-        .reset_cpu_o     (reset_cpu_o)
+        .reset_cpu_o     (reset_cpu_o),
         .intr_o          (intr_o     ),
     
         // AXI4 bus master interface
@@ -343,9 +343,9 @@ module uart_device
 
             //write data to transmit
             addr = base_addr + 8'h0c;
-            wr_data = {24'h0, wr_buffer[idx][7:0]}
+            wr_data = {24'h0, wr_buffer[idx][7:0]};
             u_axi4_master.wdata[0] = wr_data;
-            axi_master_write(addr, 1, 1, 0);
+            u_axi4_master.axi_master_write(addr, 1, 1, 0);
             @(posedge clk); 
         end //for
     end
@@ -356,6 +356,8 @@ module uart_device
 
     task axi_uart_receive;
         output integer len;
+
+        reg  [31:0] addr;
     begin
         len = 0;
         rx_terminate    = 0;
@@ -370,6 +372,7 @@ module uart_device
 
             if (rx_data_present == 1'b1) begin
                 rd_buffer[len][31:0] = {24'h0, rd_data[7:0]};
+                $display($time,, "%m idx = %d, received data = %02x", len, rd_data[7:0]);
                 len = len + 1;
             end
             else begin //wait
