@@ -42,6 +42,7 @@ module tb_top;
         .uart_mst_i     (uart_mst       ),    //0: Normal slave operation, 1: UART as AXI4 bus master 
         .uart_rxd_i     (ser_host2device),
         .uart_txd_o     (ser_device2host),  
+        .reset_cpu_o    (),
         .intr_o         ()
     );  
 

@@ -45,10 +45,11 @@ module uart_device
 // Ports
 //-----------------------------------------------------------------
 (
-    input           uart_mst_i ,    //0: Normal slave operation, 1: UART as AXI4 bus master 
-    input           uart_rxd_i ,
-    output          uart_txd_o ,  
-    output          intr_o     
+    input           uart_mst_i  ,    //0: Normal slave operation, 1: UART as AXI4 bus master 
+    input           uart_rxd_i  ,
+    output          uart_txd_o  ,  
+    output          reset_cpu_o ,
+    output          intr_o        
 );  
 
     reg clk   = 0;  
@@ -129,10 +130,11 @@ module uart_device
         .rst_n           (rst_n ),      
     
         // uart interface
-        .uart_mst_i      (uart_mst_i),    
-        .uart_rxd_i      (uart_rxd_i),
-        .uart_txd_o      (uart_txd_o),  
-        .intr_o          (intr_o    ),
+        .uart_mst_i      (uart_mst_i ),    
+        .uart_rxd_i      (uart_rxd_i ),
+        .uart_txd_o      (uart_txd_o ),  
+        .reset_cpu_o     (reset_cpu_o)
+        .intr_o          (intr_o     ),
     
         // AXI4 bus master interface
         .mst_awvalid_o   (mst_awvalid_w ),  

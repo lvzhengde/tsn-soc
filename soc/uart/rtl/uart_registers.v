@@ -38,6 +38,10 @@ module uart_registers (
     input           clk     ,
     input           rst_n   ,      
 
+    //program download setting
+    input           uart_mst_i  ,    
+    output          reset_cpu_o ,
+
     //register access interface
     input  [31:0]   waddr_i , 
     input  [31:0]   wdata_i , 
@@ -88,6 +92,8 @@ module uart_registers (
     reg  [ 7:0]   slv_wdata_q ;
     reg           slv_write_q ;
 
+    reg           reset_cpu_q ;
+
     //read operation
     wire [31:0] rmask_w = {{8{rstrb_i[3]}}, {8{rstrb_i[2]}}, {8{rstrb_i[1]}}, {8{rstrb_i[0]}}};
 
@@ -116,6 +122,8 @@ module uart_registers (
                                rx_buffer_afull_i, rx_buffer_aempty_i, slv_rdata_i[7:0]};  //uart read data with status info
                 slv_read    = 1'b1;
             end
+            8'h14:
+                rdata[31:0] = {30'h0, uart_mst_i, reset_cpu_q};
             default:  
                 rdata[31:0] = 32'h0;
           endcase
@@ -144,6 +152,8 @@ module uart_registers (
                 pre_data[31:0] = {29'b0, parity_en_q, msb_first_q, start_polarity_q};
             8'h0c :    
                 pre_data[31:0] = {24'h0, slv_wdata_q[7:0]};  //uart write data
+            8'h14:
+                pre_data[31:0] = {30'h0, uart_mst_i, reset_cpu_q};
             default:  
                 pre_data[31:0] = 32'h0;
         endcase
@@ -157,6 +167,7 @@ module uart_registers (
             parity_en_q         <= 1'b0;
             msb_first_q         <= 1'b0;
             start_polarity_q    <= 1'b0;
+            reset_cpu_q         <= 1'b0;
             reset_buffer_q      <= 1'b0;
         end
         else if (wen_i == 1'b1 && waddr_i[31:8] == BASEADDR) begin
@@ -170,6 +181,8 @@ module uart_registers (
                     slv_wdata_q[7:0] <= wdata[7:0];
                     slv_write_q      <= 1'b1      ;
                 end
+                8'h14:
+                    reset_cpu_q      <= (uart_mst_i) ? wdata[1] : 1'b0;
                 8'h20:   
                     reset_buffer_q   <= wdata[0]  ;
                 default: 
@@ -184,6 +197,7 @@ module uart_registers (
 
     assign slv_write_o    = slv_write_q;
     assign slv_wdata_o    = slv_wdata_q;
+    assign reset_cpu_o    = reset_cpu_q;
     assign reset_buffer_o = reset_buffer_q;
 
 endmodule

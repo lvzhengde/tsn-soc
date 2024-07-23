@@ -43,6 +43,7 @@ module uart_top (
     input           uart_mst_i ,    //0: Normal slave operation, 1: UART as AXI4 bus master 
     input           uart_rxd_i ,
     output          uart_txd_o ,  
+    output          reset_cpu_o,
     output          intr_o     ,
 
     // AXI4 bus master interface
@@ -204,6 +205,10 @@ module uart_top (
     (
         .clk                      (clk    ),
         .rst_n                    (rst_n  ),              
+
+        //program download setting
+        .uart_mst_i               (uart_mst_i ),    
+        .reset_cpu_o              (reset_cpu_o),
 
         //register access interface
         .waddr_i                  (waddr_w ),
