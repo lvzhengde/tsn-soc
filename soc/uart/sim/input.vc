@@ -19,5 +19,6 @@
 ../tb/uart_host.v
 
 ../tc/tc_slvh2d.v
+../tc/tc_slvd2h.v
 
 //+incdir+../rtl +libext+.v+.sv+.vh+.svh -y .

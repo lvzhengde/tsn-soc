@@ -30,11 +30,11 @@
 -*/
 
 /*+
- *  Description : test case for uart axi slave, host transmit / device receive
- *  File        : tc_slvh2d.v
+ *  Description : test case for uart axi slave, device transmit / host receive
+ *  File        : tc_slvd2h.v
 -*/
 
-module tc_slvh2d;
+module tc_slvd2h;
 
     tb_top tb_top();
 
@@ -67,21 +67,21 @@ module tc_slvh2d;
         join
 
         fork
-            //Host transmit
+           //device transmit
             begin
                 tx_len = 17;
-                random = 5;
-                $display($time,, "Host transmit data to UART..., tx_len = %d, rand seed = %d", tx_len, random);
-                tb_top.uart_host.test_transmit(tx_len, random);
+                random = 3;
+                $display($time,, "Device transmit data to UART..., tx_len = %d, rand seed = %d", tx_len, random);
+                tb_top.uart_device.axi_uart_transmit(tx_len, random);
                 #200;
-                tb_top.uart_device.rx_terminate = tb_top.uart_host.tx_done;
+                tb_top.uart_host.rx_terminate = tb_top.uart_device.tx_done;
             end
 
-            //Device receive
+            //host receive
             begin
                 #100;
-                $display($time,, "Device receive data from UART...");
-                tb_top.uart_device.axi_uart_receive(rx_len);
+                $display($time,, "Host receive data from UART...");
+                tb_top.uart_host.test_receive(rx_len);
             end
         join
 
@@ -92,8 +92,8 @@ module tc_slvh2d;
         end
         else begin
             for (idx = 0; idx < tx_len; idx = idx+1) begin
-                tx_data = tb_top.uart_host.wr_buffer[idx][7:0];
-                rx_data = tb_top.uart_device.rd_buffer[idx][7:0];
+                tx_data = tb_top.uart_device.wr_buffer[idx][7:0];
+                rx_data = tb_top.uart_host.rd_buffer[idx][7:0];
                 $display("idx = %d, transmitted data = %x, received data = %x", idx, tx_data, rx_data);
 
                 if (rx_data != tx_data) begin
@@ -110,10 +110,11 @@ module tc_slvh2d;
     
     initial
     begin
-        $dumpfile("slvh2d.fst");
-        $dumpvars(0, tc_slvh2d);
+        $dumpfile("slvd2h.fst");
+        $dumpvars(0, tc_slvd2h);
         $dumpon;
         //$dumpoff;
     end
  
 endmodule
+

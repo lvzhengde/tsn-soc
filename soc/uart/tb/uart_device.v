@@ -55,6 +55,8 @@ module uart_device
     reg clk   = 0;  
     reg rst_n = 0;
 
+    localparam QDELAY  = 0.1;
+
     always #(T_CLK/2) clk = ~clk;
 
     task reset;
@@ -302,6 +304,8 @@ module uart_device
     reg  [ 31:0]  rd_data, wr_data;
     wire [ 31:0]  base_addr = {uart_top.uart_registers.BASEADDR, 8'h0};
 
+    reg  tx_done = 0;
+
     task axi_uart_transmit;
         input integer len;
         input integer random;
@@ -312,6 +316,7 @@ module uart_device
     begin
         seed = random;
         tx_fifo_full = 0;
+        tx_done = 0;
 
         if(len > 1024) begin
             $display($time,,"%m ERROR length exceed 1024 %x", len);
@@ -346,8 +351,16 @@ module uart_device
             wr_data = {24'h0, wr_buffer[idx][7:0]};
             u_axi4_master.wdata[0] = wr_data;
             u_axi4_master.axi_master_write(addr, 1, 1, 0);
+            $display($time,, "%m idx = %d, transmitted data = %02x", idx, wr_data[7:0]);
             @(posedge clk); 
         end //for
+
+        //wait for finishing transmit
+        wait(uart_top.uart_tx.data_present == 1'b0);
+        repeat(16*11) @(posedge uart_top.en_16x_baud_w);
+
+        $display($time,, "%m Device UART Transmit Done!");
+        tx_done = 1;
     end
     endtask
 

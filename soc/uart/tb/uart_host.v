@@ -68,6 +68,7 @@ module uart_host
 
     reg   [15:0]  baud_config    ;
 
+    localparam QDELAY  = 0.1;
 
     // clock and reset
     reg clk   = 0;  
@@ -194,9 +195,11 @@ module uart_host
         for (idx = 0; idx < len; idx = idx+1) begin
             wait(~tx_buffer_full);
             @(posedge clk);
+            #(QDELAY);
             tx_write_buffer = 1'b1; 
             tx_data_in      = wr_buffer[idx][7:0];
             @(posedge clk);
+            #(QDELAY);
             $display($time,, "%m idx = %d, transmitted data = %02x", idx, tx_data_in);
             tx_write_buffer = 1'b0;
             tx_data_in      = 8'h0;
@@ -218,20 +221,28 @@ module uart_host
         len = 0;
 
         while (rx_terminate != 1'b1 && len <= 1024) begin        
-            wait(rx_buffer_data_present);
-            @(posedge clk);
-            rd_buffer[len][31:0] = {24'h0, rx_data_out[7:0]};
-            rx_read_buffer = 1'b1;
-            @(posedge clk);
-            rx_read_buffer = 1'b0;
-            @(posedge clk);
+            if (rx_buffer_data_present == 1'b1) begin
+                @(posedge clk);
+                #(QDELAY);
+                rd_buffer[len][31:0] = {24'h0, rx_data_out[7:0]};
+                rx_read_buffer = 1'b1;
+                $display($time,, "%m idx = %d, received data = %02x", len, rx_data_out[7:0]);
+                @(posedge clk);
+                #(QDELAY);
+                rx_read_buffer = 1'b0;
+                @(posedge clk);
 
-            len = len + 1;
+                len = len + 1;
+            end
+            else begin
+                repeat(2) @(posedge en_16x_baud);
+            end
         end
     end
     endtask
 
-
+    //Device UART should be configured as AXI master 
+    //in the following tasks
     localparam REQ_WRITE        = 8'had;
     localparam REQ_READ         = 8'h5a;
 
@@ -263,9 +274,11 @@ module uart_host
         //tx command
         wait(~tx_buffer_full);
         @(posedge clk);
+        #(QDELAY);
         tx_write_buffer = 1'b1;
         tx_data_in      = REQ_WRITE;
         @(posedge clk);
+        #(QDELAY);
         tx_write_buffer = 1'b0;
         tx_data_in      = 8'h0;
         @(posedge clk);
@@ -273,9 +286,11 @@ module uart_host
         //tx length
         wait(~tx_buffer_full);
         @(posedge clk);
+        #(QDELAY);
         tx_write_buffer = 1'b1;
         tx_data_in      = len;
         @(posedge clk);
+        #(QDELAY);
         tx_write_buffer = 1'b0;
         tx_data_in      = 8'h0;
         @(posedge clk);
@@ -285,9 +300,11 @@ module uart_host
         for (idx = 0; idx < 4; idx = idx+1) begin
             wait(~tx_buffer_full);
             @(posedge clk);
+            #(QDELAY);
             tx_write_buffer = 1'b1;
             tx_data_in      = temp[31:24];
             @(posedge clk);
+            #(QDELAY);
             tx_write_buffer = 1'b0;
             tx_data_in      = 8'h0;
             @(posedge clk);
@@ -308,9 +325,11 @@ module uart_host
 
             wait(~tx_buffer_full);
             @(posedge clk);
+            #(QDELAY);
             tx_write_buffer = 1'b1;
             tx_data_in      = data;
             @(posedge clk);
+            #(QDELAY);
             tx_write_buffer = 1'b0;
             tx_data_in      = 8'h0;
             @(posedge clk);
@@ -354,9 +373,11 @@ module uart_host
         //tx command
         wait(~tx_buffer_full);
         @(posedge clk);
+        #(QDELAY);
         tx_write_buffer = 1'b1;
         tx_data_in      = REQ_READ;
         @(posedge clk);
+        #(QDELAY);
         tx_write_buffer = 1'b0;
         tx_data_in      = 8'h0;
         @(posedge clk);
@@ -364,9 +385,11 @@ module uart_host
         //tx length
         wait(~tx_buffer_full);
         @(posedge clk);
+        #(QDELAY);
         tx_write_buffer = 1'b1;
         tx_data_in      = len;
         @(posedge clk);
+        #(QDELAY);
         tx_write_buffer = 1'b0;
         tx_data_in      = 8'h0;
         @(posedge clk);
@@ -376,9 +399,11 @@ module uart_host
         for (idx = 0; idx < 4; idx = idx+1) begin
             wait(~tx_buffer_full);
             @(posedge clk);
+            #(QDELAY);
             tx_write_buffer = 1'b1;
             tx_data_in      = temp[31:24];
             @(posedge clk);
+            #(QDELAY);
             tx_write_buffer = 1'b0;
             tx_data_in      = 8'h0;
             @(posedge clk);
@@ -392,9 +417,11 @@ module uart_host
         while (idx < len && rx_terminate != 1'b1) begin
             wait(rx_buffer_data_present);     
             @(posedge clk);
+            #(QDELAY);
             data = rx_data_out;
             rx_read_buffer = 1'b1;
             @(posedge clk);
+            #(QDELAY);
             rx_read_buffer = 1'b0;
             @(posedge clk);
 
