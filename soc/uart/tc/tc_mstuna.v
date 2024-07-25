@@ -30,30 +30,31 @@
 -*/
 
 /*+
- *  Description : test case for uart axi slave, device transmit / host receive
- *  File        : tc_slvd2h.v
+ *  Description : test case for uart axi master, 
+ *                unaligned address access.
+ *  File        : tc_mstuna.v
 -*/
 
-module tc_slvd2h;
+module tc_mstuna;
 
     tb_top tb_top();
 
-    integer  tx_len;
-    integer  rx_len;
-    integer  random;
-    integer  idx;
+    reg  [31:0]  addr;
+    reg  [ 7:0]  len;
+    integer      random;
+    integer      idx;
 
-    reg  [ 7:0] tx_data;
-    reg  [ 7:0] rx_data;
+    reg  [31:0]  tx_data;
+    reg  [31:0]  rx_data;
     
     initial begin
-        tb_top.uart_mst = 0; //configured as AXI slave
-        tx_len = 0;
-        rx_len = 0;
+        tb_top.uart_mst = 1'b1; //configured as AXI master
+        addr   = 0;
+        len    = 0;
         random = 0;
     
         #10;
-        $display($time,, "UART Configured As AXI Slave, Simulation Start!");
+        $display($time,, "UART Device Configured As AXI Master, Simulation Start!");
 
         fork
             begin
@@ -66,57 +67,66 @@ module tc_slvd2h;
             end
         join
 
-        fork
-           //device transmit
-            begin
-                tx_len = 17;
-                random = 3;
-                $display($time,, "Device transmit data to UART..., tx_len = %d, rand seed = %d", tx_len, random);
-                tb_top.uart_device.axi_uart_transmit(tx_len, random);
-                #200;
-                tb_top.uart_host.rx_terminate = tb_top.uart_device.tx_done;
+        $display("\n", $time,, "Test for Write/Read Multiple Bytes and Unaligned Address...");
+        //write multiple 32-bit words to AXI memory
+        #200;
+        addr   = 32'h102;
+        len    = 7*4 + 1;
+        $display($time,, "addr = 0x%08x, len = %02d", addr, len);
+        random = 11;
+        tb_top.uart_host.write_mem(addr, len, random);
+
+        //read multiple 32-bit words from AXI memory 
+        tb_top.uart_host.read_mem(addr, len);
+        #200;
+
+        //scoreboard
+        for (idx = 0; idx < len; idx = idx+4) begin
+            tx_data = tb_top.uart_host.wr_buffer[idx/4];
+            rx_data = tb_top.uart_host.rd_buffer[idx/4];
+            if ((len-idx) < 4) begin
+                case (len-idx)
+                    1:
+                    begin
+                        tx_data = tx_data & 'hff;
+                        rx_data = rx_data & 'hff;
+                    end
+                    2:
+                    begin
+                        tx_data = tx_data & 'hff_ff;
+                        rx_data = rx_data & 'hff_ff;
+                    end
+                    3:
+                    begin
+                        tx_data = tx_data & 'hff_ff_ff;
+                        rx_data = rx_data & 'hff_ff_ff;
+                    end
+                    default
+                        ;
+                endcase
             end
 
-            //host receive
-            begin
-                #100;
-                $display($time,, "Host receive data from UART...");
-                tb_top.uart_host.test_receive(rx_len);
+            $display("idx = %03d, transmitted data = %08x, received data = %08x", idx/4, tx_data, rx_data);
+
+            if (rx_data != tx_data) begin
+                $display("ERROR: received data not equal to transmitted data!");
+                $finish(2);
             end
-        join
-
-        tb_top.uart_device.test_busy = 1'b0;
-
-        //Scoreboard
-        if (rx_len != tx_len) begin
-            $display("ERROR: rx_len = %d, not equal to tx_len = %d", rx_len, tx_len);
-            $finish(2);
         end
-        else begin
-            for (idx = 0; idx < tx_len; idx = idx+1) begin
-                tx_data = tb_top.uart_device.wr_buffer[idx][7:0];
-                rx_data = tb_top.uart_host.rd_buffer[idx][7:0];
-                $display("idx = %d, transmitted data = %x, received data = %x", idx, tx_data, rx_data);
 
-                if (rx_data != tx_data) begin
-                    $display("ERROR: received data not equal to transmitted data!");
-                    $finish(2);
-                end
-            end
-        end
-
-        #5000;
+        #500;
         $display("SIMULATION PASS!!!");
         $finish;
     end
     
     initial
     begin
-        $dumpfile("slvd2h.fst");
-        $dumpvars(0, tc_slvd2h);
+        $dumpfile("mstuna.fst");
+        $dumpvars(0, tc_mstuna);
         $dumpon;
         //$dumpoff;
     end
  
 endmodule
+
 

@@ -20,5 +20,7 @@
 
 ../tc/tc_slvh2d.v
 ../tc/tc_slvd2h.v
+../tc/tc_aximst.v
+../tc/tc_mstuna.v
 
 //+incdir+../rtl +libext+.v+.sv+.vh+.svh -y .

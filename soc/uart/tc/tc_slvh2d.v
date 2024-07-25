@@ -85,6 +85,8 @@ module tc_slvh2d;
             end
         join
 
+        tb_top.uart_device.test_busy = 1'b0;
+
         //Scoreboard
         if (rx_len != tx_len) begin
             $display("ERROR: rx_len = %d, not equal to tx_len = %d", rx_len, tx_len);

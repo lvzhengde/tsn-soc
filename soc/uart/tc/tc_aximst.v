@@ -30,30 +30,30 @@
 -*/
 
 /*+
- *  Description : test case for uart axi slave, device transmit / host receive
- *  File        : tc_slvd2h.v
+ *  Description : test case for uart axi master 
+ *  File        : tc_aximst.v
 -*/
 
-module tc_slvd2h;
+module tc_aximst;
 
     tb_top tb_top();
 
-    integer  tx_len;
-    integer  rx_len;
-    integer  random;
-    integer  idx;
+    reg  [31:0]  addr;
+    reg  [ 7:0]  len;
+    integer      random;
+    integer      idx;
 
-    reg  [ 7:0] tx_data;
-    reg  [ 7:0] rx_data;
+    reg  [31:0]  tx_data;
+    reg  [31:0]  rx_data;
     
     initial begin
-        tb_top.uart_mst = 0; //configured as AXI slave
-        tx_len = 0;
-        rx_len = 0;
+        tb_top.uart_mst = 1'b1; //configured as AXI master
+        addr   = 0;
+        len    = 0;
         random = 0;
     
         #10;
-        $display($time,, "UART Configured As AXI Slave, Simulation Start!");
+        $display($time,, "UART Device Configured As AXI Master, Simulation Start!");
 
         fork
             begin
@@ -66,54 +66,62 @@ module tc_slvd2h;
             end
         join
 
-        fork
-           //device transmit
-            begin
-                tx_len = 17;
-                random = 3;
-                $display($time,, "Device transmit data to UART..., tx_len = %d, rand seed = %d", tx_len, random);
-                tb_top.uart_device.axi_uart_transmit(tx_len, random);
-                #200;
-                tb_top.uart_host.rx_terminate = tb_top.uart_device.tx_done;
-            end
+        $display("\n", $time,, "Test for Write/Read one 32-bit Word...");
+        //write one 32-bit word to AXI memory
+        #200;
+        addr   = 32'h50;
+        len    = 4;
+        random = 11;
+        tb_top.uart_host.write_mem(addr, len, random);
 
-            //host receive
-            begin
-                #100;
-                $display($time,, "Host receive data from UART...");
-                tb_top.uart_host.test_receive(rx_len);
-            end
-        join
+        //read one 32-bit word from AXI memory at the same address
+        tb_top.uart_host.read_mem(addr, len);
+        #200;
 
-        tb_top.uart_device.test_busy = 1'b0;
+        //scoreboard
+        tx_data = tb_top.uart_host.wr_buffer[0];
+        rx_data = tb_top.uart_host.rd_buffer[0];
+        $display("transmitted data = %08x, received data = %08x", tx_data, rx_data);
 
-        //Scoreboard
-        if (rx_len != tx_len) begin
-            $display("ERROR: rx_len = %d, not equal to tx_len = %d", rx_len, tx_len);
+        if (tx_data != rx_data) begin
+            $display("ERROR: received data not equal to transmitted data!");
             $finish(2);
         end
-        else begin
-            for (idx = 0; idx < tx_len; idx = idx+1) begin
-                tx_data = tb_top.uart_device.wr_buffer[idx][7:0];
-                rx_data = tb_top.uart_host.rd_buffer[idx][7:0];
-                $display("idx = %d, transmitted data = %x, received data = %x", idx, tx_data, rx_data);
 
-                if (rx_data != tx_data) begin
-                    $display("ERROR: received data not equal to transmitted data!");
-                    $finish(2);
-                end
+
+        $display("\n", $time,, "Test for Write/Read Multiple 32-bit Words...");
+        //write multiple 32-bit words to AXI memory
+        #200;
+        addr   = 32'h100;
+        len    = 19*4;
+        random = 11;
+        tb_top.uart_host.write_mem(addr, len, random);
+
+        //read multiple 32-bit words from AXI memory 
+        tb_top.uart_host.read_mem(addr, len);
+        #200;
+
+        //scoreboard
+        for (idx = 0; idx < (len/4); idx = idx+1) begin
+            tx_data = tb_top.uart_host.wr_buffer[idx];
+            rx_data = tb_top.uart_host.rd_buffer[idx];
+            $display("idx = %03d, transmitted data = %08x, received data = %08x", idx, tx_data, rx_data);
+
+            if (rx_data != tx_data) begin
+                $display("ERROR: received data not equal to transmitted data!");
+                $finish(2);
             end
         end
 
-        #5000;
+        #500;
         $display("SIMULATION PASS!!!");
         $finish;
     end
     
     initial
     begin
-        $dumpfile("slvd2h.fst");
-        $dumpvars(0, tc_slvd2h);
+        $dumpfile("aximst.fst");
+        $dumpvars(0, tc_aximst);
         $dumpon;
         //$dumpoff;
     end

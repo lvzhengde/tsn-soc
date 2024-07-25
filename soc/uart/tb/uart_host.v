@@ -237,7 +237,7 @@ module uart_host
             else begin
                 repeat(2) @(posedge en_16x_baud);
             end
-        end
+        end //while
     end
     endtask
 
@@ -415,27 +415,32 @@ module uart_host
         rx_terminate = 0;
         idx = 0;
         while (idx < len && rx_terminate != 1'b1) begin
-            wait(rx_buffer_data_present);     
-            @(posedge clk);
-            #(QDELAY);
-            data = rx_data_out;
-            rx_read_buffer = 1'b1;
-            @(posedge clk);
-            #(QDELAY);
-            rx_read_buffer = 1'b0;
-            @(posedge clk);
+            if (rx_buffer_data_present == 1'b1) begin    
+                @(posedge clk);
+                #(QDELAY);
+                data = rx_data_out;
+                rx_read_buffer = 1'b1;
+                @(posedge clk);
+                #(QDELAY);
+                rx_read_buffer = 1'b0;
+                @(posedge clk);
 
 
-            offset = idx[1:0];
-            case (offset)
-                2'b00: rd_buffer[idx>>2][ 7: 0] = data;
-                2'b01: rd_buffer[idx>>2][15: 8] = data;
-                2'b10: rd_buffer[idx>>2][23:16] = data;
-                2'b11: rd_buffer[idx>>2][31:24] = data;
-            endcase
+                offset = idx[1:0];
+                case (offset)
+                    2'b00: rd_buffer[idx>>2][ 7: 0] = data;
+                    2'b01: rd_buffer[idx>>2][15: 8] = data;
+                    2'b10: rd_buffer[idx>>2][23:16] = data;
+                    2'b11: rd_buffer[idx>>2][31:24] = data;
+                endcase
 
-            idx = idx + 1;
-        end
+                idx = idx + 1;
+            end
+            else begin
+                repeat(2) @(posedge en_16x_baud);
+            end
+        end //while
+        $display($time,, "%m Host Read Memory Done!");
     end
     endtask
 
