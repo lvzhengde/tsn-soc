@@ -66,20 +66,20 @@ module tc_m1s1;
         repeat (5) @(posedge tb_top.clk);
 
         //Single beat tests
-        saddr = 32'h90000000 + 4;  //align to 4-bytes boundary
+        saddr = 32'h80000000 + 4;  //align to 4-bytes boundary
         delay = 0;
         tb_top.BLK_MST[0].u_axi4_master.test_single(saddr, delay);
 
         repeat (50) @ (posedge tb_top.clk);
 
-        saddr = 32'h90000000 + 8;
+        saddr = 32'h80000000 + 8;
         delay = 1;
         tb_top.BLK_MST[0].u_axi4_master.test_single(saddr, delay);
 
         repeat (50) @ (posedge tb_top.clk);
 
         //Burst tests
-        saddr  = 32'h90000000 + 32'h100;  //align to 4-bytes boundary
+        saddr  = 32'h80000000 + 32'h100;  //align to 4-bytes boundary
         delay  = 0;
         random = 0;
         for (blen = 1; blen <= 16; blen = blen+1) begin
@@ -88,7 +88,7 @@ module tc_m1s1;
 
         repeat (50) @ (posedge tb_top.clk);
 
-        saddr  = 32'h90000000 + 32'h200;  //align to 4-bytes boundary
+        saddr  = 32'h80000000 + 32'h200;  //align to 4-bytes boundary
         delay  = 1;
         random = 1;
         for (blen = 1; blen <= 16; blen = blen+1) begin

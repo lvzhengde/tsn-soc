@@ -33,9 +33,9 @@
 `define SPI_DEFINES
 
 
-`define SPI_FLASH_BASEADDR           (32'h91000000)    //Base address for SPI flash memory in XIP mode
-`define SPI_REG_BASEADDR             (32'h91800000)    //Base address for SPI control/status registers
-`define SPI_ADDR_MASK                (32'hff800000)
+`define SPI_FLASH_BASEADDR           (32'h80000000)    //Base address for SPI flash memory in XIP mode
+`define SPI_REG_BASEADDR             (32'h88000000)    //Base address for SPI control/status registers
+`define SPI_ADDR_MASK                (32'hf8000000)
 
 `define SPI_DGIER    (8'h1c)  //Device Global Interrupt Enable Register {gie, 31'b0}
 `define SPI_IPISR    (8'h20)  //IP Interrupt Status Register {27'b0, rx_full, 1'b0, tx_empty, 2'b0}

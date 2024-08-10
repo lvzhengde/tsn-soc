@@ -68,7 +68,7 @@ module tc_misaligned;
         repeat (5) @(posedge tb_top.clk);
 
         //Misaligend burst tests
-        saddr  = 32'h90000000 + 32'h100;  
+        saddr  = 32'h80000000 + 32'h100;  
         delay  = 0;
         random = 0;
         for (i = 0; i < 4; i = i+1) begin
@@ -79,7 +79,7 @@ module tc_misaligned;
 
         repeat (50) @ (posedge tb_top.clk);
 
-        saddr  = 32'h90000000 + 32'h200;  
+        saddr  = 32'h80000000 + 32'h200;  
         delay  = 1;
         random = 1;
         for (i = 0; i < 4; i = i+1) begin

@@ -243,8 +243,8 @@ module axi4_tap
     // Default to slv0
     `define ADDR_SEL_W  3            
 
-    parameter SLV1_ADDR  = 32'h90000000;
-    parameter SLV1_MASK  = 32'hff000000;
+    parameter SLV1_ADDR  = 32'h80000000;
+    parameter SLV1_MASK  = 32'hf0000000;
     parameter SLV2_ADDR  = 32'h91000000;
     parameter SLV2_MASK  = 32'hff000000;
     parameter SLV3_ADDR  = 32'h92000000;

@@ -71,7 +71,10 @@ module tc_m4s4;
             repeat (50) @ (posedge tb_top.clk);
 
             //Burst tests
-            saddr  = {{4'h9, idx[3:0]}, 24'h0} + 32'h100;  //align to 4-bytes boundary
+            if (idx == 0)
+                saddr = 32'h8000_0000 + 32'h100;
+            else
+                saddr  = {{4'h9, idx[3:0]}, 24'h0} + 32'h100;  //align to 4-bytes boundary
             delay  = 0;
             random = 0;
             for (blen = 1; blen <= 16; blen = blen+1) begin
@@ -80,7 +83,10 @@ module tc_m4s4;
 
             repeat (50) @ (posedge tb_top.clk);
 
-            saddr  = {{4'h9, idx[3:0]}, 24'h0} + 32'h200;  //align to 4-bytes boundary
+            if (idx == 0)
+                saddr = 32'h8000_0000 + 32'h200;
+            else
+                saddr  = {{4'h9, idx[3:0]}, 24'h0} + 32'h200;  //align to 4-bytes boundary
             delay  = 1;
             random = 1+idx;
             for (blen = 1; blen <= 16; blen = blen+1) begin
