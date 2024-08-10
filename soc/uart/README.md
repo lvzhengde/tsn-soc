@@ -6,7 +6,7 @@ The UART core is designed based on the specification of Xilinx UART Macros. <br>
 UART module can be configured as AXI Slave or AXI Master through external port. <br>
 When configured in AXI Master mode, can access the processor's memory address space, thus serving as a debug bridge, and can download binary software code to memory also. <br>
 
-####Features 
+#### Features 
 
 1. Contains universal UART transmission and reception functions<br> 
     (1) One start bit<br>
@@ -60,6 +60,6 @@ The solutions involved in the design may implicitly involve some patent claims o
 The developer makes no commitment to the results of the use and assumes no legal responsibility arising from it. <br>
 Users must be aware of and agree to the above statement. If you do not agree, please do not use it. <br>
 
-#### Follow the Developer's Wechat Official Accountp
+#### Follow the Developer's Wechat Official Account
 If you need to know the latest status of the project and participate in related technical discussions, please open WeChat and search for the official account "时光之箭" or scan the following QR code to follow the Developer's Wechat official account. <br>
 ![image](https://open.weixin.qq.com/qr/code?username=Arrow-of-Time-zd "时光之箭")
