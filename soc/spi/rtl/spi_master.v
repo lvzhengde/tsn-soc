@@ -36,36 +36,28 @@
 -*/
 
 module spi_master
-    //-----------------------------------------------------------------
-    // Params
-    //-----------------------------------------------------------------
-    #(
-        parameter SCK_RATIO = 32
-    )
-    //-----------------------------------------------------------------
-    // Ports
-    //-----------------------------------------------------------------
-    (
-        input         clk        ,
-        input         rst_n      ,
-        input         sw_reset_i ,
+(
+    input          clk        ,
+    input          rst_n      ,
+    input          sw_reset_i ,
 
-        input         cpol_i     ,
-        input         cpha_i     ,
-        input         spi_loop_i ,
+    input          cpol_i     ,
+    input          cpha_i     ,
+    input          spi_loop_i ,
+    input  [15:0]  sck_ratio_i,
 
-        input         req_i      ,
-        input         start_i    ,
-        output        done_o     ,
-        output        busy_o     ,
-        input  [7:0]  data_i     ,
-        output [7:0]  data_o     ,
+    input          req_i      ,
+    input          start_i    ,
+    output         done_o     ,
+    output         busy_o     ,
+    input  [ 7:0]  data_i     ,
+    output [ 7:0]  data_o     ,
 
-        output        spi_clk_o  ,
-        output        spi_mosi_o ,
-        input         spi_miso_i ,
-        output        spi_cs_o   
-    );
+    output         spi_clk_o  ,
+    output         spi_mosi_o ,
+    input          spi_miso_i ,
+    output         spi_cs_o   
+);
 
     //-----------------------------------------------------------------
     // Registers
@@ -73,7 +65,7 @@ module spi_master
     reg        active_q;
     reg [ 5:0] edge_cnt_q;
     reg [ 7:0] shift_reg_q;
-    reg [31:0] clk_div_q;
+    reg [16:0] clk_div_q;
     reg        done_q;    
 
     reg        spi_clk_q;
@@ -90,14 +82,14 @@ module spi_master
     // SPI Clock Generator
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n)
-            clk_div_q <= 32'd0;
-        else if (start_w || sw_reset_i || clk_div_q == 32'd0)
-            clk_div_q <= SCK_RATIO;
+            clk_div_q <= 16'd0;
+        else if (start_w || sw_reset_i || clk_div_q == 16'd0)
+            clk_div_q <= sck_ratio_i;
         else
-            clk_div_q <= clk_div_q - 32'd1;
+            clk_div_q <= clk_div_q - 16'd1;
     end
     
-    wire clk_en_w = (clk_div_q == 32'd0);
+    wire clk_en_w = (clk_div_q == 16'd0);
 
     //-----------------------------------------------------------------
     // Sample, Drive pulse generation

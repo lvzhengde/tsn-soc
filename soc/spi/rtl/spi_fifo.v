@@ -36,31 +36,31 @@
 -*/
 
 module spi_fifo
-    //-----------------------------------------------------------------
-    // Params
-    //-----------------------------------------------------------------
-    #(
-        parameter WIDTH   = 8,
-        parameter DEPTH   = 4,
-        parameter ADDR_W  = 2
-    )
-    //-----------------------------------------------------------------
-    // Ports
-    //-----------------------------------------------------------------
-    (
-        // Inputs
-        input               clk        ,
-        input               rst_n      ,
-        input  [WIDTH-1:0]  data_in_i  ,
-        input               push_i     ,
-        input               pop_i      ,
-        input               flush_i    ,
-        
-        // Outputs
-        output [WIDTH-1:0]  data_out_o ,
-        output              accept_o   ,
-        output              valid_o     
-    );
+//-----------------------------------------------------------------
+// Params
+//-----------------------------------------------------------------
+#(
+    parameter WIDTH   = 8,
+    parameter DEPTH   = 4,
+    parameter ADDR_W  = 2
+)
+//-----------------------------------------------------------------
+// Ports
+//-----------------------------------------------------------------
+(
+    // Inputs
+    input               clk        ,
+    input               rst_n      ,
+    input  [WIDTH-1:0]  data_in_i  ,
+    input               push_i     ,
+    input               pop_i      ,
+    input               flush_i    ,
+    
+    // Outputs
+    output [WIDTH-1:0]  data_out_o ,
+    output              accept_o   ,
+    output              valid_o     
+);
 
     //-----------------------------------------------------------------
     // Local Params

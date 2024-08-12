@@ -45,9 +45,12 @@
 `define SPI_CR       (8'h60)  //SPI Control Register {22'b0, lsb_first, inhibit, msse, rxfifo_rst, txfifo_rst, cpha, cpol, master, spe, loop}
 `define SPI_SR       (8'h64)  //SPI Status Register {28'b0, tx_full, tx_empty, rx_full, rx_empty}
 `define SPI_DTR      (8'h68)  //SPI Data Transmit Register (A single register or a FIFO) {24'b0, tx_data[7:0]}
-`define SPI_DRR      (8'h6c)  //SPI Data Receive Register (A single register or a FIFO)  {24'b0, rx_data[7:0]}
-`define SPI_SSR      (8'h70)  //SPI Slave Select Register {31'b0, ss}
+`define SPI_DRR      (8'h6c)  //SPI Data Receive Register (A single register or a FIFO)  {20'b0, tx_full, tx_empty, rx_full, rx_empty, rx_data[7:0]}
+`define SPI_SSR      (8'h70)  //SPI Slave Select Register {31'b0, ssr_value}
+`define SPI_ECR      (8'h74)  //SPI Extended Control Register {6'b0, dummy_cycles, extadd, xip_read_code[7:0], sck_ratio[15:0]}
 
+`define SCK_RATIO_DEFAULT            (16'd32)
+`define XIP_READ_CODE_DEFAULT        ( 8'h03)   //8'h03, normal read 3-byte address; 8'h13, normal read 4-byte address
 
 `endif
 
