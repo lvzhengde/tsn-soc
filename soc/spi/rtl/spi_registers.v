@@ -420,16 +420,16 @@ module spi_registers
     reg        ip2bus_ready_q;
     
     always @(posedge bus2ip_clk or negedge bus2ip_rst_n) begin
-        if (!bus2ip_rst_n) begin
+        if (!bus2ip_rst_n) 
             rd_data_q <= 32'b0;
         else 
             rd_data_q <= data_r;
     end
 
     always @(posedge bus2ip_clk or negedge bus2ip_rst_n) begin
-        if (!bus2ip_rst_n) begin
+        if (!bus2ip_rst_n) 
             ip2bus_ready_q <= 1'b0;
-        else if (ip2bus_ready_q & (bus2ip_rd_ce_i | bus2ip_wr_ce_i))
+        else if (ip2bus_ready_o & (bus2ip_rd_ce_i | bus2ip_wr_ce_i))
             ip2bus_ready_q <= 1'b0;
         else if (bus2ip_rd_ce_i | bus2ip_wr_ce_i)
             ip2bus_ready_q <= 1'b1;
