@@ -52,7 +52,7 @@ module spi_xip_read
     output              ip2bus_ready_o ,
 
     //SPI control and FIFO interface
-    output              flush_spi_o    ,         //flush TX/RX FIFO and SPI interface
+    output              flush_spi_o    ,          //flush TX/RX FIFO and SPI interface
     input               tx_accept_i    ,
     input               rx_ready_i     ,
     output              spi_dtr_wr_o   ,          //Transmit FIFO write enable 

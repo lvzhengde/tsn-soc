@@ -65,8 +65,8 @@ module spi_registers
     output              spi_ssr_value_o,          //SPI manual slave select
     output              spi_dtr_wr_o   ,          //Transmit FIFO write enable 
     output [ 7:0]       spi_dtr_data_o ,          //Transmit FIFO write data 
-    input  [ 7:0]       spi_drr_data_i ,          //Receive FIFO read data 
     output              spi_drr_rd_o   ,          //Receive FIFO read enable
+    input  [ 7:0]       spi_drr_data_i ,          //Receive FIFO read data 
 
     output [15:0]       spi_ecr_sck_ratio_o     , // clk/sclk ratio
     output [ 7:0]       spi_ecr_xip_read_code_o , // XIP read instruction code
@@ -81,7 +81,6 @@ module spi_registers
     input               rxfifo_full_int_i  ,      //SPI RX FIFO full, one cycle pulse
 
     output              intr_o                    //Interrupt request output
-
 );
 
     wire  blk_sel_w  = ((bus2ip_addr_i & `SPI_ADDR_MASK) == `SPI_REG_BASEADDR);
