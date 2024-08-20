@@ -47,8 +47,8 @@
 `define UART_RSTCPU    (8'h14)  //UART Reset CPU register (in AXI Master Mode) {30'h0, uart_mst, reset_cpu};
 `define UART_RSTBUF    (8'h20)  //UART Reset RX/TX Buffer Register {31'h0, reset_buffer}
 
-`define UART_IER       (8'h24)  //UART Interrupt Enable Register {30'b0, tx_empty, rx_present}
-`define UART_ISR       (8'h28)  //UART Interrupt Status Register (write 1 to clear) {30'b0, tx_empty, rx_present}
+`define UART_IER       (8'h24)  //UART Interrupt Enable Register {30'b0, tx_full, rx_present}
+`define UART_ISR       (8'h28)  //UART Interrupt Status Register (write 1 to clear) {30'b0, tx_full, rx_present}
 
 `endif
 

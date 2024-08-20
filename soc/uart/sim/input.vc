@@ -23,4 +23,4 @@
 ../tc/tc_aximst.v
 ../tc/tc_mstuna.v
 
-//+incdir+../rtl +libext+.v+.sv+.vh+.svh -y .
++incdir+../rtl +libext+.v+.sv+.vh+.svh -y .

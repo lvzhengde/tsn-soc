@@ -34,6 +34,8 @@
  *  File         : uart_device.v  
 -*/
 
+`include "uart_defines.v"
+
 module uart_device
 //-----------------------------------------------------------------
 // Params
@@ -302,7 +304,7 @@ module uart_device
     reg  [ 31:0]  wr_buffer[0:1023]; 
 
     reg  [ 31:0]  rd_data, wr_data;
-    wire [ 31:0]  base_addr = {uart_top.uart_registers.BASEADDR, 8'h0};
+    wire [ 31:0]  base_addr = `UART_BASEADDR; 
 
     reg  tx_done = 0;
 
@@ -334,7 +336,7 @@ module uart_device
         //transmit data
         for (idx = 0; idx < len; idx = idx+1) begin
             //read uart status 
-            addr = base_addr + 8'h08;
+            addr = base_addr + `UART_STATUS;
             u_axi4_master.axi_master_read (addr, 1, 1, 0);
             rd_data = u_axi4_master.rdata[0];
             tx_fifo_full = rd_data[3];
@@ -347,7 +349,7 @@ module uart_device
             end
 
             //write data to transmit
-            addr = base_addr + 8'h0c;
+            addr = base_addr + `UART_TXDATA;
             wr_data = {24'h0, wr_buffer[idx][7:0]};
             u_axi4_master.wdata[0] = wr_data;
             u_axi4_master.axi_master_write(addr, 1, 1, 0);
@@ -378,7 +380,7 @@ module uart_device
 
         while (rx_terminate != 1'b1 && len <= 1024) begin        
             //read uart rx data register 
-            addr = base_addr + 8'h10;
+            addr = base_addr + `UART_RXDATA;
             u_axi4_master.axi_master_read (addr, 1, 1, 0);
             rd_data = u_axi4_master.rdata[0];
             rx_data_present = rd_data[12];

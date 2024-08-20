@@ -239,11 +239,14 @@ module uart_top (
         .reset_buffer_o           (reset_buffer_w   ) ,   
         .baud_config_o            (baud_config_w    ) ,
 
-        // uart access interface for AXI4 slave
+        //uart access interface for AXI4 slave
         .slv_rdata_i              (slv_rdata_w ),
         .slv_read_o               (slv_read_w  ),
         .slv_wdata_o              (slv_wdata_w ),
-        .slv_write_o              (slv_write_w )
+        .slv_write_o              (slv_write_w ),
+
+        //interrupt request
+        .intr_o                   (intr_o      )
     );
 
     uart_axi_slv uart_axi_slv 
@@ -357,31 +360,5 @@ module uart_top (
 
     assign mst_rdata_w = rx_data_out_w;
     assign slv_rdata_w = rx_data_out_w;
-
-
-    //-----------------------------------------------------------------
-    // Interrupt
-    // Only generate interrupt when uart data received
-    //-----------------------------------------------------------------    
-    reg    intr_q;
-    reg    rx_buffer_data_present_q;
-
-    always @(posedge clk or negedge rst_n) begin
-        if(!rst_n)
-            rx_buffer_data_present_q <= 1'b0;
-        else
-            rx_buffer_data_present_q <= rx_buffer_data_present_w;
-    end
-
-    always @(posedge clk or negedge rst_n) begin
-        if(!rst_n)
-            intr_q <= 1'b0;
-        else if (rx_buffer_data_present_w & (~rx_buffer_data_present_q)) //positive edge
-            intr_q <= 1'b1;
-        else if ((~rx_buffer_data_present_w) & rx_buffer_data_present_q) //negative edge
-            intr_q <= 1'b0;
-    end
-
-    assign intr_o = intr_q;
 
 endmodule

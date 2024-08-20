@@ -34,6 +34,8 @@
  *  File        : uart_registers.v
 -*/
 
+`include "uart_defines.v"
+
 module uart_registers (
     input           clk     ,
     input           rst_n   ,      
@@ -71,30 +73,164 @@ module uart_registers (
     output          reset_buffer_o  ,  //reset uart fifo, active high
     output [15:0]   baud_config_o   ,
 
-    // uart access interface for AXI4 slave
+    //uart access interface for AXI4 slave
     input  [ 7:0]   slv_rdata_i ,
     output          slv_read_o  ,
     output [ 7:0]   slv_wdata_o ,
-    output          slv_write_o 
+    output          slv_write_o ,
+
+    //interrupt output
+    output          intr_o     
 );
-    parameter BASEADDR   = 24'h90_0000 ;
     parameter CLK_FREQ   = 100000000   ;  //100MHz
     parameter UART_SPEED = 115200      ;  //Baud rate
     parameter BAUD_CFG   = CLK_FREQ/(16*UART_SPEED);
 
+    wire uart_wr_sel_w = ((waddr_i & `UART_ADDR_MASK) == `UART_BASEADDR);
+    wire uart_rd_sel_w = ((raddr_i & `UART_ADDR_MASK) == `UART_BASEADDR);
+
+    //-----------------------------------------------------------------
+    // Baud Rate Config Register
+    //-----------------------------------------------------------------
+    wire baud_wr_sel_w = (waddr_i[7:0] == `UART_BAUD) & uart_wr_sel_w;  
+    reg  [15:0]   baud_config_q;
+
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n)
+            baud_config_q <= BAUD_CFG;
+        else if (wen_i & baud_wr_sel_w) begin
+           if (wstrb_i[0]) baud_config_q[ 7: 0] <= wdata_i[ 7: 0];
+           if (wstrb_i[1]) baud_config_q[15: 8] <= wdata_i[15: 8];
+        end
+    end 
+
+    //-----------------------------------------------------------------
+    // UART Control Register
+    //-----------------------------------------------------------------
+    wire ctrl_wr_sel_w = (waddr_i[7:0] == `UART_CONTROL) & uart_wr_sel_w;
+
     reg           parity_en_q     ;  
     reg           msb_first_q     ;  
     reg           start_polarity_q;  
-    reg           reset_buffer_q  ;  
-    reg  [15:0]   baud_config_q   ;
 
-    reg           slv_read    ;
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n) 
+            {parity_en_q, msb_first_q, start_polarity_q} <= 3'b0;
+        else if (wen_i & ctrl_wr_sel_w & wstrb_i[0]) 
+            {parity_en_q, msb_first_q, start_polarity_q} <= wdata_i[2:0] ;
+    end 
+
+    //-----------------------------------------------------------------
+    // AXI Slave UART TX DATA Register
+    //-----------------------------------------------------------------
+    wire txd_wr_sel_w = (waddr_i[7:0] == `UART_TXDATA) & uart_wr_sel_w;
+
     reg  [ 7:0]   slv_wdata_q ;
     reg           slv_write_q ;
 
+    // write signal auto clear
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n) begin
+            slv_wdata_q[7:0] <= 8'h0;
+            slv_write_q      <= 1'b0      ;
+        end
+        else if (wen_i & txd_wr_sel_w & wstrb_i[0]) begin
+            slv_wdata_q[7:0] <= wdata_i[7:0];
+            slv_write_q      <= 1'b1      ;
+        end
+        else begin
+            slv_write_q      <= 1'b0      ;
+        end
+    end 
+
+    //-----------------------------------------------------------------
+    // AXI Master Reset CPU Register
+    //-----------------------------------------------------------------
+    wire rstcpu_wr_sel_w = (waddr_i[7:0] == `UART_RSTCPU) & uart_wr_sel_w;
+
     reg           reset_cpu_q ;
 
-    //read operation
+    // Maintain the signal until the next write
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n) 
+            reset_cpu_q <= 1'b0;
+        else if (wen_i & rstcpu_wr_sel_w & wstrb_i[0]) 
+            reset_cpu_q <= (uart_mst_i) ? wdata_i[1] : 1'b0;
+    end 
+
+    //-----------------------------------------------------------------
+    // Reset TX/RX Buffer Register
+    //-----------------------------------------------------------------
+    wire rstbuf_wr_sel_w = (waddr_i[7:0] == `UART_RSTBUF) & uart_wr_sel_w;
+
+    reg           reset_buffer_q  ;  
+
+    // Auto clear
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n) 
+            reset_buffer_q <= 1'b0;
+        else if (wen_i & rstbuf_wr_sel_w & wstrb_i[0]) 
+            reset_buffer_q <= wdata_i[0];
+        else
+            reset_buffer_q <= 1'b0;
+    end 
+
+    //-----------------------------------------------------------------
+    // UART Interrupt Status Register (read/write 1 clear)
+    //-----------------------------------------------------------------
+    wire isr_wr_sel_w = (waddr_i[7:0] == `UART_ISR) & uart_wr_sel_w;
+
+    reg  isr_rx_present_q;
+    reg  isr_tx_full_q  ; 
+
+    reg  rx_present_d1;
+    reg  tx_full_d1; 
+
+    always @(posedge clk) rx_present_d1 <= rx_buffer_data_present_i;
+    always @(posedge clk) tx_full_d1    <= tx_buffer_full_i;
+
+    wire rx_present_int_w = rx_buffer_data_present_i & (~rx_present_d1);
+    wire tx_full_int_w    = tx_buffer_full_i & (~tx_full_d1);
+
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n) begin
+            isr_rx_present_q <= 1'b0;
+            isr_tx_full_q    <= 1'b0; 
+        end
+        else if (wen_i & isr_wr_sel_w & wstrb_i[0]) begin //write 1 clear
+            if (wdata_i[0]) isr_rx_present_q <= 1'b0;
+            if (wdata_i[1]) isr_tx_full_q    <= 1'b0;
+        end 
+        else begin
+            if (rx_present_int_w) isr_rx_present_q <= 1'b1;
+            if (tx_full_int_w   ) isr_tx_full_q    <= 1'b1;
+        end
+    end 
+
+    //-----------------------------------------------------------------
+    // UART Interrupt Enable Register (read/write 1 clear)
+    //-----------------------------------------------------------------
+    wire ier_wr_sel_w = (waddr_i[7:0] == `UART_IER) & uart_wr_sel_w;
+
+    reg  ier_rx_present_q;
+    reg  ier_tx_full_q  ; 
+
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n) begin
+            ier_rx_present_q <= 1'b0;
+            ier_tx_full_q    <= 1'b0; 
+        end
+        else if (wen_i & ier_wr_sel_w & wstrb_i[0]) begin //write 1 clear
+            ier_rx_present_q <= wdata_i[0];
+            ier_tx_full_q    <= wdata_i[1]; 
+        end 
+    end 
+
+    //-----------------------------------------------------------------
+    // Read Mux
+    //-----------------------------------------------------------------
+    reg           slv_read    ;
+
     wire [31:0] rmask_w = {{8{rstrb_i[3]}}, {8{rstrb_i[2]}}, {8{rstrb_i[1]}}, {8{rstrb_i[0]}}};
 
     reg  [31:0] rdata   ;
@@ -104,26 +240,30 @@ module uart_registers (
         rdata[31:0] = 32'h0;
         slv_read    = 1'b0 ;
 
-        if (ren_i == 1'b1 && raddr_i[31:8] == BASEADDR) begin
+        if (ren_i & uart_rd_sel_w) begin
           case (raddr_i[7:0])
-            8'h00:    
+            `UART_BAUD :    
                 rdata[31:0] = {16'h0, baud_config_q[15:0]}; 
-            8'h04:    
+            `UART_CONTROL :    
                 rdata[31:0] = {29'b0, parity_en_q, msb_first_q, start_polarity_q};
-            8'h08:    
+            `UART_STATUS :    
                 rdata[31:0] = {23'b0, rx_buffer_data_present_i, rx_buffer_full_i, rx_buffer_hfull_i,
                                rx_buffer_afull_i, rx_buffer_aempty_i, tx_buffer_full_i, 
                                tx_buffer_hfull_i, tx_buffer_afull_i, tx_buffer_aempty_i};
-            8'h0c:    
+            `UART_TXDATA :    
                 rdata[31:0] = {24'h0, slv_wdata_q[7:0]};  //uart write data
-            8'h10:    
+            `UART_RXDATA :    
             begin
                 rdata[31:0] = {19'h0, rx_buffer_data_present_i, rx_buffer_full_i, rx_buffer_hfull_i,
                                rx_buffer_afull_i, rx_buffer_aempty_i, slv_rdata_i[7:0]};  //uart read data with status info
                 slv_read    = 1'b1;
             end
-            8'h14:
+            `UART_RSTCPU :
                 rdata[31:0] = {30'h0, uart_mst_i, reset_cpu_q};
+            `UART_IER :
+                rdata[31:0] = {30'h0, ier_tx_full_q, ier_rx_present_q};
+            `UART_ISR :
+                rdata[31:0] = {30'h0, isr_tx_full_q, isr_rx_present_q};
             default:  
                 rdata[31:0] = 32'h0;
           endcase
@@ -137,65 +277,11 @@ module uart_registers (
             rdata_q <= rdata_o;
     end
 
-    assign rdata_o    = (ren_i == 1'b1) ? (rdata & rmask_w) : rdata_q; //no delay and skid buffer
-    assign slv_read_o = slv_read;
-
-    //write operation
-    wire [31:0] wmask_w = {{8{wstrb_i[3]}}, {8{wstrb_i[2]}}, {8{wstrb_i[1]}}, {8{wstrb_i[0]}}};
-    reg  [31:0] pre_data;
-
-    always @(*) begin
-        case (waddr_i[7:0])
-            8'h00 :    
-                pre_data[31:0] = {16'h0, baud_config_q[15:0]}; 
-            8'h04 :    
-                pre_data[31:0] = {29'b0, parity_en_q, msb_first_q, start_polarity_q};
-            8'h0c :    
-                pre_data[31:0] = {24'h0, slv_wdata_q[7:0]};  //uart write data
-            8'h14:
-                pre_data[31:0] = {30'h0, uart_mst_i, reset_cpu_q};
-            default:  
-                pre_data[31:0] = 32'h0;
-        endcase
-    end
-
-    wire  [31:0] wdata = (pre_data & (~wmask_w)) | (wdata_i & wmask_w);
-
-    always @(posedge clk or negedge rst_n) begin
-        if (!rst_n) begin
-            baud_config_q[15:0] <= BAUD_CFG;         
-            parity_en_q         <= 1'b0;
-            msb_first_q         <= 1'b0;
-            start_polarity_q    <= 1'b0;
-            reset_cpu_q         <= 1'b0;
-            reset_buffer_q      <= 1'b0;
-        end
-        else if (wen_i == 1'b1 && waddr_i[31:8] == BASEADDR) begin
-            case (waddr_i[7:0])
-                8'h00:   
-                    baud_config_q[15:0] <= wdata[15:0];
-                8'h04:   
-                    {parity_en_q, msb_first_q, start_polarity_q} <= wdata[2:0] ;
-                8'h0c:
-                begin
-                    slv_wdata_q[7:0] <= wdata[7:0];
-                    slv_write_q      <= 1'b1      ;
-                end
-                8'h14:
-                    reset_cpu_q      <= (uart_mst_i) ? wdata[1] : 1'b0;
-                8'h20:   
-                    reset_buffer_q   <= wdata[0]  ;
-                default: 
-                    ;
-            endcase
-        end
-        else begin
-            slv_write_q    <= 1'b0 ;
-            reset_buffer_q <= 1'b0 ;
-        end
-    end
-
-    //outputs
+    //-----------------------------------------------------------------
+    // Outputs
+    //-----------------------------------------------------------------
+    assign rdata_o     = (ren_i == 1'b1) ? (rdata & rmask_w) : rdata_q; //no delay and skid buffer
+    assign slv_read_o  = slv_read;
     assign slv_write_o = slv_write_q;
     assign slv_wdata_o = slv_wdata_q;
 
@@ -205,5 +291,8 @@ module uart_registers (
     assign baud_config_o    = baud_config_q    ;
     assign reset_cpu_o      = reset_cpu_q      ;
     assign reset_buffer_o   = reset_buffer_q   ;
+
+    // Interrupt request output
+    assign intr_o = (ier_rx_present_q & isr_rx_present_q) | (ier_tx_full_q & isr_tx_full_q);    
 
 endmodule

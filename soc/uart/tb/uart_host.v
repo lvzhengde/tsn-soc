@@ -138,7 +138,6 @@ module uart_host
         .en_16x_baud_o         (en_16x_baud )
     );
 
-    localparam BASEADDR   = 24'h90_0000 ;
     localparam CLK_FREQ   = 100000000   ;  //100MHz
     localparam UART_SPEED = 115200      ;  //Baud rate
     localparam BAUD_CFG   = CLK_FREQ/(16*UART_SPEED);
