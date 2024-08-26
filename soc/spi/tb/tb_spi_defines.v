@@ -37,9 +37,9 @@
 `define FRD          (8'h0B)  //Fast Read Mode
 `define FRD4         (8'h0C)  //4-byte Address Fast Read Mode
 `define PP           (8'h02)  //Serial Input Page Program
-`define PP4          (8'h02)  //4-byte Address Serial Input Page Program
+`define PP4          (8'h12)  //4-byte Address Serial Input Page Program
 `define SER          (8'h20)  //Sector Erase
-`define SER4         (8'h20)  //4-byte Address Sector Erase
+`define SER4         (8'h21)  //4-byte Address Sector Erase
 `define CER          (8'h60)  //Chip Erase
 `define WREN         (8'h06)  //Write Enable
 `define WRDI         (8'h04)  //Write Disable

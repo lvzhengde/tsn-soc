@@ -511,9 +511,208 @@ module flash_model
         end
     end
 
+    //--------------------------------------------------------------------
+    // Erase and Program Operation
+    //--------------------------------------------------------------------
 
+    //Chip Erase
+    initial
+    begin : CHIP_ERASE
+        integer j;
 
+        for (j = 0; j < MSIZE; j = j+1) 
+            flash_mem[j] = 8'hff;
 
+        forever @(posedge spi_clk_i)
+        begin
+            if ((!spi_cs_i) && sr_wel && instr_code_w == `CER) begin
+                sr_wip = 1;
+
+                wait(spi_cs_i == 1'b1);
+
+                if (|sr_bp[3:0]) begin
+                    err_prot_e = 1;      
+                    err_e_err  = 1;      
+
+                    $display($time,, "Chip Erase Error!");
+                end
+                else begin
+                    for (j = 0; j < MSIZE; j = j+1) 
+                        flash_mem[j] = 8'hff;
+
+                    for (j = 0; j < (MSIZE >> 20); j = j+1) begin
+                        #10000;
+                        $display($time,, "Chip Erase In Progress...");
+                    end
+
+                    $display($time,, "Chip Erase Finished!");
+                end
+
+                sr_wip = 0;
+                wr_wel = 0;
+            end
+        end //forever
+    end
+
+    //Sector Erase
+    //TODO: take block protection into consideration
+    initial
+    begin : SECTOR_ERASE
+        reg  [31:0] addr;
+        reg  [31:0] begin_addr;
+        reg  [31:0] end_addr;
+        integer     j;
+        reg         erase;
+
+        addr  = 0;
+        erase = 0;
+
+        forever @(posedge spi_clk_i)
+        begin
+            if ((!spi_cs_i) && sr_wel && (instr_code_w == `SER || instr_code_w == `SER4)) begin
+                sr_wip = 1;
+
+                if (instr_code_w == `SER && bar_extadd == 1'b0) begin
+                    if (posedge_count[2:0] == 3'd7 && posedge_count[31:3] = 29'd3 ) begin
+                        addr[25] = bar_ba25;
+                        addr[24] = bar_ba24;
+                        addr[23:16] = instr_byte1_6_w[1];
+                        addr[15: 8] = instr_byte1_6_w[2];
+                        addr[ 7: 0] = instr_byte1_6_w[3];
+
+                        erase = 1;
+                    end
+                end
+                else if ((instr_code_w == `SER && bar_extadd == 1'b1) || instr_code_w == `SER4) begin
+                    if (posedge_count[2:0] == 3'd7 && posedge_count[31:3] = 29'd4 ) begin
+                        addr[31:24] = instr_byte1_6_w[1];
+                        addr[23:16] = instr_byte1_6_w[2];
+                        addr[15: 8] = instr_byte1_6_w[3];
+                        addr[ 7: 0] = instr_byte1_6_w[4];
+
+                        addr[31: 26] = 0;
+                        erase = 1;
+                    end
+                end
+
+                if (erase) begin
+                    wait(spi_cs_i == 1'b1);
+
+                    begin_addr = {addr[31:12], 12'h0  };
+                    end_addr   = {addr[31:12], 12'hfff};
+                    for (j = begin_addr0; j <= end_addr; j = j+1) 
+                        flash_mem[j] = 8'hff;
+
+                    #10000;
+                    $display($time,, "Sector Erase Completed! begin address = %08x, end address = %08x", begin_addr, end_addr);
+
+                    addr   = 0;
+                    erase  = 0;
+                    sr_wip = 0;
+                    wr_wel = 0;
+                end
+            end //if sector erase op
+        end //forever
+    end
+
+    //Page Program
+    //TODO: take block protection into consideration
+    integer     pp_len;
+    reg  [ 7:0] pp_buf[0:255];
+    reg  [31:0] pp_addr;
+    reg         program;
+
+    initial
+    begin : PP_DATA
+        integer     j;
+        reg  [31:0] buf_addr;
+        reg  [31:0] mask;
+
+        pp_len  = 0;
+        pp_addr = 0;
+        program = 0;
+        mask    = 32'hff;
+
+        forever @(posedge spi_clk_i)
+        begin
+            if ((!spi_cs_i) && sr_wel && (instr_code_w == `PP || instr_code_w == `PP4)) begin
+                sr_wip = 1;
+
+                if (instr_code_w == `PP && bar_extadd == 1'b0) begin
+                    if (posedge_count[2:0] == 3'd7 && posedge_count[31:3] = 29'd3 ) begin
+                        pp_addr[25] = bar_ba25;
+                        pp_addr[24] = bar_ba24;
+                        pp_addr[23:16] = instr_byte1_6_w[1];
+                        pp_addr[15: 8] = instr_byte1_6_w[2];
+                        pp_addr[ 7: 0] = instr_byte1_6_w[3];
+
+                        buf_addr = pp_addr[7:0];
+                        pp_len    = 0;
+                        program   = 1;
+                        #T_QDELAY;  //posedge_count changed after T_QDELAY
+                    end
+                end
+                else if ((instr_code_w == `PP && bar_extadd == 1'b1) || instr_code_w == `PP4) begin
+                    if (posedge_count[2:0] == 3'd7 && posedge_count[31:3] = 29'd4 ) begin
+                        pp_addr[31:24] = instr_byte1_6_w[1];
+                        pp_addr[23:16] = instr_byte1_6_w[2];
+                        pp_addr[15: 8] = instr_byte1_6_w[3];
+                        pp_addr[ 7: 0] = instr_byte1_6_w[4];
+                        pp_addr[31: 26] = 0;
+
+                        buf_addr = pp_addr[7:0];
+                        pp_len    = 0;
+                        program   = 1;
+                        #T_QDELAY;  //posedge_count changed after T_QDELAY
+                    end
+                end
+
+                if (program) begin
+                    if (posedge_count[2:0] == 3'd7) begin
+                        pp_buf[buf_addr] = {shift_in[6:0], spi_mosi_i};
+                        buf_addr = (buf_addr + 1) & mask ;
+                        pp_len = pp_len + 1;
+                    end
+                end
+            end //if page program op
+        end //forever
+    end
+
+    always @(*) begin : PP_PROGRAM
+        integer     j;
+        reg  [31:0] mem_addr;
+        reg  [31:0] buf_addr;
+        reg  [31:0] mask;
+
+        mask    = 32'hff;
+
+        if (program & spi_cs_i) begin
+            if (pp_len >= 256) begin
+                for (j = 0; j < 256; j = j+1) begin
+                    mem_addr = {pp_addr[31:8], 8'h0} + j
+                    buf_addr = j;
+                    flash_mem[mem_addr] = flash_mem[mem_addr] & pp_buf[buf_addr];
+                end
+            end
+            else begin
+                for (j = 0; j < pp_len; j = j+1) begin
+                    mem_addr = (pp_addr & ~mask) | ((pp_addr + j) & mask);
+                    buf_addr = ((pp_addr + j) & mask); 
+                    flash_mem[mem_addr] = flash_mem[mem_addr] & pp_buf[buf_addr];
+                end
+            end
+
+            #10000;
+            $display($time,, "Page Program Completed! address = %08x, length = %08d", pp_addr, pp_len);
+            program = 0;
+            pp_len  = 0;
+            pp_addr = 0;
+
+            sr_wip = 0;
+            wr_wel = 0;
+
+        end //program & spi_cs_i
+    end // always
 
 
 endmodule
