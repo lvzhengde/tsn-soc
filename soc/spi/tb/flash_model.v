@@ -38,6 +38,7 @@
  * The devices support either of two SPI modes:
  *     Mode 0 (0, 0)
  *     Mode 3 (1, 1)
+ *     MSB First
 -*/
 
 `include "spi_defines.v"
@@ -217,7 +218,7 @@ module flash_model
         forever @(posedge spi_clk_i)
         begin
             #T_QDELAY
-            if ((!spi_cs_i) && posedge_count == 32'd0 )
+            if ((!spi_cs_i) && posedge_count[2:0] == 3'd0 )  //FIXME: fast read is different
                 shift_out = data_out;
         end
     end
@@ -714,5 +715,133 @@ module flash_model
         end //program & spi_cs_i
     end // always
 
+    //--------------------------------------------------------------------
+    // Read Operation
+    //--------------------------------------------------------------------
+
+    //Normal Read Operation, darray_out[5]
+    reg  [31:0] nrd_addr;
+    reg         normal_read;
+
+    initial
+    begin : NORMAL_READ
+
+        nrd_addr      = 0;
+        normal_read   = 0;
+        darray_out[5] = 0;
+
+        forever @(posedge spi_clk_i)
+        begin
+            if ((!spi_cs_i) && (!sr_wip) && (instr_code_w == `NORD || instr_code_w == `NORD4)) begin
+
+                if (instr_code_w == `NORD && bar_extadd == 1'b0) begin
+                    if (posedge_count[2:0] == 3'd7 && posedge_count[31:3] = 29'd3 ) begin
+                        nrd_addr[25] = bar_ba25;
+                        nrd_addr[24] = bar_ba24;
+                        nrd_addr[23:16] = instr_byte1_6_w[1];
+                        nrd_addr[15: 8] = instr_byte1_6_w[2];
+                        nrd_addr[ 7: 0] = instr_byte1_6_w[3];
+
+                        normal_read = 1;
+                    end
+                end
+                else if ((instr_code_w == `NORD && bar_extadd == 1'b1) || instr_code_w == `NORD4) begin
+                    if (posedge_count[2:0] == 3'd7 && posedge_count[31:3] = 29'd4 ) begin
+                        nrd_addr[31:24] = instr_byte1_6_w[1];
+                        nrd_addr[23:16] = instr_byte1_6_w[2];
+                        nrd_addr[15: 8] = instr_byte1_6_w[3];
+                        nrd_addr[ 7: 0] = instr_byte1_6_w[4];
+                        nrd_addr[31: 26] = 0;
+
+                        normal_read = 1;
+                    end
+                end
+
+                if (normal_read) begin
+                    if (posedge_count[2:0] == 3'd7) begin
+                        darray_out[5] = flash_mem[nrd_addr];
+                        nrd_addr = (nrd_addr + 1) & 32'h00ff_ffff;
+                    end
+                end
+            end //if normal read
+        end //forever
+    end
+
+    always @(*) begin
+        if (spi_cs_i) begin
+            nrd_addr      = 0;
+            normal_read   = 0;
+            darray_out[5] = 0;
+        end
+    end
+
+    //Fast Read Operation, darray_out[6]
+    //Dummy Cycles default to 8
+    reg  [31:0] frd_addr;
+    reg         fast_read;
+
+    initial
+    begin : FAST_READ
+        reg  [31:0]  dummy_cycles;
+        reg  [31:0]  fast_count;
+
+        frd_addr      = 0;
+        fast_read     = 0;
+        darray_out[6] = 0;
+        dummy_cycles  = 0;
+        fast_count    = 0;
+
+        forever @(posedge spi_clk_i)
+        begin
+            if ((!spi_cs_i) && (!sr_wip) && (instr_code_w == `FRD || instr_code_w == `FRD4)) begin
+                if (rr_dcycles == 4'd0)
+                    dummy_cycles = 32'd8;
+                else
+                    dummy_cycles = {28'h0, rr_dcycles};
+
+                if (instr_code_w == `FRD && bar_extadd == 1'b0) begin
+                    if (posedge_count[2:0] == 3'd7 && posedge_count[31:3] = 29'd3 ) begin
+                        frd_addr[25] = bar_ba25;
+                        frd_addr[24] = bar_ba24;
+                        frd_addr[23:16] = instr_byte1_6_w[1];
+                        frd_addr[15: 8] = instr_byte1_6_w[2];
+                        frd_addr[ 7: 0] = instr_byte1_6_w[3];
+
+                        repeat(dummy_cycles) @(posedge spi_clk_i); 
+                        fast_read = 1;
+                    end
+                end
+                else if ((instr_code_w == `FRD && bar_extadd == 1'b1) || instr_code_w == `FRD4) begin
+                    if (posedge_count[2:0] == 3'd7 && posedge_count[31:3] = 29'd4 ) begin
+                        frd_addr[31:24] = instr_byte1_6_w[1];
+                        frd_addr[23:16] = instr_byte1_6_w[2];
+                        frd_addr[15: 8] = instr_byte1_6_w[3];
+                        frd_addr[ 7: 0] = instr_byte1_6_w[4];
+                        frd_addr[31: 26] = 0;
+
+                        repeat(dummy_cycles) @(posedge spi_clk_i); 
+                        fast_read = 1;
+                    end
+                end
+
+                if (fast_read) begin
+                    fast_count = posedge_count - dummy_cycles;
+
+                    if (fast_count[2:0] == 3'd7) begin
+                        darray_out[6] = flash_mem[frd_addr];
+                        frd_addr = (frd_addr + 1) & 32'h00ff_ffff;
+                    end
+                end
+            end //if normal read
+        end //forever
+    end
+
+    always @(*) begin
+        if (spi_cs_i) begin
+            frd_addr      = 0;
+            fast_read     = 0;
+            darray_out[6] = 0;
+        end
+    end
 
 endmodule
