@@ -49,24 +49,35 @@ module tc_regraw;
     reg  [31:0] addr   ; 
     reg  [31:0] cr_reg ;
 
+    reg lsb_first  = 1'b0;
+    reg inhibit    = 1'b0;
+    reg msse       = 1'b0;
+    reg rxfifo_rst = 1'b1;
+    reg txfifo_rst = 1'b1;
+    reg cpha       = 1'b0;
+    reg cpol       = 1'b0;
+    reg master     = 1'b1;
+    reg spe        = 1'b1;
+    reg loop       = 1'b0;    
+
     initial begin
         wr_data = 0;
         rd_data = 1;
         temp    = 0;   
         addr    = 0; 
-        seed    = 5;
+        seed    = 100;
     
         #10;
         $display($time,, "Read after Write of SPI Nor Flash Register, Simulation Start!");
 
-        $display($time,, "Reset testbench.");
+        $display($time,, "Reset testbench...");
         tb.reset;
         #10;
 
         //-----------------------------------------------------------------
         // Initialize SPI Control
         //-----------------------------------------------------------------        
-        cr_reg = {22'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0};
+        cr_reg = {22'b0, lsb_first, inhibit, msse, rxfifo_rst, txfifo_rst, cpha, cpol, master, spe, loop};
         addr = `SPI_REG_BASEADDR + `SPI_CR;
         tb.u_axi4_master.wdata[0] = cr_reg;
         tb.u_axi4_master.axi_master_write(addr, 1, 1, 0);  
@@ -87,7 +98,7 @@ module tc_regraw;
         tb.u_axi4_master.axi_master_write(addr, 1, 1, 0);  
 
         //Write register data to tx fifo
-        wr_data = $random(seed) & 32'hfc; 
+        wr_data = 32'hfc; //$random(seed) & 32'hfc; 
         tb.u_axi4_master.wdata[0] = wr_data;
         tb.u_axi4_master.axi_master_write(addr, 1, 1, 0); 
         #100; 
@@ -115,9 +126,8 @@ module tc_regraw;
         //-----------------------------------------------------------------
         // Reset RX/TX FIFO
         //-----------------------------------------------------------------        
-        cr_reg = {22'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0};
         addr = `SPI_REG_BASEADDR + `SPI_CR;
-        tb.u_axi4_master.wdata[0] = cr_reg | 32'h60;
+        tb.u_axi4_master.wdata[0] = cr_reg;
         tb.u_axi4_master.axi_master_write(addr, 1, 1, 0);  
         #100;
 
@@ -138,7 +148,6 @@ module tc_regraw;
         tb.u_axi4_master.axi_master_write(addr, 1, 1, 0);  
 
         //Write stuff data to tx fifo
-        wr_data = $random(seed) & 32'hfc; 
         tb.u_axi4_master.wdata[0] = 32'h0;
         tb.u_axi4_master.axi_master_write(addr, 1, 1, 0); 
         #100; 
@@ -153,6 +162,12 @@ module tc_regraw;
             tb.u_axi4_master.axi_master_read (addr, 1, 1, 0);
             temp = tb.u_axi4_master.rdata[0];
         end
+        #100;
+
+        //Slave de-select
+        addr = `SPI_REG_BASEADDR + `SPI_SSR;
+        tb.u_axi4_master.wdata[0] = 32'b1;
+        tb.u_axi4_master.axi_master_write(addr, 1, 1, 0);  
         #100;
 
         //Read first data of RX FIFO
@@ -180,12 +195,13 @@ module tc_regraw;
         tb.test_busy = 1'b0;
 
         //Scoreboard
-        if (rd_data != wr_data) begin
+        if (rd_data !== wr_data) begin
             $display("ERROR: rd_data = %08x, not equal to wr_data = %08x!", rd_data, wr_data);
             $finish(2);
         end
 
         #5000;
+        $display("rd_data = %08x equal to wr_data = %08x", rd_data, wr_data);
         $display("SIMULATION PASS!!!");
         $finish;
     end

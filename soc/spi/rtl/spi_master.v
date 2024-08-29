@@ -176,7 +176,7 @@ module spi_master
             active_q   <= 1'b0;
             done_q     <= 1'b0;
         end
-        else if (sw_reset_w) begin
+        else if (sw_reset_i) begin
             edge_cnt_q <= 6'b0;
             active_q   <= 1'b0;
             done_q     <= 1'b0;

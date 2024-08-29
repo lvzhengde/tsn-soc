@@ -30,7 +30,7 @@
 -*/
 
 module tb_top;  
-    parameter T_CLK   = 10  //100MHz clock
+    parameter T_CLK   = 10 ; //100MHz clock
     parameter QDELAY  = 0.1;
 
     //--------------------------------------------------------------------
@@ -83,10 +83,11 @@ module tb_top;
 
     reg    test_busy = 1;
 
-    axi4_master u_axi4_master
+    axi4_master 
     #(
         .ID  (0)
     )
+    u_axi4_master
     (
         .clk               (clk           ),
         .rst_n             (rst_n         ),

@@ -1,0 +1,16 @@
+// This file typically lists files/flags required by a large project, 
+// e.g. include directories
+../rtl/spi_axi.v
+../rtl/spi_fifo.v
+../rtl/spi_master.v
+../rtl/spi_registers.v
+../rtl/spi_top.v
+../rtl/spi_xip_read.v
+
+../tb/axi4_master.v
+../tb/flash_model.v
+../tb/tb_top.v
+
+../tc/tc_regraw.v
+
++incdir+../rtl +incdir+../tb +libext+.v+.sv+.vh+.svh -y .

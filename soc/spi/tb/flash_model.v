@@ -52,7 +52,7 @@ module flash_model
     input          spi_mosi_i ,
     output         spi_miso_o 
 );
-    parameter MSIZE    = (1 << 26);    //Flash memory size in bytes
+    parameter MSIZE    = (1 << 12);    //Flash memory size in bytes (iverilog cann't support large size array)
     parameter T_QDELAY = 0.5;
 
     //--------------------------------------------------------------------
@@ -104,7 +104,7 @@ module flash_model
     //--------------------------------------------------------------------
     //
     // Flash Data MEMORY
-    reg  [ 7:0] flash_mem [0:MSIZE-1]; // 64MB (512Mb) of 8-bit data width
+    reg  [ 7:0] flash_mem [0:MSIZE-1]; // 8-bit data width
     //
     //--------------------------------------------------------------------
 
@@ -173,42 +173,46 @@ module flash_model
             instr_byte1_6_q[6] <= 8'h0;
         end
         else if ((!spi_cs_i) && posedge_count[2:0] == 3'd7 ) begin
-            if (posedge_count[31:3] = 29'd1) instr_byte1_6_q[1] <= {shift_in[6:0], spi_mosi_i};
-            if (posedge_count[31:3] = 29'd2) instr_byte1_6_q[2] <= {shift_in[6:0], spi_mosi_i};
-            if (posedge_count[31:3] = 29'd3) instr_byte1_6_q[3] <= {shift_in[6:0], spi_mosi_i};
-            if (posedge_count[31:3] = 29'd4) instr_byte1_6_q[4] <= {shift_in[6:0], spi_mosi_i};
-            if (posedge_count[31:3] = 29'd5) instr_byte1_6_q[5] <= {shift_in[6:0], spi_mosi_i};
-            if (posedge_count[31:3] = 29'd6) instr_byte1_6_q[6] <= {shift_in[6:0], spi_mosi_i};
+            if (posedge_count[31:3] == 29'd1) instr_byte1_6_q[1] <= {shift_in[6:0], spi_mosi_i};
+            if (posedge_count[31:3] == 29'd2) instr_byte1_6_q[2] <= {shift_in[6:0], spi_mosi_i};
+            if (posedge_count[31:3] == 29'd3) instr_byte1_6_q[3] <= {shift_in[6:0], spi_mosi_i};
+            if (posedge_count[31:3] == 29'd4) instr_byte1_6_q[4] <= {shift_in[6:0], spi_mosi_i};
+            if (posedge_count[31:3] == 29'd5) instr_byte1_6_q[5] <= {shift_in[6:0], spi_mosi_i};
+            if (posedge_count[31:3] == 29'd6) instr_byte1_6_q[6] <= {shift_in[6:0], spi_mosi_i};
         end
     end
 
-    assign instr_byte1_6_w[1] = (posedge_count[31:0] = 32'd15) ? {shift_in[6:0], spi_mosi_i} : instr_byte1_6_q[1];
-    assign instr_byte1_6_w[2] = (posedge_count[31:0] = 32'd23) ? {shift_in[6:0], spi_mosi_i} : instr_byte1_6_q[2];
-    assign instr_byte1_6_w[3] = (posedge_count[31:0] = 32'd31) ? {shift_in[6:0], spi_mosi_i} : instr_byte1_6_q[3];
-    assign instr_byte1_6_w[4] = (posedge_count[31:0] = 32'd39) ? {shift_in[6:0], spi_mosi_i} : instr_byte1_6_q[4];
-    assign instr_byte1_6_w[5] = (posedge_count[31:0] = 32'd47) ? {shift_in[6:0], spi_mosi_i} : instr_byte1_6_q[5];
-    assign instr_byte1_6_w[6] = (posedge_count[31:0] = 32'd55) ? {shift_in[6:0], spi_mosi_i} : instr_byte1_6_q[6];
+    assign instr_byte1_6_w[1] = (posedge_count[31:0] == 32'd15) ? {shift_in[6:0], spi_mosi_i} : instr_byte1_6_q[1];
+    assign instr_byte1_6_w[2] = (posedge_count[31:0] == 32'd23) ? {shift_in[6:0], spi_mosi_i} : instr_byte1_6_q[2];
+    assign instr_byte1_6_w[3] = (posedge_count[31:0] == 32'd31) ? {shift_in[6:0], spi_mosi_i} : instr_byte1_6_q[3];
+    assign instr_byte1_6_w[4] = (posedge_count[31:0] == 32'd39) ? {shift_in[6:0], spi_mosi_i} : instr_byte1_6_q[4];
+    assign instr_byte1_6_w[5] = (posedge_count[31:0] == 32'd47) ? {shift_in[6:0], spi_mosi_i} : instr_byte1_6_q[5];
+    assign instr_byte1_6_w[6] = (posedge_count[31:0] == 32'd55) ? {shift_in[6:0], spi_mosi_i} : instr_byte1_6_q[6];
 
     // Generate output data
-    reg  [ 7:0] data_out;
-    reg  [ 7:0] darray_out[0:100];
+    wire [ 7:0] data_out;
+    reg  [ 7:0] darray_out[0:6];
     integer i;
 
     initial 
     begin
-        for (i = 0; i < 100; i = i+1)
+        for (i = 0; i <=6 ; i = i+1)
             darray_out[i] = 8'h0;
     end
 
-    always @(*) begin
-        if ((!rst_n) || spi_cs_i) begin
-            for (i = 0; i < 100; i = i+1)
-                darray_out[i] = 8'h0;
+    initial
+    begin
+        forever @(rst_n or spi_cs_i) 
+        begin
+            if ((!rst_n) || spi_cs_i) 
+            begin
+                for (i = 0; i <= 6; i = i+1)
+                    darray_out[i] = 8'h0;
+            end
         end
-
-        for (i = 0; i < 100; i = i+1)
-            data_out = darray_out[i] | data_out;
     end
+
+    assign data_out = darray_out[0] | darray_out[1] | darray_out[2] | darray_out[3] | darray_out[4] | darray_out[5] | darray_out[6];
     
     // Load output data after rising edge
     initial 
@@ -248,7 +252,7 @@ module flash_model
 
                     wait(spi_cs_i == 1'b1);
                     sr_wip = 0;
-                    wr_wel = 0;
+                    sr_wel = 0;
                 end
             end
         end //forever
@@ -257,14 +261,14 @@ module flash_model
     //Write Enalbe (WREN)
     always @(posedge spi_clk_i) begin
         if ((!spi_cs_i) && instr_code_w == `WREN) begin
-            wr_wel = 1;
+            sr_wel = 1;
         end
     end
     
     //Write Disable (WRDI)
     always @(posedge spi_clk_i) begin
         if ((!spi_cs_i) && instr_code_w == `WRDI) begin
-            wr_wel = 0;
+            sr_wel = 0;
         end
     end
 
@@ -277,7 +281,7 @@ module flash_model
         begin
             if ((!spi_cs_i) && instr_code_w == `RDSR) begin
                 darray_out[0][0]   = sr_wip;
-                darray_out[0][1]   = wr_wel;
+                darray_out[0][1]   = sr_wel;
                 darray_out[0][5:2] = sr_bp[3:0];
                 darray_out[0][6]   = sr_qe;
                 darray_out[0][7]   = sr_srwd;
@@ -316,7 +320,7 @@ module flash_model
 
                     wait(spi_cs_i == 1'b1);
                     sr_wip = 0;
-                    wr_wel = 0;
+                    sr_wel = 0;
                 end
             end
         end //forever
@@ -367,7 +371,7 @@ module flash_model
 
                     wait(spi_cs_i == 1'b1);
                     sr_wip = 0;
-                    wr_wel = 0;
+                    sr_wel = 0;
                 end
             end
         end //forever
@@ -416,7 +420,7 @@ module flash_model
 
                     wait(spi_cs_i == 1'b1);
                     sr_wip = 0;
-                    wr_wel = 0;
+                    sr_wel = 0;
                 end
             end
         end //forever
@@ -474,7 +478,7 @@ module flash_model
 
                     wait(spi_cs_i == 1'b1);
                     sr_wip = 0;
-                    wr_wel = 0;
+                    sr_wel = 0;
                 end
             end
         end //forever
@@ -550,7 +554,7 @@ module flash_model
                 end
 
                 sr_wip = 0;
-                wr_wel = 0;
+                sr_wel = 0;
             end
         end //forever
     end
@@ -574,7 +578,7 @@ module flash_model
                 sr_wip = 1;
 
                 if (instr_code_w == `SER && bar_extadd == 1'b0) begin
-                    if (posedge_count[2:0] == 3'd7 && posedge_count[31:3] = 29'd3 ) begin
+                    if (posedge_count[2:0] == 3'd7 && posedge_count[31:3] == 29'd3 ) begin
                         addr[25] = bar_ba25;
                         addr[24] = bar_ba24;
                         addr[23:16] = instr_byte1_6_w[1];
@@ -585,7 +589,7 @@ module flash_model
                     end
                 end
                 else if ((instr_code_w == `SER && bar_extadd == 1'b1) || instr_code_w == `SER4) begin
-                    if (posedge_count[2:0] == 3'd7 && posedge_count[31:3] = 29'd4 ) begin
+                    if (posedge_count[2:0] == 3'd7 && posedge_count[31:3] == 29'd4 ) begin
                         addr[31:24] = instr_byte1_6_w[1];
                         addr[23:16] = instr_byte1_6_w[2];
                         addr[15: 8] = instr_byte1_6_w[3];
@@ -601,7 +605,7 @@ module flash_model
 
                     begin_addr = {addr[31:12], 12'h0  };
                     end_addr   = {addr[31:12], 12'hfff};
-                    for (j = begin_addr0; j <= end_addr; j = j+1) 
+                    for (j = begin_addr; j <= end_addr; j = j+1) 
                         flash_mem[j] = 8'hff;
 
                     #10000;
@@ -610,7 +614,7 @@ module flash_model
                     addr   = 0;
                     erase  = 0;
                     sr_wip = 0;
-                    wr_wel = 0;
+                    sr_wel = 0;
                 end
             end //if sector erase op
         end //forever
@@ -621,7 +625,7 @@ module flash_model
     integer     pp_len;
     reg  [ 7:0] pp_buf[0:255];
     reg  [31:0] pp_addr;
-    reg         program;
+    reg         pp_prog;
 
     initial
     begin : PP_DATA
@@ -631,7 +635,7 @@ module flash_model
 
         pp_len  = 0;
         pp_addr = 0;
-        program = 0;
+        pp_prog = 0;
         mask    = 32'hff;
 
         forever @(posedge spi_clk_i)
@@ -640,7 +644,7 @@ module flash_model
                 sr_wip = 1;
 
                 if (instr_code_w == `PP && bar_extadd == 1'b0) begin
-                    if (posedge_count[2:0] == 3'd7 && posedge_count[31:3] = 29'd3 ) begin
+                    if (posedge_count[2:0] == 3'd7 && posedge_count[31:3] == 29'd3 ) begin
                         pp_addr[25] = bar_ba25;
                         pp_addr[24] = bar_ba24;
                         pp_addr[23:16] = instr_byte1_6_w[1];
@@ -649,12 +653,12 @@ module flash_model
 
                         buf_addr = pp_addr[7:0];
                         pp_len    = 0;
-                        program   = 1;
+                        pp_prog   = 1;
                         #T_QDELAY;  //posedge_count changed after T_QDELAY
                     end
                 end
                 else if ((instr_code_w == `PP && bar_extadd == 1'b1) || instr_code_w == `PP4) begin
-                    if (posedge_count[2:0] == 3'd7 && posedge_count[31:3] = 29'd4 ) begin
+                    if (posedge_count[2:0] == 3'd7 && posedge_count[31:3] == 29'd4 ) begin
                         pp_addr[31:24] = instr_byte1_6_w[1];
                         pp_addr[23:16] = instr_byte1_6_w[2];
                         pp_addr[15: 8] = instr_byte1_6_w[3];
@@ -663,12 +667,12 @@ module flash_model
 
                         buf_addr = pp_addr[7:0];
                         pp_len    = 0;
-                        program   = 1;
+                        pp_prog   = 1;
                         #T_QDELAY;  //posedge_count changed after T_QDELAY
                     end
                 end
 
-                if (program) begin
+                if (pp_prog) begin
                     if (posedge_count[2:0] == 3'd7) begin
                         pp_buf[buf_addr] = {shift_in[6:0], spi_mosi_i};
                         buf_addr = (buf_addr + 1) & mask ;
@@ -687,10 +691,10 @@ module flash_model
 
         mask    = 32'hff;
 
-        if (program & spi_cs_i) begin
+        if (pp_prog & spi_cs_i) begin
             if (pp_len >= 256) begin
                 for (j = 0; j < 256; j = j+1) begin
-                    mem_addr = {pp_addr[31:8], 8'h0} + j
+                    mem_addr = {pp_addr[31:8], 8'h0} + j;
                     buf_addr = j;
                     flash_mem[mem_addr] = flash_mem[mem_addr] & pp_buf[buf_addr];
                 end
@@ -705,12 +709,12 @@ module flash_model
 
             #10000;
             $display($time,, "Page Program Completed! address = %08x, length = %08d", pp_addr, pp_len);
-            program = 0;
+            pp_prog = 0;
             pp_len  = 0;
             pp_addr = 0;
 
             sr_wip = 0;
-            wr_wel = 0;
+            sr_wel = 0;
 
         end //program & spi_cs_i
     end // always
@@ -735,7 +739,7 @@ module flash_model
             if ((!spi_cs_i) && (!sr_wip) && (instr_code_w == `NORD || instr_code_w == `NORD4)) begin
 
                 if (instr_code_w == `NORD && bar_extadd == 1'b0) begin
-                    if (posedge_count[2:0] == 3'd7 && posedge_count[31:3] = 29'd3 ) begin
+                    if (posedge_count[2:0] == 3'd7 && posedge_count[31:3] == 29'd3 ) begin
                         nrd_addr[25] = bar_ba25;
                         nrd_addr[24] = bar_ba24;
                         nrd_addr[23:16] = instr_byte1_6_w[1];
@@ -746,7 +750,7 @@ module flash_model
                     end
                 end
                 else if ((instr_code_w == `NORD && bar_extadd == 1'b1) || instr_code_w == `NORD4) begin
-                    if (posedge_count[2:0] == 3'd7 && posedge_count[31:3] = 29'd4 ) begin
+                    if (posedge_count[2:0] == 3'd7 && posedge_count[31:3] == 29'd4 ) begin
                         nrd_addr[31:24] = instr_byte1_6_w[1];
                         nrd_addr[23:16] = instr_byte1_6_w[2];
                         nrd_addr[15: 8] = instr_byte1_6_w[3];
@@ -767,11 +771,16 @@ module flash_model
         end //forever
     end
 
-    always @(*) begin
-        if (spi_cs_i) begin
-            nrd_addr      = 0;
-            normal_read   = 0;
-            darray_out[5] = 0;
+    initial
+    begin
+        forever @(spi_cs_i) 
+        begin
+            if (spi_cs_i) 
+            begin
+                nrd_addr      = 0;
+                normal_read   = 0;
+                darray_out[5] = 0;
+            end
         end
     end
 
@@ -800,7 +809,7 @@ module flash_model
                     dummy_cycles = {28'h0, rr_dcycles};
 
                 if (instr_code_w == `FRD && bar_extadd == 1'b0) begin
-                    if (posedge_count[2:0] == 3'd7 && posedge_count[31:3] = 29'd3 ) begin
+                    if (posedge_count[2:0] == 3'd7 && posedge_count[31:3] == 29'd3 ) begin
                         frd_addr[25] = bar_ba25;
                         frd_addr[24] = bar_ba24;
                         frd_addr[23:16] = instr_byte1_6_w[1];
@@ -812,7 +821,7 @@ module flash_model
                     end
                 end
                 else if ((instr_code_w == `FRD && bar_extadd == 1'b1) || instr_code_w == `FRD4) begin
-                    if (posedge_count[2:0] == 3'd7 && posedge_count[31:3] = 29'd4 ) begin
+                    if (posedge_count[2:0] == 3'd7 && posedge_count[31:3] == 29'd4 ) begin
                         frd_addr[31:24] = instr_byte1_6_w[1];
                         frd_addr[23:16] = instr_byte1_6_w[2];
                         frd_addr[15: 8] = instr_byte1_6_w[3];
@@ -836,11 +845,15 @@ module flash_model
         end //forever
     end
 
-    always @(*) begin
-        if (spi_cs_i) begin
-            frd_addr      = 0;
-            fast_read     = 0;
-            darray_out[6] = 0;
+    initial
+    begin
+        forever @(spi_cs_i) 
+        begin
+            if (spi_cs_i) begin
+                frd_addr      = 0;
+                fast_read     = 0;
+                darray_out[6] = 0;
+            end
         end
     end
 
