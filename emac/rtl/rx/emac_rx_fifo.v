@@ -636,7 +636,7 @@ module emac_rx_fifo (
             add_wr_ungray_reg  <= add_wr_ungray; 
     end
 
-    always @(posedge clk_sys or negedge rst_n) begin : UNGRAY_WRITE
+    always @(*) begin : UNGRAY_WRITE
         integer i;
 
         add_wr_ungray = add_wr_ungray_reg;
