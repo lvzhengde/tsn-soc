@@ -152,6 +152,8 @@ module flash_model
         end
     end
 
+    assign spi_miso_o = spi_miso_q;
+
     // Instruction code
     always @(posedge spi_clk_i or negedge rst_spi_n) begin
         if (!rst_spi_n)

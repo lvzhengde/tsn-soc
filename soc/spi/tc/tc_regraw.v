@@ -84,6 +84,50 @@ module tc_regraw;
         #100;
 
         //-----------------------------------------------------------------
+        // Write Enable SPI Flash
+        //-----------------------------------------------------------------        
+        //slave select, active low
+        addr = `SPI_REG_BASEADDR + `SPI_SSR;
+        tb.u_axi4_master.wdata[0] = 32'b0;
+        tb.u_axi4_master.axi_master_write(addr, 1, 1, 0);  
+        #100;
+
+        //Write instruction code to tx fifo
+        addr = `SPI_REG_BASEADDR + `SPI_DTR;
+        tb.u_axi4_master.wdata[0] = {24'h0, `WREN};
+        tb.u_axi4_master.axi_master_write(addr, 1, 1, 0);  
+
+        $display($time,, "Write enable SPI flash... ");
+
+        //Poll tx fifo status
+        addr = `SPI_REG_BASEADDR + `SPI_SR;
+        tb.u_axi4_master.axi_master_read (addr, 1, 1, 0);
+        temp = tb.u_axi4_master.rdata[0];
+        //wait tx fifo empty
+        while (temp[2] == 0) begin  
+            #500;
+            tb.u_axi4_master.axi_master_read (addr, 1, 1, 0);
+            temp = tb.u_axi4_master.rdata[0];
+        end
+        #200;
+
+        //Slave de-select
+        addr = `SPI_REG_BASEADDR + `SPI_SSR;
+        tb.u_axi4_master.wdata[0] = 32'b1;
+        tb.u_axi4_master.axi_master_write(addr, 1, 1, 0);  
+        #100;
+
+        //-----------------------------------------------------------------
+        // Reset RX/TX FIFO
+        //-----------------------------------------------------------------        
+        addr = `SPI_REG_BASEADDR + `SPI_CR;
+        tb.u_axi4_master.wdata[0] = cr_reg;
+        tb.u_axi4_master.axi_master_write(addr, 1, 1, 0);  
+        #100;
+
+        $display($time,, "Reset TX/RX FIFO of SPI Master...");
+
+        //-----------------------------------------------------------------
         // Write Register of SPI Flash
         //-----------------------------------------------------------------        
         //slave select, active low
@@ -103,7 +147,7 @@ module tc_regraw;
         tb.u_axi4_master.axi_master_write(addr, 1, 1, 0); 
         #100; 
 
-        $display($time,, "Write flash status register, write data = %02x", wr_data[7:0]);
+        $display($time,, "Write flash status register, write data = 0x%02x", wr_data[7:0]);
 
         //Poll tx fifo status
         addr = `SPI_REG_BASEADDR + `SPI_SR;
@@ -115,7 +159,7 @@ module tc_regraw;
             tb.u_axi4_master.axi_master_read (addr, 1, 1, 0);
             temp = tb.u_axi4_master.rdata[0];
         end
-        #100;
+        #200;
 
         //Slave de-select
         addr = `SPI_REG_BASEADDR + `SPI_SSR;
@@ -131,7 +175,7 @@ module tc_regraw;
         tb.u_axi4_master.axi_master_write(addr, 1, 1, 0);  
         #100;
 
-        $display($time,, "Reset TX/RX FIFO of SPI Master!");
+        $display($time,, "Reset TX/RX FIFO of SPI Master...");
 
         //-----------------------------------------------------------------
         // Read Register of SPI Flash
@@ -162,13 +206,15 @@ module tc_regraw;
             tb.u_axi4_master.axi_master_read (addr, 1, 1, 0);
             temp = tb.u_axi4_master.rdata[0];
         end
-        #100;
+        #200;
 
         //Slave de-select
         addr = `SPI_REG_BASEADDR + `SPI_SSR;
         tb.u_axi4_master.wdata[0] = 32'b1;
         tb.u_axi4_master.axi_master_write(addr, 1, 1, 0);  
         #100;
+
+        $display($time,, "Read flash status register...");
 
         //Read first data of RX FIFO
         addr = `SPI_REG_BASEADDR + `SPI_DRR;
@@ -196,12 +242,12 @@ module tc_regraw;
 
         //Scoreboard
         if (rd_data !== wr_data) begin
-            $display("ERROR: rd_data = %08x, not equal to wr_data = %08x!", rd_data, wr_data);
+            $display("ERROR: rd_data = 0x%02x, not equal to wr_data = 0x%02x!", rd_data[7:0], wr_data[7:0]);
             $finish(2);
         end
 
         #5000;
-        $display("rd_data = %08x equal to wr_data = %08x", rd_data, wr_data);
+        $display("rd_data = 0x%02x equal to wr_data = 0x%02x", rd_data[7:0], wr_data[7:0]);
         $display("SIMULATION PASS!!!");
         $finish;
     end
