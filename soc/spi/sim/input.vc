@@ -12,5 +12,6 @@
 ../tb/tb_top.v
 
 ../tc/tc_regraw.v
+../tc/tc_rdpp.v
 
 +incdir+../rtl +incdir+../tb +libext+.v+.sv+.vh+.svh -y .
