@@ -214,7 +214,6 @@ module tc_rdpp;
             wait_txfifo_accept;
             addr = `SPI_REG_BASEADDR + `SPI_DTR;
             tb.u_axi4_master.wdata[0] = 32'h0;
-            tb.u_axi4_master.wdata[0] = wr_data[idx];
             tb.u_axi4_master.axi_master_write(addr, 1, 1, 0); 
         end
         
