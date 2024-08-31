@@ -42,17 +42,16 @@ module tc_rdpp;
     tb_top tb();
 
     integer  seed   = 20;
-    integer  pp_len = 16;
+    integer  pp_len = 16; //pp_len <= 16
     integer  idx ;
-    integer  rx_count;
     reg  [31:0] pp_addr = 32'h0000_0100; 
 
     reg  [31:0] wr_data[0:255];
-    reg  [31:0] rd_data[0:255};
-    reg  [31:0] temp   ;
-    reg  [31:0] cr_reg ;
-    reg  [31:0] addr   ; 
-    reg  [31:0] fifo_data;
+    reg  [31:0] rd_data[0:255];
+    reg  [31:0] temp      ;
+    reg  [31:0] cr_reg    ;
+    reg  [31:0] addr      ; 
+    reg  [31:0] fifo_data ;
 
     reg lsb_first  = 1'b0;
     reg inhibit    = 1'b0;
@@ -173,6 +172,8 @@ module tc_rdpp;
         //-----------------------------------------------------------------
         // Read Page Programmed Data Out From SPI Nor Flash Memory
         //-----------------------------------------------------------------        
+        wait(tb.u_flash_model.sr_wip == 0);  //wait page program finish
+
         //slave select, active low
         addr = `SPI_REG_BASEADDR + `SPI_SSR;
         tb.u_axi4_master.wdata[0] = 32'b0;
@@ -197,39 +198,37 @@ module tc_rdpp;
         tb.u_axi4_master.wdata[0] = {24'b0, pp_addr[ 7: 0]};
         tb.u_axi4_master.axi_master_write(addr, 1, 1, 0); 
 
-        #100; 
+        //Read unused data from rx fifo
+        $display($time,, "%m Read 4 bytes unused data from RX FIFO...");
+        wait_txfifo_empty;
+        #200; 
+        for (idx = 0; idx < 4; idx = idx+1) 
+        begin
+            get_rxfifo_data(fifo_data);
+        end
 
-        fork
-            //Write stuff data to tx fifo
-            begin
-                for (idx = 0; idx < pp_len; idx = idx+1) 
-                begin
-                    wait_txfifo_accept;
-                    tb.u_axi4_master.wdata[0] = 32'h0;
-                    tb.u_axi4_master.wdata[0] = wr_data[idx];
-                    tb.u_axi4_master.axi_master_write(addr, 1, 1, 0); 
-                end
-                
-                wait_txfifo_empty;
-            end  //fork 1
+        //Write stuff data to tx fifo
+        $display($time,, "%m Write pp_len bytes stuff data to TX FIFO...");
+        for (idx = 0; idx < pp_len; idx = idx+1) 
+        begin
+            wait_txfifo_accept;
+            addr = `SPI_REG_BASEADDR + `SPI_DTR;
+            tb.u_axi4_master.wdata[0] = 32'h0;
+            tb.u_axi4_master.wdata[0] = wr_data[idx];
+            tb.u_axi4_master.axi_master_write(addr, 1, 1, 0); 
+        end
+        
+        wait_txfifo_empty;
+        #200;
 
-            //Read data from rx fifo
-            begin
-                rx_count = 0;
-
-                while (rx_count < (pp_len+4)) begin
-                    get_rxfifo_data(fifo_data);
-
-                    if (rx_count >= 4)
-                    begin
-                        rd_data[rx_count-4] = fifo_data & 'hff;
-                        $display($time,, "%m idx = %d, read data = 0x%02x", (rx_count-4), rd_data[rx_count-4][7:0])
-                    end
-
-                    rx_count = rx_count + 1;
-                end //while
-            end //fork 2
-        join
+        //Read data from rx fifo
+        $display($time,, "%m Read pp_len bytes data from RX FIFO...");
+        for (idx = 0; idx < pp_len; idx = idx+1) 
+        begin
+            get_rxfifo_data(fifo_data);
+            rd_data[idx] = fifo_data & 'hff;
+            $display($time,, "%m idx = %d, read data = 0x%02x", idx, rd_data[idx][7:0]);
+        end
 
         #200;
 
@@ -243,6 +242,7 @@ module tc_rdpp;
         tb.test_busy = 1'b0;
 
         //Scoreboard
+        $display("\n\n SCOREBOARD...");
         for (idx = 0; idx < pp_len; idx = idx+1) begin
             $display("idx = %d, page programmed data = 0x%02x, read data = 0x%02x", idx, wr_data[idx][7:0], rd_data[idx][7:0]);
             if (rd_data[idx][7:0] !== wr_data[idx][7:0]) begin

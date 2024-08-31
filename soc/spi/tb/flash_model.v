@@ -710,7 +710,7 @@ module flash_model
             end
 
             #10000;
-            $display($time,, "Page Program Completed! address = %08x, length = %08d", pp_addr, pp_len);
+            $display($time,, "%m Page Program Completed! address = %08x, length = %08d", pp_addr, pp_len);
             pp_prog = 0;
             pp_len  = 0;
             pp_addr = 0;
