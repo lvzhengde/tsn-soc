@@ -13,5 +13,6 @@
 
 ../tc/tc_regraw.v
 ../tc/tc_rdpp.v
+../tc/tc_xip03n.v
 
 +incdir+../rtl +incdir+../tb +libext+.v+.sv+.vh+.svh -y .

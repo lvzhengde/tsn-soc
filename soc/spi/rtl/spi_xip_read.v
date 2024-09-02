@@ -344,10 +344,13 @@ module spi_xip_read
             rcvd_cnt_q   <= 10'd0;  
         end
         else if ((!spi_xip_ss_o) && bus2ip_rd_ce_i) begin
-            if (rx_ready_i && (!ip2bus_ready_o)) begin
+            if (rx_ready_i && (!spi_drr_rd_o)) begin
                 data_q       <= {spi_drr_data_i, data_q[31:8]};
                 spi_drr_rd_q <= 1'b1 ;
                 rcvd_cnt_q   <= rcvd_cnt_q + 10'd1;
+            end
+            else begin
+                spi_drr_rd_q <= 1'b0 ;
             end
         end
         else if (spi_xip_ss_o) begin
@@ -438,7 +441,7 @@ module spi_xip_read
             ip2bus_ready_q <= 1'b1;
             rd_data_q      <= 32'b0;
         end
-        else if (bus2ip_rd_ce_i && rcvd_cnt_q > instr_paylen_r && rxd_count_w[1:0] == 2'b11)
+        else if (bus2ip_rd_ce_i && rcvd_cnt_q > instr_paylen_r && rxd_count_w[2:0] == 3'b100)
         begin
             ip2bus_ready_q <= 1'b1;
             rd_data_q      <= data_q;
