@@ -21,7 +21,7 @@ When configured in AXI Master mode, can access the processor's memory address sp
 
 ####  Instructions for Use
 
-The contents of the subdirectories under the matrix directory are as follows: 
+The contents of the subdirectories under the uart directory are as follows: 
 ```
 rtl:        RTL design files
 tb:         Testbench design files
@@ -49,7 +49,7 @@ Refer to various test case files in the tc directory. Currently, there are test 
 
 ####  Configuration
 
-The register description refers to the uart_register.v file in the rtl directory.<br>
+The register description refers to the uart_registers.v file in the rtl directory.<br>
 Setting the uart_mst_i input port of uart_top.v to 1 will make the UART work in AXI Master mode.<br>
 
 
