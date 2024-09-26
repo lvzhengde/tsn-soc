@@ -63,9 +63,29 @@ module sdram_model
     localparam SDRAM_REFRESH_CYCLES  = (64000*SDRAM_MHZ) / SDRAM_REFRESH_CNT-1;
     localparam NUM_ROWS              = (1 << SDRAM_ROW_W);
 
+    localparam MAX_ROW_OPEN_TIME     = 35 * 1000; // 35 us 
+    localparam MIN_ACTIVE_TO_ACTIVE  = 60;        // 60 ns 
+    localparam MIN_ACTIVE_TO_ACCESS  = 15;        // 15 ns 
+    localparam MAX_ROW_REFRESH_TIME  = (64 * 1000 * 1000) / NUM_ROWS + 200; // Add some slack (FIXME) 
+
+    localparam CMD_W             = 4;
+    localparam CMD_INHIBIT       = 4'b1000;
+    localparam CMD_NOP           = 4'b0111;
+    localparam CMD_ACTIVE        = 4'b0011;
+    localparam CMD_READ          = 4'b0101;
+    localparam CMD_WRITE         = 4'b0100;
+    localparam CMD_TERMINATE     = 4'b0110;
+    localparam CMD_PRECHARGE     = 4'b0010;
+    localparam CMD_REFRESH       = 4'b0001;
+    localparam CMD_LOAD_MODE     = 4'b0000;
+
+    localparam T_QDELAY          = 0.5;
+
     //-----------------------------------------------------------------
     // Registers / Wires
     //-----------------------------------------------------------------
+    integer      i;
+
     reg          enable_delays;
     reg          configured   ;
     integer      burst_type   ;
@@ -85,8 +105,15 @@ module sdram_model
     reg          burst_close_row[0:SDRAM_BANKS-1];
     integer      burst_offset;    
 
-    integer      i;
+    reg  [SDRAM_COL_W-1:0]  col  = 0;
+    reg  [SDRAM_ROW_W-1:0]  row  = 0;
+    reg  [SDRAM_BANK_W-1:0] bank = 0;
+    reg  [31:0]             addr = 0;
 
+    reg  [15:0]      resp_data[0:2];
+    reg  [CMD_W-1:0] new_cmd;
+
+    //sdram process
     initial 
     begin
         enable_delays = 1'b1;
@@ -96,7 +123,26 @@ module sdram_model
 
         for (i = 0; i < SDRAM_BANKS; i = i+1)
             active_row[i] = -1;
-    end
+
+        // Clear response pipeline
+        for (i = 0; i < 3; i = i+1)
+            resp_data[i] = 0;
+
+        for (i = 0; i < SDRAM_BANKS; i = i+1)
+            activate_time[i] = $time;
+
+        refresh_cnt = 0;
+
+        forever @(posedge clk) 
+        begin
+            // Command decoder
+            if (csb_i)
+                new_cmd = CMD_INHIBIT;
+            else
+                new_cmd = {csb_i, rasb_i, casb_i, web_i};
+
+        end // forever
+    end //initial
 
 endmodule
 
