@@ -141,6 +141,32 @@ module sdram_model
             else
                 new_cmd = {csb_i, rasb_i, casb_i, web_i};
 
+            // Check row open time...
+            for (i = 0; i < SDRAM_BANKS; i = i+1) begin
+                if (active_row[i] != -1 && ($time - activate_time[i]) > MAX_ROW_OPEN_TIME)
+                begin
+                    $display("Row open too long...");
+                    $finish;
+                end
+            end
+
+            // Configure SDRAM
+            if (new_cmd == CMD_LOAD_MODE)
+            {
+                configured      = 1'b1;
+                burst_type      = addr_i[3]; 
+                write_burst_en  = addr_i[9];
+                burst_length    = addr_i[2:0]; 
+                cas_latency     = addr_i[6:4]; 
+
+                $display("SDRAM: MODE - write burst %d, burst len %d, CAS latency %d\n", write_burst_en, burst_length, cas_latency);
+
+                if (burst_type != 1'b0) begin
+                    $display("Assertion failed: burst_type is not SEQUENTIAL!");
+                    $finish;
+                end
+            }
+
         end // forever
     end //initial
 
