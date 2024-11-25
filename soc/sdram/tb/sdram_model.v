@@ -151,8 +151,7 @@ module sdram_model
             end
 
             // Configure SDRAM
-            if (new_cmd == CMD_LOAD_MODE)
-            {
+            if (new_cmd == CMD_LOAD_MODE) begin
                 configured      = 1'b1;
                 burst_type      = addr_i[3]; 
                 write_burst_en  = addr_i[9];
@@ -165,9 +164,35 @@ module sdram_model
                     $display("Assertion failed: burst_type is not SEQUENTIAL!");
                     $finish;
                 end
-            }
+            end
+            // Auto refresh
+            else if (new_cmd == CMD_REFRESH) begin
+
+                // Check no rows open..
+                for (i = 0; i < SDRAM_BANKS; i = i+1) begin
+                    if (active_row[i] != -1) begin
+                        $display("Refresh failed, Row %d opened!", i);
+                        $finish;
+                    end
+                end                
+
+                // Once init sequence complete, check for auto-refresh period...
+                if (refresh_cnt > 2) begin
+                    if (($time -  last_refresh) >= MAX_ROW_OPEN_TIME) begin
+                        $display("Refresh failed, refresh interval exceeds MAX_ROW_OPEN_TIME!");
+                        $finish;
+                    end
+                end
+
+                last_refresh = $time;
+
+                if (refresh_cnt < 32'hFFFFFFFF) begin
+                    refresh_cnt = refresh_cnt + 1;
+                end
+            end
 
         end // forever
+
     end //initial
 
 endmodule
