@@ -29,6 +29,8 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 -*/
 
+`define DPRINTF  //$display
+
 module sdram_model
 (
     input          clk     ,
@@ -113,6 +115,10 @@ module sdram_model
     reg  [15:0]      resp_data[0:2];
     reg  [CMD_W-1:0] new_cmd;
 
+    reg        en_ap = 0;
+    reg [31:0] data;
+    reg [ 7:0] mask;
+
     //sdram process
     initial 
     begin
@@ -190,6 +196,163 @@ module sdram_model
                     refresh_cnt = refresh_cnt + 1;
                 end
             end
+            // Row is activated and copied into the row buffer of the bank
+            else if (new_cmd == CMD_ACTIVE) begin
+                if (!configured) begin
+                    $display("Activate failed, SDRAM mode register is not configured!");
+                    $finish;
+                end
+                if (refresh_cnt < 2) begin
+                    $display("Activate failed, refresh_cnt < 2!");
+                    $finish;
+                end
+
+                bank = ba_i  ;
+                row  = addr_i;
+
+                DPRINTF("SDRAM: ACTIVATE Row = 0x%h, Bank = 0x%h\n", row, bank);
+
+                // A row should not be open
+                if (active_row[bank] != -1) begin
+                    $display("Activate failed, a row should not be open!");
+                    $finish;
+                end
+
+                // ACTIVATE periods long enough...
+                if (($time - activate_time[bank]) <= MIN_ACTIVE_TO_ACTIVE) begin
+                    $display("Activate failed, activate periods <= MIN_ACTIVE_TO_ACTIVE!");
+                    $finish;
+                end
+
+                // Mark row as open
+                active_row[bank]    = row;
+                activate_time[bank] = $time;
+            end
+            // Read command
+            else if (new_cmd == CMD_READ) begin
+                if (!configured) begin
+                    $display("Read failed, SDRAM mode register is not configured!");
+                    $finish;
+                end
+
+                en_ap = addr_i[10];   
+                col   = addr_i[SDRAM_COL_W-1:0]; 
+                bank  = ba_i; 
+                row   = active_row[bank];
+
+                // A row should be open
+                if (active_row[bank] == -1) begin
+                    $display("Read failed, a row should be open!");
+                    $finish;
+                end
+
+                // DQM expected to be low
+                if (dqm_i != 2'b0) begin
+                    $display("Read failed, DQM expected to be low!");
+                    $finish;
+                end
+
+                // Check row activate timing
+                if (($time - activate_time[bank]) <= MIN_ACTIVE_TO_ACCESS) begin
+                    $display("Read failed, row activate time <= MIN_ACTIVE_TO_ACCESS!");
+                    $finish;
+                end
+
+                // Address = RBC
+                addr[SDRAM_COL_W:2]                                        = col[SDRAM_COL_W-1: 1];
+                addr[SDRAM_COL_W+SDRAM_BANK_W: SDRAM_COL_W+SDRAM_BANK_W-1] = bank;
+                addr[31: SDRAM_COL_W+SDRAM_BANK_W+1]                       = row ;
+
+                burst_offset = 0;
+
+                data = read32(addr);
+                DPRINTF("SDRAM: READ 0x%08h = 0x%08h [Row=0x%h, Bank=0x%h, Col=0x%h]\n", addr, data, row, bank, col);
+
+                resp_data[cas_latency-2] = data >> (burst_offset * 8);
+                burst_offset = burst_offset + 2;
+
+                case (burst_length)
+                    0:       burst_read = 1-1;
+                    1:       burst_read = 2-1;
+                    2:       burst_read = 4-1;
+                    3:       burst_read = 8-1;
+                    default: burst_read = 1-1;
+                endcase
+
+                burst_close_row[bank] = en_ap;
+            end // Read command
+            // Write command
+            else if (new_cmd == CMD_WRITE) begin
+                if (!configured) begin
+                    $display("Write failed, SDRAM mode register is not configured!");
+                    $finish;
+                end
+
+                en_ap = addr_i[10];   
+                col   = addr_i[SDRAM_COL_W-1:0]; 
+                bank  = ba_i; 
+                row   = active_row[bank];
+
+                // A row should be open
+                if (active_row[bank] == -1) begin
+                    $display("Write failed, a row should be open!");
+                    $finish;
+                end
+
+                // Check row activate timing
+                if (($time - activate_time[bank]) <= MIN_ACTIVE_TO_ACCESS) begin
+                    $display("Write failed, row activate time <= MIN_ACTIVE_TO_ACCESS!");
+                    $finish;
+                end
+
+                // Address = RBC
+                addr[SDRAM_COL_W:2]                                        = col[SDRAM_COL_W-1: 1];
+                addr[SDRAM_COL_W+SDRAM_BANK_W: SDRAM_COL_W+SDRAM_BANK_W-1] = bank;
+                addr[31: SDRAM_COL_W+SDRAM_BANK_W+1]                       = row ;
+
+                data = dq_io; 
+                mask = 0;
+                
+                burst_offset = 0;
+
+                data = data << (burst_offset * 8); 
+                mask = 'h3  << (burst_offset);
+
+                // Lower byte - disabled
+                if (dqm_i[0]) begin
+                    data = data & (~('hff << ((burst_offset + 0) * 8)));
+                    mask = mask & (~(1 << (burst_offset + 0)));
+                end
+
+                // Upper byte disabled
+                if (dqm_i[1]) begin
+                    data = data & (~('hff << ((burst_offset + 1) * 8)));
+                    mask = mask & (~(1 << (burst_offset + 1))); 
+                end
+ 
+                DPRINTF("SDRAM: WRITE 0x%08h = 0x%08h MASK=0x%h [Row=0x%h, Bank=0x%h, Col=0x%h]\n", addr, data, mask, row, bank, col);
+                write32(addr, (data) << 0, mask);
+                burst_offset += 2;
+
+                // Configure remaining burst length
+                if (write_burst_en) begin
+                    case (burst_length)
+                        0:       burst_write = 1-1;
+                        1:       burst_write = 2-1;
+                        2:       burst_write = 4-1;
+                        3:       burst_write = 8-1;
+                        default: burst_write = 1-1;
+                    endcase
+                end 
+                else begin
+                    burst_write = 0;
+                end
+
+                burst_close_row[bank] = en_ap;
+            end // Write command
+
+
+
 
         end // forever
 
