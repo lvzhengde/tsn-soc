@@ -332,7 +332,7 @@ module sdram_model
  
                 DPRINTF("SDRAM: WRITE 0x%08h = 0x%08h MASK=0x%h [Row=0x%h, Bank=0x%h, Col=0x%h]\n", addr, data, mask, row, bank, col);
                 write32(addr, (data) << 0, mask);
-                burst_offset += 2;
+                burst_offset = burst_offset + 2;
 
                 // Configure remaining burst length
                 if (write_burst_en) begin
@@ -350,6 +350,75 @@ module sdram_model
 
                 burst_close_row[bank] = en_ap;
             end // Write command
+            // Row is precharged and stored back into the memory array
+            else if (new_cmd == CMD_PRECHARGE) begin
+                if (!configured) begin
+                    $display("Precharge failed, SDRAM mode register is not configured!");
+                    $finish;
+                end
+
+                // All banks
+                if (addr_i[10]) begin
+                    // Close rows
+                    for (i = 0; i < SDRAM_BANKS; i = i+1)
+                        active_row[i] = -1;
+                    DPRINTF("SDRAM: PRECHARGE - all banks\n");
+                end
+                // Specified bank
+                else begin
+                    bank  = ba_i; 
+
+                    DPRINTF("SDRAM: PRECHARGE Bank=0x%h, Active Row=0x%h\n", bank, active_row[bank]);
+
+                    // Close specific row
+                    active_row[bank] = -1;
+                end
+            end //Precharge Command
+            // Terminate read or write burst
+            else if (new_cmd == CMD_TERMINATE) begin
+                burst_write = 0;
+                burst_read  = 0;
+
+                DPRINTF("SDRAM: Burst terminate\n");
+            end
+            // WRITE: Burst continuation...
+            if (m_burst_write > 0 && new_cmd == CMD_NOP) begin
+                data = dq_io; 
+                mask = 0;
+
+                data = data << (burst_offset * 8); 
+                mask = 'h3  << (burst_offset);
+
+                // Lower byte - disabled
+                if (dqm_i[0]) begin
+                    data = data & (~('hff << ((burst_offset + 0) * 8)));
+                    mask = mask & (~(1 << (burst_offset + 0)));
+                end
+
+                // Upper byte disabled
+                if (dqm_i[1]) begin
+                    data = data & (~('hff << ((burst_offset + 1) * 8)));
+                    mask = mask & (~(1 << (burst_offset + 1))); 
+                end
+
+                DPRINTF("SDRAM: WRITE 0x%08h = 0x%08h MASK=0x%h [Row=0x%h, Bank=0x%h, Col=0x%h]\n", addr, data, mask, row, bank, col);
+                write32(addr, (data) << 0, mask);
+                burst_offset = burst_offset + 2;
+
+                // Continue...
+                if (burst_offset == 4) begin
+                    burst_offset = 0;
+                    addr = addr + 4;
+                end
+
+                burst_write = burst_write - 1;
+
+                if (burst_write == 0 && burst_close_row[bank]) begin
+                    // Close specific row
+                    active_row[bank] = -1;
+                end
+            end // WRITE: Burst continuation...
+
 
 
 
