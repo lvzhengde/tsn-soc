@@ -113,11 +113,13 @@ module sdram_model
     reg  [31:0]             addr = 0;
 
     reg  [15:0]      resp_data[0:2];
+    reg              resp_enable[0:2];
     reg  [CMD_W-1:0] new_cmd;
+    reg  [15:0]      dq_reg;   
 
-    reg        en_ap = 0;
-    reg [31:0] data;
-    reg [ 7:0] mask;
+    reg         en_ap = 0;
+    reg  [31:0] data;
+    reg  [ 7:0] mask;
 
     //sdram process
     initial 
@@ -131,8 +133,11 @@ module sdram_model
             active_row[i] = -1;
 
         // Clear response pipeline
-        for (i = 0; i < 3; i = i+1)
-            resp_data[i] = 0;
+        for (i = 0; i < 3; i = i+1) begin
+            resp_data  [i] = 0;
+            resp_enable[i] = 0;
+        end
+        dq_reg = 16'bz;
 
         for (i = 0; i < SDRAM_BANKS; i = i+1)
             activate_time[i] = $time;
@@ -155,6 +160,8 @@ module sdram_model
                     $finish;
                 end
             end
+
+            resp_enable[cas_latency-2] = 1'b0;
 
             // Configure SDRAM
             if (new_cmd == CMD_LOAD_MODE) begin
@@ -268,7 +275,8 @@ module sdram_model
                 data = read32(addr);
                 DPRINTF("SDRAM: READ 0x%08h = 0x%08h [Row=0x%h, Bank=0x%h, Col=0x%h]\n", addr, data, row, bank, col);
 
-                resp_data[cas_latency-2] = data >> (burst_offset * 8);
+                resp_data  [cas_latency-2] = data >> (burst_offset * 8);
+                resp_enable[cas_latency-2] = 1'b1;
                 burst_offset = burst_offset + 2;
 
                 case (burst_length)
@@ -382,7 +390,7 @@ module sdram_model
                 DPRINTF("SDRAM: Burst terminate\n");
             end
             // WRITE: Burst continuation...
-            if (m_burst_write > 0 && new_cmd == CMD_NOP) begin
+            if (burst_write > 0 && new_cmd == CMD_NOP) begin
                 data = dq_io; 
                 mask = 0;
 
@@ -418,14 +426,40 @@ module sdram_model
                     active_row[bank] = -1;
                 end
             end // WRITE: Burst continuation...
+            // READ: Burst continuation
+            else if (burst_read > 0 && new_cmd == CMD_NOP) begin
+                data = read32(addr);
+                DPRINTF("SDRAM: READ 0x%08h = 0x%08h [Row=0x%h, Bank=0x%h, Col=0x%h]\n", addr, data, row, bank, col);
 
+                resp_data  [cas_latency-2] = data >> (burst_offset * 8);
+                resp_enable[cas_latency-2] = 1'b1;
+                burst_offset = burst_offset + 2;
 
+                // Continue...
+                if (burst_offset == 4) begin
+                    burst_offset = 0;
+                    addr = addr + 4;
+                end
 
+                burst_read = burst_read - 1;
 
+                if (burst_read == 0 && burst_close_row[bank]) begin
+                    // Close specific row
+                    active_row[bank] = -1;
+                end
+            end // READ: Burst continuation
 
+            dq_reg = (resp_enable[0]) ? resp_data[0] : 16'bz;
+
+            // Shuffle read data
+            for (i = 1; i < 3; i = i+1) begin
+                resp_data  [i-1] = resp_data  [i];
+                resp_enable[i-1] = resp_enable[i];
+            end
         end // forever
-
     end //initial
+
+    assign dq_io = dq_reg;
 
 endmodule
 
