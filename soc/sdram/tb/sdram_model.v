@@ -449,6 +449,7 @@ module sdram_model
                 end
             end // READ: Burst continuation
 
+            #T_QDELAY;
             dq_reg = (resp_enable[0]) ? resp_data[0] : 16'bz;
 
             // Shuffle read data
@@ -460,6 +461,100 @@ module sdram_model
     end //initial
 
     assign dq_io = dq_reg;
+
+    // iverilog does not support large arrays...
+    // Each array is 4M x 8-bit
+    localparam ARRAY_SIZE = 4*1024 * 1024;
+
+    // Generate 16 arrays--512M bit
+    genvar k;
+    generate
+        for (k = 0; k < 16; k = k + 1) begin : array_gen
+            reg [7:0] mem_array [0:ARRAY_SIZE-1];    
+        end
+    endgenerate
+
+    //-----------------------------------------------------------------
+    // write32: Write a 32-bit word to memory
+    //-----------------------------------------------------------------
+    task write32;
+        input [31:0] addr;
+        input [31:0] data;
+        input [ 7:0] strb;
+
+        integer i;
+        reg [31:0] byte_addr;
+        reg [31:0] byte_data;
+
+        begin
+            for (i = 0; i < 4; i = i+1) begin
+                if (strb & (1 << i)) begin
+                    byte_addr = addr + i;
+                    byte_data = data >> (i*8);
+
+                    case (byte_addr[31:22])
+                        0 : array_gen[0 ].mem_array[byte_addr[21:0]] = byte_data[7:0];
+                        1 : array_gen[1 ].mem_array[byte_addr[21:0]] = byte_data[7:0];
+                        2 : array_gen[2 ].mem_array[byte_addr[21:0]] = byte_data[7:0];
+                        3 : array_gen[3 ].mem_array[byte_addr[21:0]] = byte_data[7:0];
+                        4 : array_gen[4 ].mem_array[byte_addr[21:0]] = byte_data[7:0];
+                        5 : array_gen[5 ].mem_array[byte_addr[21:0]] = byte_data[7:0];
+                        6 : array_gen[6 ].mem_array[byte_addr[21:0]] = byte_data[7:0];
+                        7 : array_gen[7 ].mem_array[byte_addr[21:0]] = byte_data[7:0];
+                        8 : array_gen[8 ].mem_array[byte_addr[21:0]] = byte_data[7:0];
+                        9 : array_gen[9 ].mem_array[byte_addr[21:0]] = byte_data[7:0];
+                        10: array_gen[10].mem_array[byte_addr[21:0]] = byte_data[7:0];
+                        11: array_gen[11].mem_array[byte_addr[21:0]] = byte_data[7:0];
+                        12: array_gen[12].mem_array[byte_addr[21:0]] = byte_data[7:0];
+                        13: array_gen[13].mem_array[byte_addr[21:0]] = byte_data[7:0];
+                        14: array_gen[14].mem_array[byte_addr[21:0]] = byte_data[7:0];
+                        15: array_gen[15].mem_array[byte_addr[21:0]] = byte_data[7:0];
+                        default: ;
+                    endcase
+                end //if
+            end //for
+        end
+    endtask
+
+    //-----------------------------------------------------------------
+    // read32: Read a 32-bit word from memory
+    //-----------------------------------------------------------------
+    function [31:0] read32;
+        input [31:0] addr;
+        integer i;
+        reg   [31:0] byte_addr;
+        reg   [31:0] byte_data;
+        begin
+            read32 = 0;
+
+            for (i = 0; i < 4; i = i+1) begin
+                byte_addr = addr + i;
+                byte_data = 0;
+
+                case (byte_addr[31:22])
+                    0 : byte_data[7:0] = array_gen[0 ].mem_array[byte_addr[21:0]];
+                    1 : byte_data[7:0] = array_gen[1 ].mem_array[byte_addr[21:0]];
+                    2 : byte_data[7:0] = array_gen[2 ].mem_array[byte_addr[21:0]];
+                    3 : byte_data[7:0] = array_gen[3 ].mem_array[byte_addr[21:0]];
+                    4 : byte_data[7:0] = array_gen[4 ].mem_array[byte_addr[21:0]];
+                    5 : byte_data[7:0] = array_gen[5 ].mem_array[byte_addr[21:0]];
+                    6 : byte_data[7:0] = array_gen[6 ].mem_array[byte_addr[21:0]];
+                    7 : byte_data[7:0] = array_gen[7 ].mem_array[byte_addr[21:0]];
+                    8 : byte_data[7:0] = array_gen[8 ].mem_array[byte_addr[21:0]];
+                    9 : byte_data[7:0] = array_gen[9 ].mem_array[byte_addr[21:0]];
+                    10: byte_data[7:0] = array_gen[10].mem_array[byte_addr[21:0]];
+                    11: byte_data[7:0] = array_gen[11].mem_array[byte_addr[21:0]];
+                    12: byte_data[7:0] = array_gen[12].mem_array[byte_addr[21:0]];
+                    13: byte_data[7:0] = array_gen[13].mem_array[byte_addr[21:0]];
+                    14: byte_data[7:0] = array_gen[14].mem_array[byte_addr[21:0]];
+                    15: byte_data[7:0] = array_gen[15].mem_array[byte_addr[21:0]];
+                    default: ;
+                endcase
+
+                read32 = read32 | byte_data;
+            end //for
+        end
+    endfunction
 
 endmodule
 
