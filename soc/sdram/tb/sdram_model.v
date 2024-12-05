@@ -88,7 +88,6 @@ module sdram_model
     //-----------------------------------------------------------------
     integer      i;
 
-    reg          enable_delays;
     reg          configured   ;
     integer      burst_type   ;
     integer      burst_length ;
@@ -124,10 +123,10 @@ module sdram_model
     //sdram process
     initial 
     begin
-        enable_delays = 1'b1;
         configured    = 1'b0;
         burst_write   = 0;
         burst_read    = 0;
+        cas_latency   = 2; 
 
         for (i = 0; i < SDRAM_BANKS; i = i+1)
             active_row[i] = -1;
@@ -139,8 +138,9 @@ module sdram_model
         end
         dq_reg = 16'bz;
 
-        for (i = 0; i < SDRAM_BANKS; i = i+1)
+        for (i = 0; i < SDRAM_BANKS; i = i+1) begin
             activate_time[i] = $time;
+        end
 
         refresh_cnt = 0;
 
@@ -161,7 +161,7 @@ module sdram_model
                 end
             end
 
-            resp_enable[cas_latency-2] = 1'b0;
+            resp_enable[cas_latency-1] = 1'b0;
 
             // Configure SDRAM
             if (new_cmd == CMD_LOAD_MODE) begin
@@ -191,8 +191,8 @@ module sdram_model
 
                 // Once init sequence complete, check for auto-refresh period...
                 if (refresh_cnt > 2) begin
-                    if (($time -  last_refresh) >= MAX_ROW_OPEN_TIME) begin
-                        $display("Refresh failed, refresh interval exceeds MAX_ROW_OPEN_TIME!");
+                    if (($time -  last_refresh) >= MAX_ROW_REFRESH_TIME) begin
+                        $display("Refresh failed, refresh interval exceeds MAX_ROW_REFRESH_TIME!");
                         $finish;
                     end
                 end
@@ -275,8 +275,8 @@ module sdram_model
                 data = read32(addr);
                 DPRINTF("SDRAM: READ 0x%08h = 0x%08h [Row=0x%h, Bank=0x%h, Col=0x%h]\n", addr, data, row, bank, col);
 
-                resp_data  [cas_latency-2] = data >> (burst_offset * 8);
-                resp_enable[cas_latency-2] = 1'b1;
+                resp_data  [cas_latency-1] = data >> (burst_offset * 8);
+                resp_enable[cas_latency-1] = 1'b1;
                 burst_offset = burst_offset + 2;
 
                 case (burst_length)
@@ -368,8 +368,10 @@ module sdram_model
                 // All banks
                 if (addr_i[10]) begin
                     // Close rows
-                    for (i = 0; i < SDRAM_BANKS; i = i+1)
+                    for (i = 0; i < SDRAM_BANKS; i = i+1) begin
                         active_row[i] = -1;
+                    end
+
                     DPRINTF("SDRAM: PRECHARGE - all banks\n");
                 end
                 // Specified bank
@@ -431,8 +433,8 @@ module sdram_model
                 data = read32(addr);
                 DPRINTF("SDRAM: READ 0x%08h = 0x%08h [Row=0x%h, Bank=0x%h, Col=0x%h]\n", addr, data, row, bank, col);
 
-                resp_data  [cas_latency-2] = data >> (burst_offset * 8);
-                resp_enable[cas_latency-2] = 1'b1;
+                resp_data  [cas_latency-1] = data >> (burst_offset * 8);
+                resp_enable[cas_latency-1] = 1'b1;
                 burst_offset = burst_offset + 2;
 
                 // Continue...
@@ -464,7 +466,7 @@ module sdram_model
 
     // iverilog does not support large arrays...
     // Each array is 4M x 8-bit
-    localparam ARRAY_SIZE = 4*1024 * 1024;
+    localparam ARRAY_SIZE = 4 * 1024 * 1024;
 
     // Generate 16 arrays--512M bit
     genvar k;
@@ -551,7 +553,7 @@ module sdram_model
                     default: ;
                 endcase
 
-                read32 = read32 | byte_data;
+                read32 = read32 | (byte_data << (i*8));
             end //for
         end
     endfunction
