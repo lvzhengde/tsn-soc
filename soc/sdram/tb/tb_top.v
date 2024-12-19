@@ -227,5 +227,88 @@ module tb_top;
         .outport_rready_o  (slv_rready_w  )
     );
 
+    //--------------------------------------------------------------------
+    // Device Under Test--SDRAM AXI Top
+    //--------------------------------------------------------------------
+    wire [ 15:0]  sdram_data_input_w  ;
+    wire          sdram_clk_w         ;
+    wire          sdram_cke_w         ;
+    wire          sdram_cs_w          ;
+    wire          sdram_ras_w         ;
+    wire          sdram_cas_w         ;
+    wire          sdram_we_w          ;
+    wire [  1:0]  sdram_dqm_w         ;
+    wire [ 12:0]  sdram_addr_w        ;
+    wire [  1:0]  sdram_ba_w          ;
+    wire [ 15:0]  sdram_data_output_w ;
+    wire          sdram_data_out_en_w ;
+
+    sdram_axi u_sdram_axi
+    (
+        // Inputs
+        .clk                 (clk                ),
+        .rst_n               (rst_n              ),
+        .inport_awvalid_i    (slv_awvalid_w      ),
+        .inport_awaddr_i     (slv_awaddr_w       ),
+        .inport_awid_i       (slv_awid_w         ),
+        .inport_awlen_i      (slv_awlen_w        ),
+        .inport_awburst_i    (slv_awburst_w      ),
+        .inport_wvalid_i     (slv_wvalid_w       ),
+        .inport_wdata_i      (slv_wdata_w        ),
+        .inport_wstrb_i      (slv_wstrb_w        ),
+        .inport_wlast_i      (slv_wlast_w        ),
+        .inport_bready_i     (slv_bready_w       ),
+        .inport_arvalid_i    (slv_arvalid_w      ),
+        .inport_araddr_i     (slv_araddr_w       ),
+        .inport_arid_i       (slv_arid_w         ),
+        .inport_arlen_i      (slv_arlen_w        ),
+        .inport_arburst_i    (slv_arburst_w      ),
+        .inport_rready_i     (slv_rready_w       ),
+        .sdram_data_input_i  (sdram_data_input_w ),
+    
+        // Outputs
+        .inport_awready_o    (slv_awready_w      ), 
+        .inport_wready_o     (slv_wready_w       ),
+        .inport_bvalid_o     (slv_bvalid_w       ),
+        .inport_bresp_o      (slv_bresp_w        ),
+        .inport_bid_o        (slv_bid_w          ),
+        .inport_arready_o    (slv_arready_w      ),
+        .inport_rvalid_o     (slv_rvalid_w       ),
+        .inport_rdata_o      (slv_rdata_w        ),
+        .inport_rresp_o      (slv_rresp_w        ),
+        .inport_rid_o        (slv_rid_w          ),
+        .inport_rlast_o      (slv_rlast_w        ),
+        .sdram_clk_o         (sdram_clk_w        ),
+        .sdram_cke_o         (sdram_cke_w        ),
+        .sdram_cs_o          (sdram_cs_w         ),
+        .sdram_ras_o         (sdram_ras_w        ),
+        .sdram_cas_o         (sdram_cas_w        ),
+        .sdram_we_o          (sdram_we_w         ),
+        .sdram_dqm_o         (sdram_dqm_w        ),
+        .sdram_addr_o        (sdram_addr_w       ),
+        .sdram_ba_o          (sdram_ba_w         ),
+        .sdram_data_output_o (sdram_data_output_w),
+        .sdram_data_out_en_o (sdram_data_out_en_w)
+    );
+
+    wire [ 15:0]  sdram_data_io_w = (sdram_data_out_en_w == 1'b1) ? sdram_data_output_w : 16'bz;
+    assign        sdram_data_input_w = sdram_data_io_w;
+
+    //--------------------------------------------------------------------
+    // SDRAM Model
+    //--------------------------------------------------------------------
+    sdram_model u_sdram_model
+    (
+        .clk                (clk            ),
+        .cke_i              (sdram_cke_w    ),
+        .csb_i              (sdram_cs_w     ),
+        .rasb_i             (sdram_ras_w    ),
+        .casb_i             (sdram_cas_w    ),
+        .web_i              (sdram_we_w     ),
+        .dqm_i              (sdram_dqm_w    ),
+        .addr_i             (sdram_addr_w   ),
+        .ba_i               (sdram_ba_w     ),
+        .dq_io              (sdram_data_io_w)
+    );
 
 endmodule
