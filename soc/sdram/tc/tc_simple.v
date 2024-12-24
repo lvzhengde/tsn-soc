@@ -70,7 +70,8 @@ module tc_simple;
             wr_data[idx] = $random(seed);
             $display($time,, "%m idx = %d, prepare test data = 0x%08x", idx, wr_data[idx]);
         end
-        #100;
+
+        #1000_000;  //wait 1ms
 
         //-----------------------------------------------------------------
         // Write Data to SDRAM

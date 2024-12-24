@@ -1,0 +1,20 @@
+// This file typically lists files/flags required by a large project, 
+// e.g. include directories
+../sdram_axi_core.v
+../sdram_axi_pmem.v
+../sdram_axi.v
+
+../tb/axi4_master.v
+../tb/axi4_retime.v
+//../tb/model/IS42VM16400K.v
+//../tb/model/mt48lc2m32b2.v
+//../tb/model/mt48lc4m16.v
+//../tb/model/mt48lc4m32b2.v
+//../tb/model/mt48lc8m16a2.v
+//../tb/model/mt48lc8m8a2.v
+../tb/sdram_model.v
+../tb/tb_top.v
+
+../tc/tc_simple.v
+
++incdir+../rtl +incdir+../tb +libext+.v+.sv+.vh+.svh -y .
