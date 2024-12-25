@@ -1,8 +1,8 @@
 // This file typically lists files/flags required by a large project, 
 // e.g. include directories
-../sdram_axi_core.v
-../sdram_axi_pmem.v
-../sdram_axi.v
+../rtl/sdram_axi_core.v
+../rtl/sdram_axi_pmem.v
+../rtl/sdram_axi.v
 
 ../tb/axi4_master.v
 ../tb/axi4_retime.v

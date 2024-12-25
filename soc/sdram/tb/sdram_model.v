@@ -29,7 +29,12 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 -*/
 
-`define DPRINTF  //$display
+`define DPRINTF  $display
+//`ifdef DEBUG //if SystemVerilog supported
+//  `define DPRINTF(format, args...) $display(format, ##args)
+//`else
+//  `define DPRINTF(format, args...)
+//`endif
 
 module sdram_model
 (
@@ -156,7 +161,7 @@ module sdram_model
             for (i = 0; i < SDRAM_BANKS; i = i+1) begin
                 if (active_row[i] != -1 && ($time - activate_time[i]) > MAX_ROW_OPEN_TIME)
                 begin
-                    $display("Row open too long...");
+                    $display("%m Row open too long...");
                     $finish;
                 end
             end
@@ -174,7 +179,7 @@ module sdram_model
                 $display("SDRAM: MODE - write burst %d, burst len %d, CAS latency %d\n", write_burst_en, burst_length, cas_latency);
 
                 if (burst_type != 1'b0) begin
-                    $display("Assertion failed: burst_type is not SEQUENTIAL!");
+                    $display("%m Assertion failed: burst_type is not SEQUENTIAL!");
                     $finish;
                 end
             end
@@ -184,7 +189,7 @@ module sdram_model
                 // Check no rows open..
                 for (i = 0; i < SDRAM_BANKS; i = i+1) begin
                     if (active_row[i] != -1) begin
-                        $display("Refresh failed, Row %d opened!", i);
+                        $display("%m Refresh failed, Row %d opened!", i);
                         $finish;
                     end
                 end                
@@ -192,7 +197,7 @@ module sdram_model
                 // Once init sequence complete, check for auto-refresh period...
                 if (refresh_cnt > 2) begin
                     if (($time -  last_refresh) >= MAX_ROW_REFRESH_TIME) begin
-                        $display("Refresh failed, refresh interval exceeds MAX_ROW_REFRESH_TIME!");
+                        $display("%m Refresh failed, refresh interval exceeds MAX_ROW_REFRESH_TIME!");
                         $finish;
                     end
                 end
@@ -206,28 +211,28 @@ module sdram_model
             // Row is activated and copied into the row buffer of the bank
             else if (new_cmd == CMD_ACTIVE) begin
                 if (!configured) begin
-                    $display("Activate failed, SDRAM mode register is not configured!");
+                    $display("%m Activate failed, SDRAM mode register is not configured!");
                     $finish;
                 end
                 if (refresh_cnt < 2) begin
-                    $display("Activate failed, refresh_cnt < 2!");
+                    $display("%m Activate failed, refresh_cnt < 2!");
                     $finish;
                 end
 
                 bank = ba_i  ;
                 row  = addr_i;
 
-                DPRINTF("SDRAM: ACTIVATE Row = 0x%h, Bank = 0x%h\n", row, bank);
+                `DPRINTF("SDRAM: ACTIVATE Row = 0x%h, Bank = 0x%h\n", row, bank);
 
                 // A row should not be open
                 if (active_row[bank] != -1) begin
-                    $display("Activate failed, a row should not be open!");
+                    $display("%m Activate failed, a row should not be open!");
                     $finish;
                 end
 
                 // ACTIVATE periods long enough...
                 if (($time - activate_time[bank]) <= MIN_ACTIVE_TO_ACTIVE) begin
-                    $display("Activate failed, activate periods <= MIN_ACTIVE_TO_ACTIVE!");
+                    $display("%m Activate failed, activate periods <= MIN_ACTIVE_TO_ACTIVE!");
                     $finish;
                 end
 
@@ -238,7 +243,7 @@ module sdram_model
             // Read command
             else if (new_cmd == CMD_READ) begin
                 if (!configured) begin
-                    $display("Read failed, SDRAM mode register is not configured!");
+                    $display("%m Read failed, SDRAM mode register is not configured!");
                     $finish;
                 end
 
@@ -249,19 +254,19 @@ module sdram_model
 
                 // A row should be open
                 if (active_row[bank] == -1) begin
-                    $display("Read failed, a row should be open!");
+                    $display("%m Read failed, a row should be open!");
                     $finish;
                 end
 
                 // DQM expected to be low
                 if (dqm_i != 2'b0) begin
-                    $display("Read failed, DQM expected to be low!");
+                    $display("%m Read failed, DQM expected to be low!");
                     $finish;
                 end
 
                 // Check row activate timing
                 if (($time - activate_time[bank]) <= MIN_ACTIVE_TO_ACCESS) begin
-                    $display("Read failed, row activate time <= MIN_ACTIVE_TO_ACCESS!");
+                    $display("%m Read failed, row activate time <= MIN_ACTIVE_TO_ACCESS!");
                     $finish;
                 end
 
@@ -273,7 +278,7 @@ module sdram_model
                 burst_offset = 0;
 
                 data = read32(addr);
-                DPRINTF("SDRAM: READ 0x%08h = 0x%08h [Row=0x%h, Bank=0x%h, Col=0x%h]\n", addr, data, row, bank, col);
+                `DPRINTF("SDRAM: READ 0x%08h = 0x%08h [Row=0x%h, Bank=0x%h, Col=0x%h]\n", addr, data, row, bank, col);
 
                 resp_data  [cas_latency-1] = data >> (burst_offset * 8);
                 resp_enable[cas_latency-1] = 1'b1;
@@ -292,7 +297,7 @@ module sdram_model
             // Write command
             else if (new_cmd == CMD_WRITE) begin
                 if (!configured) begin
-                    $display("Write failed, SDRAM mode register is not configured!");
+                    $display("%m Write failed, SDRAM mode register is not configured!");
                     $finish;
                 end
 
@@ -303,13 +308,13 @@ module sdram_model
 
                 // A row should be open
                 if (active_row[bank] == -1) begin
-                    $display("Write failed, a row should be open!");
+                    $display("%m Write failed, a row should be open!");
                     $finish;
                 end
 
                 // Check row activate timing
                 if (($time - activate_time[bank]) <= MIN_ACTIVE_TO_ACCESS) begin
-                    $display("Write failed, row activate time <= MIN_ACTIVE_TO_ACCESS!");
+                    $display("%m Write failed, row activate time <= MIN_ACTIVE_TO_ACCESS!");
                     $finish;
                 end
 
@@ -338,7 +343,7 @@ module sdram_model
                     mask = mask & (~(1 << (burst_offset + 1))); 
                 end
  
-                DPRINTF("SDRAM: WRITE 0x%08h = 0x%08h MASK=0x%h [Row=0x%h, Bank=0x%h, Col=0x%h]\n", addr, data, mask, row, bank, col);
+                `DPRINTF("SDRAM: WRITE 0x%08h = 0x%08h MASK=0x%h [Row=0x%h, Bank=0x%h, Col=0x%h]\n", addr, data, mask, row, bank, col);
                 write32(addr, (data) << 0, mask);
                 burst_offset = burst_offset + 2;
 
@@ -360,8 +365,8 @@ module sdram_model
             end // Write command
             // Row is precharged and stored back into the memory array
             else if (new_cmd == CMD_PRECHARGE) begin
-                if (!configured) begin
-                    $display("Precharge failed, SDRAM mode register is not configured!");
+                if (!configured && refresh_cnt > 2) begin
+                    $display("%m Precharge failed, SDRAM mode register is not configured!");
                     $finish;
                 end
 
@@ -372,13 +377,13 @@ module sdram_model
                         active_row[i] = -1;
                     end
 
-                    DPRINTF("SDRAM: PRECHARGE - all banks\n");
+                    `DPRINTF("SDRAM: PRECHARGE - all banks\n");
                 end
                 // Specified bank
                 else begin
                     bank  = ba_i; 
 
-                    DPRINTF("SDRAM: PRECHARGE Bank=0x%h, Active Row=0x%h\n", bank, active_row[bank]);
+                    `DPRINTF("SDRAM: PRECHARGE Bank=0x%h, Active Row=0x%h\n", bank, active_row[bank]);
 
                     // Close specific row
                     active_row[bank] = -1;
@@ -389,7 +394,7 @@ module sdram_model
                 burst_write = 0;
                 burst_read  = 0;
 
-                DPRINTF("SDRAM: Burst terminate\n");
+                `DPRINTF("SDRAM: Burst terminate\n");
             end
             // WRITE: Burst continuation...
             if (burst_write > 0 && new_cmd == CMD_NOP) begin
@@ -411,7 +416,7 @@ module sdram_model
                     mask = mask & (~(1 << (burst_offset + 1))); 
                 end
 
-                DPRINTF("SDRAM: WRITE 0x%08h = 0x%08h MASK=0x%h [Row=0x%h, Bank=0x%h, Col=0x%h]\n", addr, data, mask, row, bank, col);
+                `DPRINTF("SDRAM: WRITE 0x%08h = 0x%08h MASK=0x%h [Row=0x%h, Bank=0x%h, Col=0x%h]\n", addr, data, mask, row, bank, col);
                 write32(addr, (data) << 0, mask);
                 burst_offset = burst_offset + 2;
 
@@ -431,7 +436,7 @@ module sdram_model
             // READ: Burst continuation
             else if (burst_read > 0 && new_cmd == CMD_NOP) begin
                 data = read32(addr);
-                DPRINTF("SDRAM: READ 0x%08h = 0x%08h [Row=0x%h, Bank=0x%h, Col=0x%h]\n", addr, data, row, bank, col);
+                `DPRINTF("SDRAM: READ 0x%08h = 0x%08h [Row=0x%h, Bank=0x%h, Col=0x%h]\n", addr, data, row, bank, col);
 
                 resp_data  [cas_latency-1] = data >> (burst_offset * 8);
                 resp_enable[cas_latency-1] = 1'b1;
