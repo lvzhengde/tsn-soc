@@ -76,7 +76,7 @@ module tc_simple;
         //-----------------------------------------------------------------
         // Write Data to SDRAM
         //-----------------------------------------------------------------        
-        $display($time,, "\n Write Data to SDRAM...\n");
+        $display($time,, "Write Data to SDRAM...\n");
         for (idx = 0; idx < len; idx = idx+1) begin
             temp = wr_data[idx];
             tb.u_axi4_master.wdata[0] = temp;
@@ -90,7 +90,7 @@ module tc_simple;
         //-----------------------------------------------------------------
         // Read Data from SDRAM
         //-----------------------------------------------------------------        
-        $display($time,, "\n Read Data from SDRAM...\n");
+        $display($time,, "Read Data from SDRAM...\n");
         for (idx = 0; idx < len; idx = idx+1) begin
             tb.u_axi4_master.axi_master_read (addr, 1, 1, 0);
             rd_data[idx] = tb.u_axi4_master.rdata[0];
@@ -100,7 +100,7 @@ module tc_simple;
 
         //Enable AXI statistics
         tb.test_busy = 1'b0;
-        #200;
+        #2000;
 
         //Scoreboard
         $display("\n\n SCOREBOARD...");

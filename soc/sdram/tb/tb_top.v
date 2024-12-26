@@ -299,7 +299,7 @@ module tb_top;
     //--------------------------------------------------------------------
     sdram_model u_sdram_model
     (
-        .clk                (clk            ),
+        .clk                (sdram_clk_w    ),
         .cke_i              (sdram_cke_w    ),
         .csb_i              (sdram_cs_w     ),
         .rasb_i             (sdram_ras_w    ),

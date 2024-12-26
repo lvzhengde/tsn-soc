@@ -172,7 +172,7 @@ module sdram_model
             if (new_cmd == CMD_LOAD_MODE) begin
                 configured      = 1'b1;
                 burst_type      = addr_i[3]; 
-                write_burst_en  = addr_i[9];
+                write_burst_en  = ~addr_i[9];
                 burst_length    = addr_i[2:0]; 
                 cas_latency     = addr_i[6:4]; 
 
