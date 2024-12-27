@@ -243,7 +243,14 @@ module tb_top;
     wire [ 15:0]  sdram_data_output_w ;
     wire          sdram_data_out_en_w ;
 
-    sdram_axi u_sdram_axi
+    sdram_axi 
+    #(
+        .SDRAM_MHZ             (SDRAM_MHZ          ),
+        .SDRAM_ADDR_W          (SDRAM_ADDR_W       ),
+        .SDRAM_COL_W           (SDRAM_COL_W        ),
+        .SDRAM_READ_LATENCY    (SDRAM_READ_LATENCY )
+    )
+    u_sdram_axi
     (
         // Inputs
         .clk                 (clk                ),
@@ -297,7 +304,14 @@ module tb_top;
     //--------------------------------------------------------------------
     // SDRAM Model
     //--------------------------------------------------------------------
-    sdram_model u_sdram_model
+    sdram_model 
+    #(
+        .SDRAM_MHZ             (SDRAM_MHZ          ),
+        .SDRAM_ADDR_W          (SDRAM_ADDR_W       ),
+        .SDRAM_COL_W           (SDRAM_COL_W        ),
+        .SDRAM_READ_LATENCY    (SDRAM_READ_LATENCY )
+    )
+    u_sdram_model
     (
         .clk                (sdram_clk_w    ),
         .cke_i              (sdram_cke_w    ),

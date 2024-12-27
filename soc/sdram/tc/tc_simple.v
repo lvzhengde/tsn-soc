@@ -36,11 +36,14 @@
 
 module tc_simple;
 
-    tb_top tb();
-    defparam tb.SDRAM_MHZ          = 50;
-    defparam tb.SDRAM_ADDR_W       = 24;
-    defparam tb.SDRAM_COL_W        = 9;
-    defparam tb.SDRAM_READ_LATENCY = 2;
+    tb_top 
+    #(
+        .SDRAM_MHZ             (100),
+        .SDRAM_ADDR_W          (25 ),
+        .SDRAM_COL_W           (10 ),
+        .SDRAM_READ_LATENCY    (2  )
+    )
+    tb();
 
     integer  seed = 20;
     integer  len  = 16; 
@@ -50,9 +53,10 @@ module tc_simple;
     reg  [31:0] rd_data[0:255];
     reg  [31:0] temp      ;
     reg  [31:0] addr      ; 
-    reg  [31:0] begin_addr = 0; 
+    reg  [31:0] begin_addr; 
 
     initial begin
+        begin_addr = 0;
         temp    = 0;   
         addr    = begin_addr; 
     
@@ -71,7 +75,67 @@ module tc_simple;
             $display($time,, "%m idx = %d, prepare test data = 0x%08x", idx, wr_data[idx]);
         end
 
-        #1000_000;  //wait 1ms
+        #1_000_000;  //wait 1ms
+
+        //-----------------------------------------------------------------
+        // Write Data to SDRAM
+        //-----------------------------------------------------------------        
+        $display($time,, "Write Data to SDRAM...\n");
+        for (idx = 0; idx < len; idx = idx+1) begin
+            temp = wr_data[idx];
+            tb.u_axi4_master.wdata[0] = temp;
+            tb.u_axi4_master.axi_master_write(addr, 1, 1, 0);  
+            addr = addr + 4;
+        end
+
+        #100;
+        addr = begin_addr;
+
+        //-----------------------------------------------------------------
+        // Read Data from SDRAM
+        //-----------------------------------------------------------------        
+        $display($time,, "Read Data from SDRAM...\n");
+        for (idx = 0; idx < len; idx = idx+1) begin
+            tb.u_axi4_master.axi_master_read (addr, 1, 1, 0);
+            rd_data[idx] = tb.u_axi4_master.rdata[0];
+            $display($time,, "%m idx = %d, SDRAM read data = 0x%02x", idx, rd_data[idx]);
+            addr = addr + 4;
+        end
+
+        //Enable AXI statistics
+        //tb.test_busy = 1'b0;
+        #2000;
+
+        //Scoreboard
+        $display("\n\n SCOREBOARD...");
+        for (idx = 0; idx < len; idx = idx+1) begin
+            $display("idx = %d, prepared test data = 0x%08x, SDRAM read data = 0x%08x", idx, wr_data[idx], rd_data[idx]);
+            if (rd_data[idx] !== wr_data[idx]) begin
+                    $display("ERROR: SDRAM read data not equal to prepared test data!");
+                    $finish(2);                
+            end
+        end
+
+
+        $display("\n\n Wait 1 refresh period (64ms)");
+        #64_000_000;
+
+        begin_addr = {19'h0_0300, 2'b10, 11'h400};
+        temp    = 0;   
+        addr    = begin_addr; 
+
+        //tb.test_busy = 1'b1;
+
+        //-----------------------------------------------------------------
+        // Prepare Test Data
+        //-----------------------------------------------------------------        
+        seed = seed + 100;
+        for (idx = 0; idx < len; idx = idx+1) begin
+            wr_data[idx] = $random(seed);
+            $display($time,, "%m idx = %d, prepare test data = 0x%08x", idx, wr_data[idx]);
+        end
+
+        #1_000_000;  //wait 1ms
 
         //-----------------------------------------------------------------
         // Write Data to SDRAM
@@ -122,7 +186,7 @@ module tc_simple;
     begin
         $dumpfile("simple.fst");
         $dumpvars(0, tc_simple);
-        $dumpon;
-        //$dumpoff;
+        //$dumpon;
+        $dumpoff;
     end
 endmodule
