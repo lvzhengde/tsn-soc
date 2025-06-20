@@ -37,31 +37,31 @@
 `define QBV_ADDR_MASK                (32'hffff0000)
 
 // Register offsets
-`define QBV_CFG       (8'h00)  // QBV Configuration Register
-`define QBV_STATE     (8'h08)  // QBV State Register
-`define QBV_ACTD      (8'h18)  // QBV Admin Cycle Time Denominator Register
-`define QBV_ACTE      (8'h1C)  // QBV Admin Cycle Time Extension Register
-`define QBV_ABTN      (8'h20)  // QBV Admin Base Time Nano-second Register
-`define QBV_ABTSL     (8'h24)  // QBV Admin Base Time Second LSB Register
-`define QBV_ABTSH     (8'h28)  // QBV Admin Base Time Second MSB Register
-`define QBV_ISR       (8'h30)  // QBV Interrupt Status Register
-`define QBV_IER       (8'h34)  // QBV Interrupt Enable Register
-`define QBV_ICR       (8'h38)  // QBV Interrupt Clear Register
-`define QBV_STATUS    (8'h3C)  // QBV Status Register
-`define QBV_CCTN      (8'h40)  // QBV Config Change Time Nano-second Register
-`define QBV_CCTSL     (8'h44)  // QBV Config Change Time Second LSB Register
-`define QBV_CCTSH     (8'h48)  // QBV Config Change Time Second MSB Register
-`define QBV_OCTD      (8'h58)  // QBV Operative Cycle Time Denominator Register
-`define QBV_OCTE      (8'h5C)  // QBV Operative Cycle Time Extension Register
-`define QBV_OBTN      (8'h60)  // QBV Operative Base Time Nano-second Register
-`define QBV_OBTSL     (8'h64)  // QBV Operative Base Time Second LSB Register
-`define QBV_OBTSH     (8'h68)  // QBV Operative Base Time Second MSB Register
-`define QBV_BETC      (8'h6C)  // QBV BE Transmission Overrun Count Register
-`define QBV_RSTC      (8'h70)  // QBV RES Transmission Overrun Count Register
-`define QBV_STTC      (8'h74)  // QBV ST Transmission Overrun Count Register
+`define QBV_CFG       (16'h00)  // QBV Configuration Register
+`define QBV_STATE     (16'h08)  // QBV State Register
+`define QBV_ACTD      (16'h18)  // QBV Admin Cycle Time Denominator Register
+`define QBV_ACTE      (16'h1C)  // QBV Admin Cycle Time Extension Register
+`define QBV_ABTN      (16'h20)  // QBV Admin Base Time Nano-second Register
+`define QBV_ABTSL     (16'h24)  // QBV Admin Base Time Second LSB Register
+`define QBV_ABTSH     (16'h28)  // QBV Admin Base Time Second MSB Register
+`define QBV_ISR       (16'h30)  // QBV Interrupt Status Register
+`define QBV_IER       (16'h34)  // QBV Interrupt Enable Register
+`define QBV_ICR       (16'h38)  // QBV Interrupt Clear Register
+`define QBV_STATUS    (16'h3C)  // QBV Status Register
+`define QBV_CCTN      (16'h40)  // QBV Config Change Time Nano-second Register
+`define QBV_CCTSL     (16'h44)  // QBV Config Change Time Second LSB Register
+`define QBV_CCTSH     (16'h48)  // QBV Config Change Time Second MSB Register
+`define QBV_OCTD      (16'h58)  // QBV Operative Cycle Time Denominator Register
+`define QBV_OCTE      (16'h5C)  // QBV Operative Cycle Time Extension Register
+`define QBV_OBTN      (16'h60)  // QBV Operative Base Time Nano-second Register
+`define QBV_OBTSL     (16'h64)  // QBV Operative Base Time Second LSB Register
+`define QBV_OBTSH     (16'h68)  // QBV Operative Base Time Second MSB Register
+`define QBV_BETC      (16'h6C)  // QBV BE Transmission Overrun Count Register
+`define QBV_RSTC      (16'h70)  // QBV RES Transmission Overrun Count Register
+`define QBV_STTC      (16'h74)  // QBV ST Transmission Overrun Count Register
 
-`define QBV_ACLE_BASE (8'h1000)  // QBV Admin Control List Entry Base Address (dual port ram)
-`define QBV_OCLE_BASE (8'h2000)  // QBV Operative Control List Entry Base Address (dual port ram)
+`define QBV_ACLE_BASE (16'h1000)  // QBV Admin Control List Entry Base Address (dual port ram)
+`define QBV_OCLE_BASE (16'h2000)  // QBV Operative Control List Entry Base Address (dual port ram)
 
 // Default values
 `define QBV_CFG_DEFAULT            (32'h00000001)
