@@ -64,10 +64,5 @@
 `define QBV_OCLE_BASE (16'h2000)  // QBV Operative Control List Entry Base Address (dual port ram)
 
 // Default values
-`define QBV_CFG_DEFAULT            (32'h00000001)
-`define QBV_STATE_DEFAULT          (32'h00000000)
-`define QBV_ACTD_DEFAULT           (32'h00000000)
-`define QBV_ACTE_DEFAULT           (32'h00000000)
-`define QBV_IER_DEFAULT            (32'h00000000)
 
 `endif
