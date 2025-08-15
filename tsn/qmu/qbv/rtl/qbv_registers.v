@@ -72,11 +72,11 @@ module qbv_registers
     output [79:0]           AdminBaseTime_o, // Admin Base Time in PTP time format
 
     // BRAM Access Interface
-    output [ 7:0]           admin_addr_o,
+    output [ 8:0]           admin_addr_o,
     output [31:0]           admin_data_o,
     output [ 3:0]           admin_wr_o,
     input  [31:0]           admin_data_i,
-    output [ 7:0]           oper_addr_o,
+    output [ 8:0]           oper_addr_o,
     input  [31:0]           oper_data_i,
 
     // Interrupt event inputs
