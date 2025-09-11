@@ -54,8 +54,8 @@ module qbv_stsm
     input   [31:0]      AdminControlListLength_i,    // Admin control list length
     input   [ 5:0]      TickGranularity_i,        
 
-    output  [ 8:0]      OperControlListLength_o;  
-    output  [ 2:0]      OperGateStates_o;         
+    output  [ 8:0]      OperControlListLength_o,  
+    output  [ 2:0]      OperGateStates_o,         
     output  [19:0]      ExitTimer_o,       // Exit timer value
     output              OperControlListPopulated_o, // Operative Control List Populated
     output              ConfigPending_o,    // Config Pending
@@ -67,7 +67,7 @@ module qbv_stsm
 
     output              cc_process_o,       // Config Change is taken for processing
     output [ 8:0]       oper_addr_o,
-    input  [31:0]       oper_data_i,
+    input  [31:0]       oper_data_i
 );
     localparam SC2NS  = 32'd10_0000_0000;  //1 seconds = 10^9 nanoseconds
 

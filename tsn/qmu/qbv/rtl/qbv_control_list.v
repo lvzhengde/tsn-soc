@@ -30,22 +30,19 @@
 -*/
 
 /*+
- * 
  * Description : QBV Control List with Ping-Pong Buffer
  *               Instantiates two qbv_dpram blocks for admin and operative control lists.
  *               Ping-pong switching is controlled by OperControlListPopulated_i.
  * File        : qbv_control_list.v
 -*/
 
-module qbv_control_list #(
+module qbv_control_list 
+#(
     parameter ADDR_WIDTH = 9,
     parameter DATA_WIDTH = 32,
     parameter DEPTH = 512
-) (
-    input                   clk,
-    input                   rst_n,
-    input                   OperControlListPopulated_i, 
-
+) 
+(
     // Admin port
     input                   admin_clk,
     input                   admin_rst_n,
@@ -53,12 +50,16 @@ module qbv_control_list #(
     input  [DATA_WIDTH-1:0] admin_data_i,
     input  [3:0]            admin_wr_i,
     output [DATA_WIDTH-1:0] admin_data_o,
+    input  [ADDR_WIDTH-1:0] reg_oper_addr_i,
+    output [DATA_WIDTH-1:0] reg_oper_data_o,
 
     // Oper port
     input                   oper_clk,
     input                   oper_rst_n,
     input  [ADDR_WIDTH-1:0] oper_addr_i,
-    output [DATA_WIDTH-1:0] oper_data_o
+    output [DATA_WIDTH-1:0] oper_data_o,
+
+    input                   OperControlListPopulated_i
 );
 
     // Two DPRAMs: one for admin, one for oper
@@ -87,6 +88,7 @@ module qbv_control_list #(
 
     // DPRAM0
     wire [3:0] dpram0_admin_wr = admin_sel_q ? 4'b0 : admin_wr_i;
+    wire [ADDR_WIDTH-1:0] dpram0_addr = admin_sel_q ? reg_oper_addr_i : admin_addr_i;
 
     qbv_dpram 
     #(
@@ -97,7 +99,7 @@ module qbv_control_list #(
     u_dpram0 (
         .clk0      (admin_clk          ),
         .rst0_n    (admin_rst_n        ),
-        .addr0_i   (admin_addr_i       ),
+        .addr0_i   (dpram0_addr        ),
         .data0_i   (admin_data_i       ),
         .wr0_i     (dpram0_admin_wr    ),
         .data0_o   (dpram0_admin_data_o),
@@ -111,6 +113,7 @@ module qbv_control_list #(
 
     // DPRAM1
     wire [3:0] dpram1_admin_wr = admin_sel_q ? admin_wr_i : 4'b0;
+    wire [ADDR_WIDTH-1:0] dpram1_addr = admin_sel_q ? admin_addr_i : reg_oper_addr_i;
 
     qbv_dpram 
     #(
@@ -121,7 +124,7 @@ module qbv_control_list #(
     u_dpram1 (
         .clk0      (admin_clk          ),
         .rst0_n    (admin_rst_n        ),
-        .addr0_i   (admin_addr_i       ),
+        .addr0_i   (dpram1_addr        ),
         .data0_i   (admin_data_i       ),
         .wr0_i     (dpram1_admin_wr    ),
         .data0_o   (dpram1_admin_data_o),
@@ -136,7 +139,8 @@ module qbv_control_list #(
     // Ping-pong buffer selection
     // When admin_sel_q == 0: dpram0 is admin, dpram1 is oper
     // When admin_sel_q == 1: dpram1 is admin, dpram0 is oper
-    assign admin_data_o = admin_sel_q ? dpram1_admin_data_o : dpram0_admin_data_o;
-    assign oper_data_o  = admin_sel_q ? dpram0_oper_data_o  : dpram1_oper_data_o;
+    assign admin_data_o    = admin_sel_q ? dpram1_admin_data_o : dpram0_admin_data_o;
+    assign oper_data_o     = admin_sel_q ? dpram0_oper_data_o  : dpram1_oper_data_o;
+    assign reg_oper_data_o = admin_sel_q ? dpram0_admin_data_o : dpram1_admin_data_o;
 
 endmodule

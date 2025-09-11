@@ -49,9 +49,9 @@ module qbv_registers
     output                  ip2bus_ready_o,
 
     // QBV specific inputs 
-    input  [ 5:0]           TickGranularity_i;        
-    input  [ 8:0]           OperControlListLength_i;  
-    input  [ 2:0]           OperGateStates_i;         
+    input  [ 5:0]           TickGranularity_i,        
+    input  [ 8:0]           OperControlListLength_i,  
+    input  [ 2:0]           OperGateStates_i,         
     input                   OperControlListPopulated_i, // Operative Control List Populated
     input                   ConfigPending_i, // Config Pending
     input  [79:0]           ConfigChangeTime_i, // Config Change Time, in PTP time format
@@ -63,10 +63,10 @@ module qbv_registers
     input  [ 7:0]           STOverrunCount_i, // ST TX Overrun Count
 
     // QBV specific outputs 
-    output                  GateEnabled_o;            
-    output                  ConfigChange_o;           
-    output [ 8:0]           AdminControlListLength_o; 
-    output [ 2:0]           AdminGateStates_o;        
+    output                  GateEnabled_o,            
+    output                  ConfigChange_o,           
+    output [ 8:0]           AdminControlListLength_o, 
+    output [ 2:0]           AdminGateStates_o,        
     output [31:0]           AdminCycleTime_o,
     output [31:0]           AdminCycleTimeExtension_o,
     output [79:0]           AdminBaseTime_o, // Admin Base Time in PTP time format
