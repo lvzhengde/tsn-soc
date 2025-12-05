@@ -130,4 +130,17 @@ module tb_top;
         .ExitTimer_o           (ExitTimer_w     )
     );
 
+    // Instantiate RTC for PTP time
+    qbv_rtc 
+    #(
+        .TICK_VALUE (8)
+    )
+    u_qbv_rtc
+    (
+        .clk                   (oper_clk       ),
+        .rst_n                 (oper_rst_n     ),
+
+        .CurrentTime_o         (CurrentTime_w  )
+    );
+
 endmodule
